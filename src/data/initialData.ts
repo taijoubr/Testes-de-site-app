@@ -9,7 +9,9 @@ import {
   SupportTicket, 
   LeadCRM,
   UserProfile,
-  NotificationItem
+  NotificationItem,
+  AdminUser,
+  ClientUser
 } from '../types';
 
 export const INITIAL_SERVICES: ServiceItem[] = [
@@ -576,5 +578,51 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     type: 'chat',
     timestamp: 'Há 2 horas',
     read: true
+  }
+];
+
+export const INITIAL_ADMIN_USERS: AdminUser[] = [
+  {
+    id: 'adm-1',
+    name: 'Nikolas (Administrador Master)',
+    username: 'admin',
+    passwordHash: 'admin123',
+    roleTitle: 'Administrador Master',
+    createdAt: '2026-01-10T10:00:00.000Z',
+    addedBy: 'Sistema NCodes'
+  },
+  {
+    id: 'adm-2',
+    name: 'Gabriel Souza',
+    username: 'nikolas',
+    passwordHash: 'ncodes2026',
+    roleTitle: 'Tech Lead / Engenheiro',
+    createdAt: '2026-02-01T14:30:00.000Z',
+    addedBy: 'Nikolas'
+  }
+];
+
+export const INITIAL_CLIENT_USERS: ClientUser[] = [
+  {
+    id: 'cli-user-1',
+    name: 'Lucas Ferreira',
+    email: 'lucas@fintechalfa.com.br',
+    phone: '(11) 98877-6655',
+    company: 'FinTech Alfa',
+    passwordHash: 'cliente123',
+    createdAt: '2026-07-15T10:00:00.000Z',
+    city: 'São Paulo',
+    state: 'SP'
+  },
+  {
+    id: 'cli-user-2',
+    name: 'Mariana Santos',
+    email: 'mariana@clinicavivence.com.br',
+    phone: '(21) 97654-3210',
+    company: 'Clínica Vivence',
+    passwordHash: 'vivence2026',
+    createdAt: '2026-07-18T14:00:00.000Z',
+    city: 'Rio de Janeiro',
+    state: 'RJ'
   }
 ];

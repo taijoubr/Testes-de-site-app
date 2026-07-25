@@ -21,7 +21,9 @@ import {
   UserProfile,
   NotificationItem,
   UserRole,
-  QuoteStatus
+  QuoteStatus,
+  AdminUser,
+  ClientUser
 } from '../types';
 
 import { 
@@ -33,7 +35,9 @@ import {
   INITIAL_TICKETS, 
   INITIAL_LEADS, 
   TEAM_MEMBERS,
-  INITIAL_NOTIFICATIONS 
+  INITIAL_NOTIFICATIONS,
+  INITIAL_ADMIN_USERS,
+  INITIAL_CLIENT_USERS
 } from '../data/initialData';
 
 export type ActiveView = 
@@ -45,7 +49,9 @@ export type ActiveView =
   | 'quote_wizard' 
   | 'proposal_accept' 
   | 'client_portal' 
+  | 'client_auth'
   | 'admin_panel' 
+  | 'admin_login'
   | 'mobile_sim';
 
 interface AppContextType {
@@ -65,6 +71,23 @@ interface AppContextType {
   setCurrentUserRole: (role: UserRole) => void;
   mobileSimDevice: 'iphone' | 'android';
   setMobileSimDevice: (device: 'iphone' | 'android') => void;
+
+  // Admin Auth State
+  isAdminAuthenticated: boolean;
+  currentAdminUser: AdminUser | null;
+  adminUsers: AdminUser[];
+  loginAdmin: (username: string, pass: string) => boolean;
+  logoutAdmin: () => void;
+  addAdminUser: (data: Omit<AdminUser, 'id' | 'createdAt' | 'addedBy'>) => Promise<void>;
+  deleteAdminUser: (id: string) => Promise<void>;
+
+  // Client Auth State
+  isClientAuthenticated: boolean;
+  currentClientUser: ClientUser | null;
+  clientUsers: ClientUser[];
+  loginClient: (email: string, pass: string) => boolean;
+  registerClient: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<boolean>;
+  logoutClient: () => void;
 
   // Data collections
   quotes: QuoteRequest[];
@@ -107,6 +130,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<UserProfile>(TEAM_MEMBERS[0]); // Default Admin
   const [mobileSimDevice, setMobileSimDevice] = useState<'iphone' | 'android'>('iphone');
+
+  // Admin Auth State
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [currentAdminUser, setCurrentAdminUser] = useState<AdminUser | null>(null);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
+
+  // Client Auth State
+  const [isClientAuthenticated, setIsClientAuthenticated] = useState<boolean>(false);
+  const [currentClientUser, setCurrentClientUser] = useState<ClientUser | null>(null);
+  const [clientUsers, setClientUsers] = useState<ClientUser[]>(INITIAL_CLIENT_USERS);
 
   // State collections
   const [quotes, setQuotes] = useState<QuoteRequest[]>(INITIAL_QUOTES);
@@ -268,6 +301,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }, (err) => handleFirestoreError(err, OperationType.GET, 'notifications'));
 
+      // 9. Admin Users
+      try {
+        const admSnap = await getDocs(collection(db, 'adminUsers'));
+        if (admSnap.empty) {
+          for (const item of INITIAL_ADMIN_USERS) {
+            await setDoc(doc(db, 'adminUsers', item.id), item);
+          }
+        }
+      } catch (err) {
+        console.warn('AdminUsers check warning:', err);
+      }
+
+      const unsubAdminUsers = onSnapshot(collection(db, 'adminUsers'), (snap) => {
+        if (!snap.empty) {
+          setAdminUsers(snap.docs.map(d => d.data() as AdminUser));
+        }
+      }, (err) => handleFirestoreError(err, OperationType.GET, 'adminUsers'));
+
+      // 10. Client Users
+      try {
+        const cliSnap = await getDocs(collection(db, 'clientUsers'));
+        if (cliSnap.empty) {
+          for (const item of INITIAL_CLIENT_USERS) {
+            await setDoc(doc(db, 'clientUsers', item.id), item);
+          }
+        }
+      } catch (err) {
+        console.warn('ClientUsers check warning:', err);
+      }
+
+      const unsubClientUsers = onSnapshot(collection(db, 'clientUsers'), (snap) => {
+        if (!snap.empty) {
+          setClientUsers(snap.docs.map(d => d.data() as ClientUser));
+        }
+      }, (err) => handleFirestoreError(err, OperationType.GET, 'clientUsers'));
+
       return () => {
         unsubQuotes();
         unsubProposals();
@@ -277,11 +346,123 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubTickets();
         unsubLeads();
         unsubNotifs();
+        unsubAdminUsers();
+        unsubClientUsers();
       };
     };
 
     seedAndSubscribe();
   }, []);
+
+  // Admin Login and Management Handlers
+  const loginAdmin = (username: string, pass: string): boolean => {
+    const cleanUser = username.trim().toLowerCase();
+    const found = adminUsers.find(u => u.username.trim().toLowerCase() === cleanUser && u.passwordHash === pass);
+    if (found) {
+      setIsAdminAuthenticated(true);
+      setCurrentAdminUser(found);
+      return true;
+    }
+    return false;
+  };
+
+  const logoutAdmin = () => {
+    setIsAdminAuthenticated(false);
+    setCurrentAdminUser(null);
+    setActiveView('home');
+  };
+
+  const addAdminUser = async (data: Omit<AdminUser, 'id' | 'createdAt' | 'addedBy'>) => {
+    const newId = `adm-${Date.now()}`;
+    const newAdmin: AdminUser = {
+      ...data,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      addedBy: currentAdminUser?.name || 'Administrador Master'
+    };
+
+    try {
+      await setDoc(doc(db, 'adminUsers', newId), newAdmin);
+      await addNotification('Novo Administrador Cadastrado', `O usuário @${data.username} foi adicionado como ${data.roleTitle}.`, 'project');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `adminUsers/${newId}`);
+    }
+  };
+
+  const deleteAdminUser = async (id: string) => {
+    if (adminUsers.length <= 1) {
+      alert('Não é possível remover o único administrador do sistema.');
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'adminUsers', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `adminUsers/${id}`);
+    }
+  };
+
+  // Client Auth Handlers
+  const loginClient = (email: string, pass: string): boolean => {
+    const cleanEmail = email.trim().toLowerCase();
+    const found = clientUsers.find(u => u.email.trim().toLowerCase() === cleanEmail && u.passwordHash === pass);
+    if (found) {
+      setIsClientAuthenticated(true);
+      setCurrentClientUser(found);
+      setCurrentUser({
+        id: found.id,
+        name: found.name,
+        email: found.email,
+        company: found.company,
+        phone: found.phone,
+        role: 'client',
+        avatar: found.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+      });
+      return true;
+    }
+    return false;
+  };
+
+  const registerClient = async (data: Omit<ClientUser, 'id' | 'createdAt'>): Promise<boolean> => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const existing = clientUsers.find(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (existing) {
+      alert('Este e-mail já está cadastrado. Por favor, faça login.');
+      return false;
+    }
+
+    const newId = `cli-user-${Date.now()}`;
+    const newClient: ClientUser = {
+      ...data,
+      id: newId,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      await setDoc(doc(db, 'clientUsers', newId), newClient);
+      setIsClientAuthenticated(true);
+      setCurrentClientUser(newClient);
+      setCurrentUser({
+        id: newId,
+        name: data.name,
+        email: data.email,
+        company: data.company,
+        phone: data.phone,
+        role: 'client',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+      });
+      await addNotification('Novo Cliente Cadastrado', `${data.name} (${data.company || 'Pessoa Física'}) criou uma conta no Portal do Cliente.`, 'project');
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `clientUsers/${newId}`);
+      return false;
+    }
+  };
+
+  const logoutClient = () => {
+    setIsClientAuthenticated(false);
+    setCurrentClientUser(null);
+    setActiveView('home');
+  };
 
   // Handle dark mode class on HTML body
   useEffect(() => {
@@ -737,6 +918,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUserRole,
       mobileSimDevice,
       setMobileSimDevice,
+      isAdminAuthenticated,
+      currentAdminUser,
+      adminUsers,
+      loginAdmin,
+      logoutAdmin,
+      addAdminUser,
+      deleteAdminUser,
+      isClientAuthenticated,
+      currentClientUser,
+      clientUsers,
+      loginClient,
+      registerClient,
+      logoutClient,
       quotes,
       proposals,
       projects,

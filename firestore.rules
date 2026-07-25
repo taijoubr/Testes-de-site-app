@@ -80,5 +80,17 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if true;
     }
+
+    // Admin Users collection
+    match /adminUsers/{adminUserId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Client Users collection
+    match /clientUsers/{clientUserId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
   }
 }

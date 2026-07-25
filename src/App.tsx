@@ -10,7 +10,9 @@ import { PortfolioPage } from './views/PortfolioPage';
 import { AboutPage } from './views/AboutPage';
 import { ContactPage } from './views/ContactPage';
 import { AdminPanel } from './views/AdminPanel';
+import { AdminLoginPage } from './views/AdminLoginPage';
 import { ClientPortal } from './views/ClientPortal';
+import { ClientAuthPage } from './views/ClientAuthPage';
 import { MobileAppView } from './views/MobileAppView';
 import { ProposalAcceptancePage } from './views/ProposalAcceptancePage';
 
@@ -18,7 +20,25 @@ import { ProposalAcceptancePage } from './views/ProposalAcceptancePage';
 import { QuoteWizardModal } from './components/QuoteWizardModal';
 
 const AppContent: React.FC = () => {
-  const { activeView } = useApp();
+  const { activeView, isAdminAuthenticated, isClientAuthenticated } = useApp();
+
+  // Render Admin views in a dedicated standalone page layout
+  if (activeView === 'admin_login') {
+    return <AdminLoginPage />;
+  }
+
+  if (activeView === 'admin_panel') {
+    return isAdminAuthenticated ? <AdminPanel /> : <AdminLoginPage />;
+  }
+
+  // Render Client views in a dedicated standalone page layout
+  if (activeView === 'client_auth') {
+    return <ClientAuthPage />;
+  }
+
+  if (activeView === 'client_portal') {
+    return isClientAuthenticated ? <ClientPortal /> : <ClientAuthPage />;
+  }
 
   const renderActiveView = () => {
     switch (activeView) {
@@ -33,8 +53,6 @@ const AppContent: React.FC = () => {
         return <AboutPage />;
       case 'contact':
         return <ContactPage />;
-      case 'admin_panel':
-        return <AdminPanel />;
       case 'client_portal':
         return <ClientPortal />;
       case 'mobile_app':

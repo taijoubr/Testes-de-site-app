@@ -82,6 +82,36 @@
         "timestamp": { "type": "string", "maxLength": 50 }
       },
       "required": ["senderId", "senderName", "text", "timestamp"]
+    },
+    "AdminUser": {
+      "title": "Admin User",
+      "description": "Usuários administradores cadastrados para acesso restrito",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 100 },
+        "name": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 100 },
+        "passwordHash": { "type": "string", "maxLength": 100 },
+        "roleTitle": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "addedBy": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "name", "username", "passwordHash", "roleTitle"]
+    },
+    "ClientUser": {
+      "title": "Client User",
+      "description": "Usuários clientes cadastrados",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 100 },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "company": { "type": "string", "maxLength": 150 },
+        "passwordHash": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "name", "email", "passwordHash"]
     }
   },
   "firestore": {
@@ -104,6 +134,14 @@
     "/chatMessages/{messageId}": {
       "schema": { "$ref": "#/entities/ChatMessage" },
       "description": "Coleção de mensagens"
+    },
+    "/adminUsers/{adminUserId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Coleção de administradores cadastrados"
+    },
+    "/clientUsers/{clientUserId}": {
+      "schema": { "$ref": "#/entities/ClientUser" },
+      "description": "Coleção de clientes cadastrados"
     }
   }
 }

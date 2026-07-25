@@ -15,13 +15,14 @@ import {
   Star, 
   ChevronRight,
   BarChart3,
-  Users2
+  Users2,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { INITIAL_SERVICES, INITIAL_PORTFOLIO } from '../data/initialData';
 
 export const InstitutionalHome: React.FC = () => {
-  const { setActiveView } = useApp();
+  const { setActiveView, isAdminAuthenticated, isClientAuthenticated } = useApp();
 
   return (
     <div className="space-y-24 pb-20">
@@ -54,11 +55,11 @@ export const InstitutionalHome: React.FC = () => {
 
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
                 <button
-                  onClick={() => setActiveView('quote_wizard')}
+                  onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
                   className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-500/25 flex items-center justify-center gap-3 transition-all transform active:scale-95 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Solicitar Orçamento</span>
+                  <span>Acessar Área do Cliente</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
@@ -336,24 +337,24 @@ export const InstitutionalHome: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 6: Painel Administrativo */}
+          {/* Card 6: Área Restrita / Admin (Cadeado) */}
           <div 
-            onClick={() => setActiveView('admin_panel')}
+            onClick={() => setActiveView(isAdminAuthenticated ? 'admin_panel' : 'admin_login')}
             className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-amber-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
           >
             <div className="space-y-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                <Layers className="w-6 h-6" />
+                <Lock className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                Painel Administrativo
+                Área Restrita (Admin)
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Gestão interna de orçamentos, emissão de propostas, Kanban CRM de leads e controle financeiro.
+                Autenticação com login e senha para gestores. Cadastro de novos administradores realizado exclusivamente por um Admin.
               </p>
             </div>
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
-              <span>Painel de Gestão</span>
+              <span>{isAdminAuthenticated ? 'Acessar Painel Admin' : 'Login de Administrador'}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -433,14 +434,14 @@ export const InstitutionalHome: React.FC = () => {
               Pronto para levar seu projeto digital ao próximo nível?
             </h2>
             <p className="text-sm sm:text-base text-blue-100 leading-relaxed">
-              Fale diretamente com nossa equipe de especialistas, solicite seu orçamento inteligente e acompanhe todo o desenvolvimento em tempo real.
+              Acesse a Área do Cliente para solicitar novos orçamentos, acompanhar chamados e visualizar o andamento dos seus projetos em tempo real.
             </p>
             <div className="pt-2 flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() => setActiveView('quote_wizard')}
+                onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
                 className="px-8 py-3.5 rounded-2xl bg-white text-blue-900 hover:bg-slate-100 font-bold text-sm shadow-xl transition-all cursor-pointer"
               >
-                Solicitar Orçamento Agora
+                Acessar Área do Cliente
               </button>
               <button
                 onClick={() => setActiveView('contact')}

@@ -33,7 +33,18 @@ import {
   Trash2, 
   Download,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  Unlock,
+  UserPlus,
+  LogOut,
+  KeyRound,
+  ShieldAlert,
+  User,
+  Sun,
+  Moon,
+  ArrowLeft,
+  Globe
 } from 'lucide-react';
 
 import { useApp } from '../context/AppContext';
@@ -56,10 +67,25 @@ export const AdminPanel: React.FC = () => {
     addFinancialTransaction,
     updateFinancialStatus,
     updateLeadStage,
-    currentUser
+    currentUser,
+    isAdminAuthenticated,
+    currentAdminUser,
+    adminUsers,
+    logoutAdmin,
+    addAdminUser,
+    deleteAdminUser,
+    isDarkMode,
+    toggleTheme
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'projects' | 'financials' | 'crm' | 'team'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'projects' | 'financials' | 'crm' | 'team' | 'admin_users'>('dashboard');
+
+  // New Admin User Modal State
+  const [showNewAdminModal, setShowNewAdminModal] = useState(false);
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [newAdminRoleTitle, setNewAdminRoleTitle] = useState('Administrador Master');
 
   // Proposal modal trigger
   const [selectedQuoteForProp, setSelectedQuoteForProp] = useState<QuoteRequest | null>(null);
@@ -105,27 +131,140 @@ export const AdminPanel: React.FC = () => {
     setFinTitle('');
   };
 
+  const handleCreateAdminUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminName.trim() || !newAdminUsername.trim() || !newAdminPassword) {
+      alert('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    // Check if username already exists
+    if (adminUsers.some(u => u.username.toLowerCase() === newAdminUsername.trim().toLowerCase())) {
+      alert('Este nome de usuário já está em uso.');
+      return;
+    }
+
+    addAdminUser({
+      name: newAdminName.trim(),
+      username: newAdminUsername.trim().toLowerCase(),
+      passwordHash: newAdminPassword,
+      roleTitle: newAdminRoleTitle
+    });
+
+    setShowNewAdminModal(false);
+    setNewAdminName('');
+    setNewAdminUsername('');
+    setNewAdminPassword('');
+  };
+
+  // If not authenticated, render strict access lock screen
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-500 mx-auto flex items-center justify-center border border-rose-500/20">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+              Sessão Não Autenticada
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Você precisa efetuar o login com usuário e senha para acessar as métricas, orçamentos e cadastros do painel administrativo.
+            </p>
+          </div>
+          <button
+            onClick={() => setActiveView('admin_login')}
+            className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+          >
+            <Lock className="w-4 h-4" />
+            <span>Acessar Tela de Login Admin</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-16">
+      
+      {/* Standalone Admin Top Navbar */}
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-3 mb-8">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          
+          {/* Brand & Page Identifier */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveView('home')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl transition-all"
+              title="Voltar para o site público institucional"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Voltar ao Site Principal</span>
+            </button>
+
+            <div className="h-5 w-[1px] bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-md">
+                N
+              </div>
+              <div>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight block leading-none">
+                  NCodes Admin
+                </span>
+                <span className="text-[10px] text-emerald-500 font-bold tracking-wider uppercase block mt-0.5">
+                  Painel de Gestão Restrito
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Controls: Theme & Logout */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+              title="Alternar tema claro/escuro"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            </button>
+
+            <button
+              onClick={logoutAdmin}
+              className="py-2 px-3.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Sair do painel administrativo"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
+            </button>
+          </div>
+
+        </div>
+      </header>
+
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
       
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Painel de Controle Unificado NCodes</span>
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>Sessão Administrativa Autenticada</span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            Gestão Empresarial & Sincronização
+            Painel de Controle NCodes
           </h1>
-          <p className="text-xs text-slate-500">Logado como: <strong>{currentUser.name}</strong> ({currentUser.role.toUpperCase()})</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Logado como: <strong className="text-slate-800 dark:text-slate-200">{currentAdminUser?.name || currentUser.name}</strong> (@{currentAdminUser?.username || 'admin'})
+          </p>
         </div>
 
-        {/* Tab Selector Buttons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        {/* Tab Selector Buttons & Logout */}
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
@@ -135,7 +274,7 @@ export const AdminPanel: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('quotes')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'quotes' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
@@ -145,7 +284,7 @@ export const AdminPanel: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('projects')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'projects' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
@@ -155,7 +294,7 @@ export const AdminPanel: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('financials')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'financials' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
@@ -165,7 +304,7 @@ export const AdminPanel: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('crm')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'crm' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
@@ -174,13 +313,22 @@ export const AdminPanel: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('team')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'team' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+            onClick={() => setActiveTab('admin_users')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'admin_users' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>Equipe</span>
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
+            <span>Usuários Admin ({adminUsers.length})</span>
+          </button>
+
+          <button
+            onClick={logoutAdmin}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 transition-all flex items-center gap-1.5 shrink-0"
+            title="Encerrar Sessão Administrativa"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sair</span>
           </button>
         </div>
       </div>
@@ -699,12 +847,225 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      {/* TAB 6: ADMIN USERS MANAGEMENT (Inclusão exclusiva pelo painel) */}
+      {activeTab === 'admin_users' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Section Header */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">
+                <Lock className="w-4 h-4" />
+                <span>Gestão Restrita de Acesso</span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                Administradores Cadastrados
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Usuários com permissão para efetuar login na tela restrita. Novos acessos são concedidos exclusivamente aqui.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowNewAdminModal(true)}
+              className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Incluir Novo Administrador</span>
+            </button>
+          </div>
+
+          {/* Security Notice Banner */}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold">Política de Segurança de Acesso Administrativo:</p>
+              <p className="text-[11px] opacity-90 leading-relaxed">
+                Não existe tela pública de cadastro ou auto-solicitação. Qualquer novo gestor que necessite de acesso ao painel deve ser criado diretamente por um administrador existente através do botão acima.
+              </p>
+            </div>
+          </div>
+
+          {/* Admin Users Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="py-4 px-6">Nome do Administrador</th>
+                    <th className="py-4 px-6">Nome de Usuário (Login)</th>
+                    <th className="py-4 px-6">Cargo / Nível</th>
+                    <th className="py-4 px-6">Cadastrado Por</th>
+                    <th className="py-4 px-6">Data de Criação</th>
+                    <th className="py-4 px-6 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {adminUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-4 px-6 font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-xs">
+                          {user.name.charAt(0)}
+                        </div>
+                        <span>{user.name}</span>
+                      </td>
+                      <td className="py-4 px-6 font-mono text-blue-600 dark:text-blue-400 font-semibold">
+                        @{user.username}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-semibold text-[11px]">
+                          {user.roleTitle}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-slate-500 dark:text-slate-400">
+                        {user.addedBy || 'Sistema'}
+                      </td>
+                      <td className="py-4 px-6 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                        {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <button
+                          onClick={() => deleteAdminUser(user.id)}
+                          className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 transition-all cursor-pointer"
+                          title="Remover Acesso de Administrador"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
       {/* Proposal Generator Modal Popup */}
       {selectedQuoteForProp && (
         <ProposalGeneratorModal
           quote={selectedQuoteForProp}
           onClose={() => setSelectedQuoteForProp(null)}
         />
+      )}
+
+      {/* New Admin User Modal */}
+      {showNewAdminModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+            
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  Incluir Administrador
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Cadastrar novo usuário com permissão de login
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateAdminUser} className="space-y-4">
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome Completo
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminName}
+                    onChange={e => setNewAdminName(e.target.value)}
+                    placeholder="Ex: Carlos Eduardo Silva"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome de Usuário (Login)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <span className="text-xs font-bold">@</span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminUsername}
+                    onChange={e => setNewAdminUsername(e.target.value)}
+                    placeholder="carlos_admin (não utilizar e-mail)"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Este será o login para acesso na tela de cadeado.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Senha de Acesso
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <KeyRound className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminPassword}
+                    onChange={e => setNewAdminPassword(e.target.value)}
+                    placeholder="SuaSenhaSegura123"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Cargo / Título
+                </label>
+                <select
+                  value={newAdminRoleTitle}
+                  onChange={e => setNewAdminRoleTitle(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
+                >
+                  <option value="Administrador Master">Administrador Master</option>
+                  <option value="Gerente de Operações">Gerente de Operações</option>
+                  <option value="Administrador Financeiro">Administrador Financeiro</option>
+                  <option value="Tech Lead / DevOps">Tech Lead / DevOps</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowNewAdminModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Cadastrar Admin</span>
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
       )}
 
       {/* New Financial Modal */}
@@ -770,6 +1131,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      </div>
     </div>
   );
 };

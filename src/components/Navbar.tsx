@@ -12,7 +12,9 @@ import {
   X, 
   ChevronDown,
   Sparkles,
-  FileSignature
+  FileSignature,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { useApp, ActiveView } from '../context/AppContext';
 import { NotificationCenter } from './NotificationCenter';
@@ -26,7 +28,9 @@ export const Navbar: React.FC = () => {
     toggleTheme, 
     currentUser, 
     setCurrentUserRole,
-    notifications
+    notifications,
+    isAdminAuthenticated,
+    isClientAuthenticated
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -140,41 +144,34 @@ export const Navbar: React.FC = () => {
 
           {/* Action CTAs & Controls */}
           <div className="hidden xl:flex items-center gap-2.5">
-            
-            {/* Quick Quote CTA */}
+
+            {/* Area Cliente & Admin Padlock */}
             <button
-              onClick={() => handleNavClick('quote_wizard')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-sm shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+              onClick={() => handleNavClick(isClientAuthenticated ? 'client_portal' : 'client_auth')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all ${
+                activeView === 'client_portal' || activeView === 'client_auth'
+                  ? 'ring-2 ring-indigo-400'
+                  : ''
+              }`}
+              title="Área do Cliente (Login / Cadastro & Orçamentos)"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Solicitar Orçamento</span>
+              <UserCheck className="w-4 h-4" />
+              <span>Área do Cliente</span>
             </button>
 
-            {/* Portal / Admin Direct Access */}
+            {/* Padlock Icon for Admin Area */}
             <button
-              onClick={() => handleNavClick('admin_panel')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                activeView === 'admin_panel'
-                  ? 'border-blue-500 bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300'
+              onClick={() => handleNavClick(isAdminAuthenticated ? 'admin_panel' : 'admin_login')}
+              className={`p-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                activeView === 'admin_panel' || activeView === 'admin_login'
+                  ? 'border-blue-500 bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300 ring-2 ring-blue-500/20'
+                  : isAdminAuthenticated
+                  ? 'border-emerald-500/50 bg-emerald-50/50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400'
                   : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
-              title="Painel Administrativo Web"
+              title={isAdminAuthenticated ? "Painel Admin (Autenticado)" : "Área Restrita (Acesso Admin)"}
             >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Painel Admin</span>
-            </button>
-
-            <button
-              onClick={() => handleNavClick('client_portal')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                activeView === 'client_portal'
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-              title="Área do Cliente"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Área Cliente</span>
+              {isAdminAuthenticated ? <Unlock className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4" />}
             </button>
 
             <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1" />
@@ -311,25 +308,18 @@ export const Navbar: React.FC = () => {
             >
               Contato
             </button>
-            <button
-              onClick={() => handleNavClick('quote_wizard')}
-              className="p-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center gap-1.5 shadow-md"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Orçamento</span>
-            </button>
           </div>
 
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2">
             <button
-              onClick={() => handleNavClick('admin_panel')}
+              onClick={() => handleNavClick(isAdminAuthenticated ? 'admin_panel' : 'admin_login')}
               className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold flex flex-col items-center justify-center gap-1 text-slate-800 dark:text-slate-200"
             >
-              <LayoutDashboard className="w-4 h-4 text-blue-500" />
-              <span>Painel Admin</span>
+              {isAdminAuthenticated ? <Unlock className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4 text-blue-500" />}
+              <span>Área Restrita</span>
             </button>
             <button
-              onClick={() => handleNavClick('client_portal')}
+              onClick={() => handleNavClick(isClientAuthenticated ? 'client_portal' : 'client_auth')}
               className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold flex flex-col items-center justify-center gap-1 text-slate-800 dark:text-slate-200"
             >
               <UserCheck className="w-4 h-4 text-indigo-500" />

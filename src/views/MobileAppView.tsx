@@ -25,7 +25,8 @@ export const MobileAppView: React.FC = () => {
     chatMessages, 
     sendChatMessage, 
     currentUser,
-    setActiveView 
+    setActiveView,
+    isClientAuthenticated
   } = useApp();
 
   const [bottomNav, setBottomNav] = useState<'home' | 'projects' | 'financial' | 'chat' | 'profile'>('home');
@@ -137,11 +138,11 @@ export const MobileAppView: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => setActiveView('quote_wizard')}
-                      className="p-3 rounded-2xl bg-emerald-600 text-white font-bold text-left space-y-1 shadow-md"
+                      onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
+                      className="p-3 rounded-2xl bg-indigo-600 text-white font-bold text-left space-y-1 shadow-md"
                     >
                       <Sparkles className="w-4 h-4" />
-                      <p className="text-xs">Solicitar Orçamento</p>
+                      <p className="text-xs">Área do Cliente</p>
                     </button>
 
                     <button

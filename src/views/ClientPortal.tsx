@@ -15,25 +15,52 @@ import {
   QrCode, 
   Copy,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  PlusCircle,
+  FileCheck,
+  Building2,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  LogOut,
+  ArrowLeft,
+  Sun,
+  Moon,
+  ExternalLink,
+  Bot
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const ClientPortal: React.FC = () => {
   const { 
+    quotes,
+    proposals,
     projects, 
     financials, 
     chatMessages, 
     tickets, 
     sendChatMessage, 
     createSupportTicket, 
-    currentUser,
+    createQuoteRequest,
+    currentClientUser,
+    logoutClient,
     setSelectedProposalIdForAcceptance,
-    setActiveView
+    setActiveView,
+    isDarkMode,
+    toggleTheme
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'projects' | 'financials' | 'chat' | 'tickets'>('projects');
+  const [activeTab, setActiveTab] = useState<'quotes' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
   
+  // Quote Modal State
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [projectType, setProjectType] = useState('Aplicativo Mobile iOS/Android + Painel Web');
+  const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('45 dias');
+  const [budgetRange, setBudgetRange] = useState('R$ 15.000 a R$ 30.000');
+  const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+
   // Chat input
   const [chatInput, setChatInput] = useState('');
   
@@ -46,7 +73,54 @@ export const ClientPortal: React.FC = () => {
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [pixCopied, setPixCopied] = useState(false);
 
-  const activeProject = projects[0];
+  // Filter client's quotes if email matches, or display all client quotes
+  const clientEmail = (currentClientUser?.email || '').toLowerCase();
+  const clientName = (currentClientUser?.name || '').toLowerCase();
+  const clientCompany = (currentClientUser?.company || '').toLowerCase();
+
+  const myQuotes = quotes.filter(q => {
+    if (!currentClientUser) return true;
+    const qEmail = (q.email || '').toLowerCase();
+    const qClientName = (q.clientName || '').toLowerCase();
+    return (
+      (clientEmail && qEmail === clientEmail) ||
+      (clientName && qClientName.includes(clientName))
+    );
+  });
+
+  const myProjects = projects.filter(p => {
+    if (!currentClientUser) return true;
+    const pClient = (p.clientName || '').toLowerCase();
+    const firstName = clientName.split(' ')[0] || '';
+    return (
+      (firstName && pClient.includes(firstName)) ||
+      (clientCompany && pClient.includes(clientCompany))
+    );
+  });
+  const activeProject = myProjects[0] || projects[0];
+
+  const handleCreateQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingQuote(true);
+
+    await createQuoteRequest({
+      clientName: currentClientUser?.name || 'Cliente NCodes',
+      company: currentClientUser?.company || 'Pessoa Física',
+      email: currentClientUser?.email || 'cliente@ncodes.com.br',
+      phone: currentClientUser?.phone || '(11) 99999-8888',
+      whatsapp: currentClientUser?.phone || '(11) 99999-8888',
+      city: currentClientUser?.city || 'São Paulo',
+      state: currentClientUser?.state || 'SP',
+      projectType,
+      description,
+      deadline,
+      budgetRange
+    });
+
+    setIsCreatingQuote(false);
+    setShowQuoteModal(false);
+    setDescription('');
+  };
 
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,302 +145,666 @@ export const ClientPortal: React.FC = () => {
     setTimeout(() => setPixCopied(false), 2500);
   };
 
+  const projectTypeOptions = [
+    'Aplicativo Mobile iOS/Android + Painel Web',
+    'Desenvolvimento de Site Institucional / Portal',
+    'Sistema Web Empresarial (ERP / SaaS / CRM)',
+    'Landing Page de Alta Conversão',
+    'Automações com Inteligência Artificial / Gemini',
+    'APIs & Integrações de Sistemas / Pix',
+    'Sistema Personalizado Sob Medida'
+  ];
+
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300">
       
-      {/* Header Portal */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-400/30">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Área do Cliente • Sincronizada em Tempo Real</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Bem-vindo, {currentUser.name}!
-          </h1>
-          <p className="text-xs text-slate-300">
-            Acompanhe o cronograma do projeto, acesse arquivos, baixe notas e converse com nossa engenharia.
-          </p>
-        </div>
-
-        {/* Portal Tabs Nav */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setActiveTab('projects')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shrink-0 transition-all ${
-              activeTab === 'projects' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <FolderGit2 className="w-4 h-4" />
-            <span>Projetos</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('financials')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shrink-0 transition-all ${
-              activeTab === 'financials' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>Financeiro & Pix</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shrink-0 transition-all ${
-              activeTab === 'chat' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Chat Direto</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('tickets')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shrink-0 transition-all ${
-              activeTab === 'tickets' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <LifeBuoy className="w-4 h-4" />
-            <span>Chamados ({tickets.length})</span>
-          </button>
-        </div>
-      </div>
-
-      {/* TAB 1: ACTIVE PROJECTS & TIMELINE */}
-      {activeTab === 'projects' && (
-        <div className="space-y-8 animate-in fade-in duration-200">
-          {activeProject && (
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
-              
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-slate-100 dark:border-slate-800">
-                <div>
-                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">{activeProject.id} • {activeProject.category}</span>
-                  <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{activeProject.title}</h2>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="px-3.5 py-1 rounded-full text-xs font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                    {activeProject.status.replace('_', ' ')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress Stepper Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-600 dark:text-slate-400">Progresso Geral de Desenvolvimento:</span>
-                  <span className="text-indigo-600 dark:text-indigo-400">{activeProject.progressPercentage}% concluído</span>
-                </div>
-                <div className="w-full h-3.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-indigo-600 to-cyan-500 transition-all duration-500" 
-                    style={{ width: `${activeProject.progressPercentage}%` }} 
-                  />
-                </div>
-              </div>
-
-              {/* Milestones Checklist */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Etapas & Atividades:</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {activeProject.tasks.map(t => (
-                    <div key={t.id} className={`p-3.5 rounded-2xl border flex items-center gap-3 text-xs font-semibold ${
-                      t.completed 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-slate-700 dark:text-slate-300' 
-                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                    }`}>
-                      <CheckCircle2 className={`w-4 h-4 shrink-0 ${t.completed ? 'text-emerald-500' : 'text-slate-300'}`} />
-                      <span className={t.completed ? 'line-through' : ''}>{t.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* File Repository */}
-              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Documentos & Arquivos para Download:</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {activeProject.files.map(f => (
-                    <div key={f.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2.5 truncate">
-                        <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
-                        <span className="font-bold text-slate-900 dark:text-white truncate">{f.name}</span>
-                      </div>
-                      <button className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200">
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 2: FINANCIAL STATEMENT & PIX */}
-      {activeTab === 'financials' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Extrato Financeiro & Cobranças Pix</h2>
-                <p className="text-xs text-slate-500">Consulte suas parcelas ativas, status de pagamento e efetue acertos instantâneos via Pix.</p>
-              </div>
-
-              <button
-                onClick={() => setPixModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>Pagar Parcela via Pix</span>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
-                    <th className="pb-3">Descrição da Cobrança</th>
-                    <th className="pb-3">Vencimento</th>
-                    <th className="pb-3">Valor</th>
-                    <th className="pb-3">Forma</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {financials.map(f => (
-                    <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="py-3 font-semibold text-slate-900 dark:text-white">{f.title}</td>
-                      <td className="py-3 text-slate-500">{f.dueDate}</td>
-                      <td className="py-3 font-bold text-slate-900 dark:text-white">R$ {f.amount.toLocaleString('pt-BR')}</td>
-                      <td className="py-3 uppercase font-semibold text-slate-500">{f.paymentMethod}</td>
-                      <td className="py-3">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                          f.status === 'pago' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                        }`}>
-                          {f.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        {f.status !== 'pago' ? (
-                          <button
-                            onClick={() => setPixModalOpen(true)}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] hover:bg-emerald-500"
-                          >
-                            Pagar Agora Pix
-                          </button>
-                        ) : (
-                          <span className="text-emerald-500 font-bold text-[10px]">✓ Pago</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: INTERNAL REAL-TIME CHAT */}
-      {activeTab === 'chat' && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col h-[520px] animate-in fade-in duration-200">
+      {/* Standalone Top Bar for Client Portal */}
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white py-3.5 px-4 sm:px-6 lg:px-8 shadow-xl">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
-          {/* Chat Header */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setActiveView('home')}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              title="Voltar para o site institucional"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Voltar ao Site</span>
+            </button>
+
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-extrabold text-white text-sm shadow-md">
                 NC
               </div>
               <div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Suporte & Engenharia NCodes</h3>
-                <p className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Sincronizado em tempo real
-                </p>
+                <h1 className="text-sm font-extrabold leading-none text-white">Portal do Cliente NCodes</h1>
+                <p className="text-[10px] text-blue-400 font-bold mt-0.5">Ambiente de Soluções & Orçamentos</p>
               </div>
             </div>
           </div>
 
-          {/* Chat Messages Body */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/50 dark:bg-slate-950/50">
-            {chatMessages.map(msg => {
-              const isMe = msg.senderRole === 'client';
-              return (
-                <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <img src={msg.senderAvatar} alt={msg.senderName} className="w-8 h-8 rounded-full object-cover border" />
-                  <div className={`max-w-md p-3.5 rounded-2xl text-xs space-y-1 ${
-                    isMe 
-                      ? 'bg-blue-600 text-white rounded-tr-none' 
-                      : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-tl-none'
-                  }`}>
-                    <div className="flex items-center justify-between gap-4 text-[10px] opacity-80">
-                      <span className="font-bold">{msg.senderName}</span>
-                      <span>{msg.timestamp}</span>
-                    </div>
-                    <p className="leading-relaxed">{msg.text}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <div className="flex items-center gap-3">
+            {/* Logged in user info badge */}
+            <div className="hidden md:flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+              <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs">
+                {currentClientUser?.name.charAt(0) || 'C'}
+              </div>
+              <div className="text-left leading-tight">
+                <p className="text-xs font-extrabold text-white">{currentClientUser?.name || 'Cliente'}</p>
+                <p className="text-[10px] text-slate-400">{currentClientUser?.company || 'Pessoa Física'}</p>
+              </div>
+            </div>
 
-          {/* Chat Input Bar */}
-          <form onSubmit={handleSendChat} className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              placeholder="Digite sua mensagem para a equipe..."
-              className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
             <button
-              type="submit"
-              className="p-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white shadow-md"
+              onClick={toggleTheme}
+              className="p-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+              title="Alternar Tema"
             >
-              <Send className="w-4 h-4" />
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
             </button>
-          </form>
+
+            <button
+              onClick={logoutClient}
+              className="py-2 px-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sair</span>
+            </button>
+          </div>
 
         </div>
-      )}
+      </header>
 
-      {/* TAB 4: SUPPORT TICKETS */}
-      {activeTab === 'tickets' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Central de Chamados Técnico</h2>
-              <p className="text-xs text-slate-500">Abra solicitações de ajuste, novas demandas e dúvidas com SLA priorizado.</p>
+      {/* Portal Content Area */}
+      <main className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+        
+        {/* Welcome Banner & Navigation Tabs */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-400/30">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Painel do Cliente • Sincronizado em Tempo Real</span>
             </div>
-
-            <button
-              onClick={() => setShowTicketModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
-            >
-              <LifeBuoy className="w-4 h-4" />
-              <span>Abrir Novo Chamado</span>
-            </button>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Olá, {currentClientUser?.name.split(' ')[0] || 'Cliente'}!
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Solicite novos orçamentos com análise inteligente por IA, acompanhe o progresso de desenvolvimento dos seus projetos e mantenha contato com a engenharia.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tickets.map(tk => (
-              <div key={tk.id} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">{tk.id} • {tk.category}</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold uppercase">{tk.status}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setActiveTab('quotes')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'quotes' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <FileCheck className="w-4 h-4" />
+              <span>Orçamentos ({myQuotes.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('projects')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'projects' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <FolderGit2 className="w-4 h-4" />
+              <span>Projetos</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('financials')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'financials' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              <span>Financeiro</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'chat' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Chat Direto</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('tickets')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'tickets' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <LifeBuoy className="w-4 h-4" />
+              <span>Chamados ({tickets.length})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* TAB 1: MEUS ORÇAMENTOS E SOLICITAÇÕES */}
+        {activeTab === 'quotes' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            
+            {/* Header & New Quote Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Minhas Solicitações de Orçamento</h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[11px] font-bold">
+                    {myQuotes.length} registradas
+                  </span>
                 </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">{tk.title}</h3>
-                <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
-                  <span>Criado em: {tk.createdAt}</span>
-                  <span>Última atualização: {tk.lastUpdate}</span>
+                <p className="text-xs text-slate-500 mt-1">
+                  Crie novos pedidos de orçamento, acompanhe a análise da equipe e assine as propostas enviadas.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowQuoteModal(true)}
+                className="py-3 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Nova Solicitação de Orçamento</span>
+              </button>
+            </div>
+
+            {/* List of Quotes */}
+            {myQuotes.length === 0 ? (
+              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-4">
+                <FileCheck className="w-12 h-12 text-slate-400 mx-auto" />
+                <div>
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white">Nenhum Orçamento Encontrado</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    Você ainda não fez nenhuma solicitação de orçamento. Clique no botão acima para descrever seu projeto e receber uma proposta personalizada!
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowQuoteModal(true)}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold inline-flex items-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Criar Primeiro Orçamento</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {myQuotes.map(quote => {
+                  const associatedProp = proposals.find(p => p.quoteId === quote.id || p.id === quote.proposalId);
+                  return (
+                    <div 
+                      key={quote.id}
+                      className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4 transition-all hover:border-blue-500/50"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 border-slate-100 dark:border-slate-800">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{quote.id}</span>
+                            <span className="text-slate-300">•</span>
+                            <span className="text-xs font-semibold text-slate-500">{new Date(quote.createdAt).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          <h4 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">{quote.projectType}</h4>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase ${
+                            quote.status === 'aprovado' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                            quote.status === 'proposta_enviada' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' :
+                            quote.status === 'em_analise' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' :
+                            'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}>
+                            {(quote.status || '').replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <strong className="block text-slate-900 dark:text-white mb-1">Descrição do Projeto:</strong>
+                        {quote.description}
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Prazo Estimado</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{quote.deadline}</span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Faixa de Investimento</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{quote.budgetRange}</span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 col-span-2 sm:col-span-1">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Contato do Projeto</span>
+                          <span className="font-bold text-slate-900 dark:text-white truncate block">{quote.phone}</span>
+                        </div>
+                      </div>
+
+                      {/* AI Analysis section if available */}
+                      {quote.aiAnalysis && (
+                        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900/10 via-indigo-900/10 to-purple-900/10 border border-blue-500/20 text-xs space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-blue-500" />
+                            <strong className="text-blue-600 dark:text-blue-400 font-extrabold uppercase tracking-wider text-[11px]">
+                              Análise Preliminar por IA
+                            </strong>
+                          </div>
+                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {typeof quote.aiAnalysis === 'string'
+                              ? quote.aiAnalysis
+                              : (quote.aiAnalysis.summary || JSON.stringify(quote.aiAnalysis))}
+                          </p>
+                          {typeof quote.aiAnalysis === 'object' && quote.aiAnalysis.recommendedTech && Array.isArray(quote.aiAnalysis.recommendedTech) && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {quote.aiAnalysis.recommendedTech.map((tech, i) => (
+                                <span key={i} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 font-mono text-[10px]">
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Proposal Link Action */}
+                      {quote.proposalId && associatedProp && (
+                        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <Sparkles className="w-5 h-5 text-emerald-500 shrink-0" />
+                            <div>
+                              <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">Proposta Digital Disponível!</h5>
+                              <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                                Valor Total: <strong>R$ {associatedProp.totalValue.toLocaleString('pt-BR')}</strong> em {associatedProp.installmentsCount}x.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setSelectedProposalIdForAcceptance(quote.proposalId);
+                              setActiveView('proposal_accept');
+                            }}
+                            className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-2 cursor-pointer shrink-0"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Visualizar & Assinar Proposta</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* TAB 2: ACTIVE PROJECTS & TIMELINE */}
+        {activeTab === 'projects' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            {activeProject ? (
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+                
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 border-slate-100 dark:border-slate-800">
+                  <div>
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">{activeProject.id} • {activeProject.category}</span>
+                    <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{activeProject.title}</h3>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="px-3.5 py-1 rounded-full text-xs font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      {(activeProject.status || '').replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress Stepper Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span className="text-slate-600 dark:text-slate-400">Progresso Geral de Desenvolvimento:</span>
+                    <span className="text-blue-600 dark:text-blue-400">{activeProject.progressPercentage}% concluído</span>
+                  </div>
+                  <div className="w-full h-3.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500" 
+                      style={{ width: `${activeProject.progressPercentage}%` }} 
+                    />
+                  </div>
+                </div>
+
+                {/* Milestones Checklist */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Etapas & Atividades do Cronograma:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(activeProject.tasks || []).map(t => (
+                      <div key={t.id} className={`p-3.5 rounded-2xl border flex items-center gap-3 text-xs font-semibold ${
+                        t.completed 
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-slate-700 dark:text-slate-300' 
+                          : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}>
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${t.completed ? 'text-emerald-500' : 'text-slate-300'}`} />
+                        <span className={t.completed ? 'line-through' : ''}>{t.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* File Repository */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Documentos & Arquivos do Projeto:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(activeProject.files || []).map(f => (
+                      <div key={f.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2.5 truncate">
+                          <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                          <span className="font-bold text-slate-900 dark:text-white truncate">{f.name}</span>
+                        </div>
+                        <button className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 hover:bg-blue-200 cursor-pointer">
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-3">
+                <FolderGit2 className="w-10 h-10 text-slate-400 mx-auto" />
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">Nenhum Projeto Ativo no Momento</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Assim que sua proposta de orçamento for aprovada, seu projeto será iniciado e visualizado aqui.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: FINANCIAL STATEMENT & PIX */}
+        {activeTab === 'financials' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Extrato Financeiro & Cobranças Pix</h3>
+                  <p className="text-xs text-slate-500 mt-1">Consulte parcelas ativas, acerte pendências via Pix e baixe recibos de quitação.</p>
+                </div>
+
+                <button
+                  onClick={() => setPixModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Pagar via Pix Copia e Cola</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
+                      <th className="pb-3">Descrição da Cobrança</th>
+                      <th className="pb-3">Vencimento</th>
+                      <th className="pb-3">Valor</th>
+                      <th className="pb-3">Forma</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {financials.map(f => (
+                      <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="py-3 font-semibold text-slate-900 dark:text-white">{f.title}</td>
+                        <td className="py-3 text-slate-500">{f.dueDate}</td>
+                        <td className="py-3 font-bold text-slate-900 dark:text-white">R$ {f.amount.toLocaleString('pt-BR')}</td>
+                        <td className="py-3 uppercase font-semibold text-slate-500">{f.paymentMethod}</td>
+                        <td className="py-3">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
+                            f.status === 'pago' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}>
+                            {f.status}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          {f.status !== 'pago' ? (
+                            <button
+                              onClick={() => setPixModalOpen(true)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] hover:bg-emerald-500 cursor-pointer"
+                            >
+                              Pagar Agora
+                            </button>
+                          ) : (
+                            <span className="text-emerald-500 font-bold text-[10px]">✓ Pago</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: INTERNAL REAL-TIME CHAT */}
+        {activeTab === 'chat' && (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col h-[540px] animate-in fade-in duration-200">
+            
+            {/* Chat Header */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-sm shadow-md">
+                  NC
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Suporte & Engenharia NCodes</h3>
+                  <p className="text-[11px] text-emerald-500 font-bold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Sincronizado via Firestore
+                  </p>
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Chat Messages Body */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/50 dark:bg-slate-950/50">
+              {chatMessages.map(msg => {
+                const isMe = msg.senderRole === 'client';
+                return (
+                  <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <img src={msg.senderAvatar} alt={msg.senderName} className="w-8 h-8 rounded-full object-cover border border-slate-700" />
+                    <div className={`max-w-md p-3.5 rounded-2xl text-xs space-y-1 ${
+                      isMe 
+                        ? 'bg-blue-600 text-white rounded-tr-none' 
+                        : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-tl-none shadow-sm'
+                    }`}>
+                      <div className="flex items-center justify-between gap-4 text-[10px] opacity-80">
+                        <span className="font-bold">{msg.senderName}</span>
+                        <span>{msg.timestamp}</span>
+                      </div>
+                      <p className="leading-relaxed">{msg.text}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Chat Input Bar */}
+            <form onSubmit={handleSendChat} className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                placeholder="Digite sua mensagem para a equipe..."
+                className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              />
+              <button
+                type="submit"
+                className="p-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white shadow-md cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+
+          </div>
+        )}
+
+        {/* TAB 5: SUPPORT TICKETS */}
+        {activeTab === 'tickets' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Central de Chamados Técnicos</h3>
+                <p className="text-xs text-slate-500 mt-1">Abra solicitações de suporte, tire dúvidas ou informe melhorias necessárias.</p>
+              </div>
+
+              <button
+                onClick={() => setShowTicketModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <LifeBuoy className="w-4 h-4" />
+                <span>Abrir Novo Chamado</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tickets.map(tk => (
+                <div key={tk.id} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-blue-600 dark:text-blue-400">{tk.id} • {tk.category}</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold uppercase">{tk.status}</span>
+                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{tk.title}</h4>
+                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
+                    <span>Criado em: {tk.createdAt}</span>
+                    <span>Última atualização: {tk.lastUpdate}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* NEW QUOTE REQUEST MODAL INSIDE CLIENT PORTAL */}
+      {showQuoteModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in zoom-in-95 duration-200">
+            
+            <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-blue-500" />
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Nova Solicitação de Orçamento</h3>
+              </div>
+              <button 
+                onClick={() => setShowQuoteModal(false)}
+                className="text-slate-400 hover:text-slate-200 text-xs font-bold cursor-pointer"
+              >
+                ✕ Fechar
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuote} className="space-y-4">
+              
+              {/* Pre-filled Client Info */}
+              <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs space-y-1">
+                <p className="font-bold text-blue-800 dark:text-blue-300">
+                  Solicitante: {currentClientUser?.name} ({currentClientUser?.company || 'Pessoa Física'})
+                </p>
+                <p className="text-slate-600 dark:text-slate-400">
+                  E-mail: {currentClientUser?.email} | Telefone: {currentClientUser?.phone}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Tipo de Projeto Desejado *
+                </label>
+                <select
+                  value={projectType}
+                  onChange={e => setProjectType(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {projectTypeOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Descrição Detalhada do Seu Projeto *
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Descreva o objetivo do software, funcionalidades necessárias, público-alvo e integrações desejadas..."
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Prazo de Entrega Desejado
+                  </label>
+                  <select
+                    value={deadline}
+                    onChange={e => setDeadline(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  >
+                    <option value="15 dias">15 dias (Urgente)</option>
+                    <option value="30 dias">30 dias</option>
+                    <option value="45 dias">45 dias</option>
+                    <option value="60 dias">60 dias</option>
+                    <option value="A combinar">A combinar</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Faixa de Investimento Prevista
+                  </label>
+                  <select
+                    value={budgetRange}
+                    onChange={e => setBudgetRange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  >
+                    <option value="R$ 3.000 a R$ 8.000">R$ 3.000 a R$ 8.000</option>
+                    <option value="R$ 8.000 a R$ 15.000">R$ 8.000 a R$ 15.000</option>
+                    <option value="R$ 15.000 a R$ 30.000">R$ 15.000 a R$ 30.000</option>
+                    <option value="Acima de R$ 30.000">Acima de R$ 30.000</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowQuoteModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isCreatingQuote}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{isCreatingQuote ? 'Enviando e Analisando...' : 'Enviar Solicitação de Orçamento'}</span>
+                </button>
+              </div>
+
+            </form>
+
           </div>
         </div>
       )}
@@ -375,17 +813,16 @@ export const ClientPortal: React.FC = () => {
       {pixModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Pagamento via Pix Copia e Cola</h2>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Pagamento via Pix Copia e Cola</h3>
             <p className="text-xs text-slate-500">Escaneie o QR Code no seu aplicativo bancário ou copie a chave Pix abaixo.</p>
 
-            {/* Simulated QR Code Graphic */}
             <div className="w-48 h-48 bg-slate-950 p-4 rounded-2xl mx-auto flex items-center justify-center border border-emerald-500/40 shadow-inner">
               <QrCode className="w-36 h-36 text-emerald-400" />
             </div>
 
             <button
               onClick={handleCopyPix}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md"
+              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer"
             >
               <Copy className="w-4 h-4" />
               <span>{pixCopied ? 'Chave Pix Copiada!' : 'Copiar Chave Pix'}</span>
@@ -393,7 +830,7 @@ export const ClientPortal: React.FC = () => {
 
             <button
               onClick={() => setPixModalOpen(false)}
-              className="text-xs text-slate-400 hover:underline pt-2 block mx-auto"
+              className="text-xs text-slate-400 hover:underline pt-2 block mx-auto cursor-pointer"
             >
               Fechar Janela
             </button>
@@ -405,7 +842,7 @@ export const ClientPortal: React.FC = () => {
       {showTicketModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Abrir Novo Chamado de Suporte</h2>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Abrir Novo Chamado de Suporte</h3>
             <form onSubmit={handleCreateTicket} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold mb-1">Título da Solicitação</label>
@@ -436,13 +873,13 @@ export const ClientPortal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowTicketModal(false)}
-                  className="px-4 py-2 rounded-xl border text-xs"
+                  className="px-4 py-2 rounded-xl border text-xs cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs"
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs cursor-pointer"
                 >
                   Abrir Chamado
                 </button>

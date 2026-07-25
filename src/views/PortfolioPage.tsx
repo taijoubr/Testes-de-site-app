@@ -5,7 +5,7 @@ import { INITIAL_PORTFOLIO } from '../data/initialData';
 import { PortfolioProject } from '../types';
 
 export const PortfolioPage: React.FC = () => {
-  const { setActiveView } = useApp();
+  const { setActiveView, isClientAuthenticated } = useApp();
   const [activeCategory, setActiveCategory] = useState<string>('Todos');
   const [selectedProject, setSelectedProject] = useState<PortfolioProject | null>(null);
 
@@ -146,11 +146,11 @@ export const PortfolioPage: React.FC = () => {
                 <button
                   onClick={() => {
                     setSelectedProject(null);
-                    setActiveView('quote_wizard');
+                    setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth');
                   }}
                   className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2"
                 >
-                  <span>Solicitar Projeto Semelhante</span>
+                  <span>Solicitar na Área Cliente</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

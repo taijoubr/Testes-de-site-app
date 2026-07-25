@@ -20,6 +20,29 @@ export interface UserProfile {
   state?: string;
 }
 
+export interface AdminUser {
+  id: string;
+  name: string;
+  username: string; // Login exclusivo por nome de usuário (não e-mail)
+  passwordHash: string; // Senha de acesso
+  roleTitle: string;
+  createdAt: string;
+  addedBy: string;
+}
+
+export interface ClientUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  passwordHash: string;
+  createdAt: string;
+  avatar?: string;
+  city?: string;
+  state?: string;
+}
+
 export type QuoteStatus = 
   | 'solicitado' 
   | 'em_analise' 

@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { INITIAL_SERVICES } from '../data/initialData';
 
 export const ServicesPage: React.FC = () => {
-  const { setActiveView } = useApp();
+  const { setActiveView, isClientAuthenticated } = useApp();
 
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12">
@@ -86,10 +86,10 @@ export const ServicesPage: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setActiveView('quote_wizard')}
+                onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
                 className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-500/20"
               >
-                <span>Solicitar Orçamento</span>
+                <span>Solicitar na Área Cliente</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
