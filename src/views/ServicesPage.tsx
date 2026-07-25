@@ -1,10 +1,9 @@
 import React from 'react';
 import { Sparkles, ArrowRight, CheckCircle2, Clock, DollarSign, Code, Smartphone, Globe, Cpu, Zap, Bot, Layers } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { INITIAL_SERVICES } from '../data/initialData';
 
 export const ServicesPage: React.FC = () => {
-  const { setActiveView, isClientAuthenticated } = useApp();
+  const { services, setActiveView, isClientAuthenticated } = useApp();
 
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12">
@@ -25,7 +24,7 @@ export const ServicesPage: React.FC = () => {
 
       {/* Services Detailed List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {INITIAL_SERVICES.map(service => (
+        {services.map(service => (
           <div 
             key={service.id}
             className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col justify-between"
@@ -79,18 +78,18 @@ export const ServicesPage: React.FC = () => {
             </div>
 
             {/* Bottom Action Footer */}
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold">Investimento Inicial</p>
-                <p className="text-lg font-extrabold text-blue-600 dark:text-blue-400">{service.startingPrice}</p>
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Clock className="w-4 h-4 text-blue-500 shrink-0" />
+                <span>Prazo estimado: <strong className="text-slate-800 dark:text-slate-200">{service.avgTime || 'Sob Consulta'}</strong></span>
               </div>
 
               <button
-                onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer"
+                onClick={() => setActiveView('quote_wizard')}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 cursor-pointer transition-all transform active:scale-95"
               >
-                <span>Cadastre-se e solicite seu orçamento</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <span>Solicitar Orçamento</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
 

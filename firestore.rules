@@ -104,5 +104,11 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if true;
     }
+
+    // Services collection (catálogo de serviços públicos)
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
   }
 }

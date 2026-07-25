@@ -27,7 +27,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Performance Lighthouse 95+', 'Design Responsivo Adaptativo', 'Painel de Gestão Amigável', 'Otimização Técnica para SEO'],
     technologies: ['React', 'Next.js', 'Vite', 'Tailwind CSS', 'Framer Motion'],
     avgTime: '2 a 4 semanas',
-    startingPrice: 'R$ 4.500'
+    startingPrice: 'Sob Orçamento'
   },
   {
     id: 's2',
@@ -39,7 +39,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Código único para iOS & Android', 'Interface Material Design 3', 'Sincronização em Tempo Real', 'Publicação nas lojas Apple e Google'],
     technologies: ['Flutter', 'Dart', 'Firebase', 'REST/GraphQL', 'SQLite'],
     avgTime: '4 a 8 semanas',
-    startingPrice: 'R$ 9.800'
+    startingPrice: 'Sob Orçamento'
   },
   {
     id: 's3',
@@ -51,7 +51,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Controle Avançado de Acesso', 'Relatórios & BI Interativos', 'Exportação PDF/Excel', 'Arquitetura Escalável em Nuvem'],
     technologies: ['Node.js', 'TypeScript', 'PostgreSQL', 'Firestore', 'React'],
     avgTime: '6 a 12 semanas',
-    startingPrice: 'R$ 14.000'
+    startingPrice: 'Sob Orçamento'
   },
   {
     id: 's4',
@@ -63,7 +63,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Copywriting Estratégico', 'Integração Direta no WhatsApp', 'Carregamento Ultra Rápido', 'Captura Automática de Leads'],
     technologies: ['React', 'Tailwind CSS', 'Motion', 'Vercel Analytics'],
     avgTime: '1 a 2 semanas',
-    startingPrice: 'R$ 2.800'
+    startingPrice: 'Sob Orçamento'
   },
   {
     id: 's5',
@@ -75,7 +75,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Atendimento 24/7 Automatizado', 'Redução de Custos Operacionais', 'Processamento de Documentos por IA', 'Disparo de Alertas em Tempo Real'],
     technologies: ['Gemini API', 'Python', 'Node.js', 'n8n', 'WhatsApp Cloud API'],
     avgTime: '2 a 5 semanas',
-    startingPrice: 'R$ 5.500'
+    startingPrice: 'Sob Orçamento'
   },
   {
     id: 's6',
@@ -87,7 +87,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Documentação Swagger/OpenAPI', 'Integração com Pix, Stripe, PagSeguro', 'Autenticação JWT / OAuth2', 'Webhooks em Tempo Real'],
     technologies: ['Express', 'Node.js', 'PostgreSQL', 'Docker', 'Swagger'],
     avgTime: '2 a 4 semanas',
-    startingPrice: 'R$ 4.200'
+    startingPrice: 'Sob Orçamento'
   },
   {
     id: 's7',
@@ -99,7 +99,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Conciliação Bancária Automática', 'Gráficos de DRE e Fluxo de Caixa', 'Avisos Automáticos de Vencimento', 'Ambiente Seguro Auditado'],
     technologies: ['React', 'Chart.js / Recharts', 'PostgreSQL', 'Asaas / Mercado Pago API'],
     avgTime: '4 a 8 semanas',
-    startingPrice: 'R$ 8.900'
+    startingPrice: 'Sob Orçamento'
   },
   {
     id: 's8',
@@ -111,7 +111,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     benefits: ['Arquitetura MVVM / Clean Architecture', 'Código Proprietário do Cliente', 'Suporte Técnico e SLA Garantido', 'Escalabilidade Global'],
     technologies: ['TypeScript', 'Flutter', 'Cloud Run', 'Firebase', 'Docker'],
     avgTime: '6 a 16 semanas',
-    startingPrice: 'Sob Consulta'
+    startingPrice: 'Sob Orçamento'
   }
 ];
 

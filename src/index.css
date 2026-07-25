@@ -2,17 +2,13 @@
 
 @layer utilities {
   .bento-card {
-    background-color: rgba(15, 23, 42, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 1.5rem;
     backdrop-filter: blur(12px);
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
   
   .bento-card:hover {
-    border-color: rgba(59, 130, 246, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5), 0 0 15px 0 rgba(59, 130, 246, 0.1);
   }
 
   .bento-card-light {

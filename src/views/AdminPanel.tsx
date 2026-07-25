@@ -41,8 +41,6 @@ import {
   KeyRound,
   ShieldAlert,
   User,
-  Sun,
-  Moon,
   ArrowLeft,
   Globe,
   Upload,
@@ -58,12 +56,14 @@ import {
   Check,
   QrCode,
   RefreshCw,
-  Settings
+  Settings,
+  Layers,
+  Code
 } from 'lucide-react';
 
 import { useApp } from '../context/AppContext';
 import { ProposalGeneratorModal } from '../components/ProposalGeneratorModal';
-import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal } from '../types';
+import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem } from '../types';
 
 export const AdminPanel: React.FC = () => {
   const { 
@@ -94,13 +94,104 @@ export const AdminPanel: React.FC = () => {
     logoutAdmin,
     addAdminUser,
     deleteAdminUser,
-    isDarkMode,
-    toggleTheme,
+    clientUsers,
+    addClientUser,
+    updateClientUser,
+    deleteClientUser,
     siteConfig,
-    updateSiteConfig
+    updateSiteConfig,
+    services,
+    addService,
+    updateService,
+    deleteService
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'subscriptions' | 'projects' | 'financials' | 'crm' | 'team' | 'admin_users' | 'site_settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'subscriptions' | 'projects' | 'financials' | 'clients' | 'crm' | 'team' | 'admin_users' | 'site_settings' | 'services'>('dashboard');
+
+  // Service Management States
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null);
+  const [serviceTitle, setServiceTitle] = useState('');
+  const [serviceShortDesc, setServiceShortDesc] = useState('');
+  const [serviceDescription, setServiceDescription] = useState('');
+  const [serviceAvgTime, setServiceAvgTime] = useState('');
+  const [serviceStartingPrice, setServiceStartingPrice] = useState('');
+  const [serviceBenefitsInput, setServiceBenefitsInput] = useState('');
+  const [serviceTechnologiesInput, setServiceTechnologiesInput] = useState('');
+  const [deleteServiceConfirmId, setDeleteServiceConfirmId] = useState<string | null>(null);
+
+  const handleOpenNewServiceModal = () => {
+    setEditingService(null);
+    setServiceTitle('');
+    setServiceShortDesc('');
+    setServiceDescription('');
+    setServiceAvgTime('2 a 4 semanas');
+    setServiceStartingPrice('Sob Orçamento');
+    setServiceBenefitsInput('Performance Otimizada, Design Responsivo, Código Proprietário, Suporte Técnico');
+    setServiceTechnologiesInput('React, TypeScript, Tailwind CSS, Node.js');
+    setIsServiceModalOpen(true);
+  };
+
+  const handleOpenEditServiceModal = (s: ServiceItem) => {
+    setEditingService(s);
+    setServiceTitle(s.title);
+    setServiceShortDesc(s.shortDesc || '');
+    setServiceDescription(s.description || '');
+    setServiceAvgTime(s.avgTime || '');
+    setServiceStartingPrice(s.startingPrice || '');
+    setServiceBenefitsInput((s.benefits || []).join(', '));
+    setServiceTechnologiesInput((s.technologies || []).join(', '));
+    setIsServiceModalOpen(true);
+  };
+
+  const handleSaveService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!serviceTitle.trim()) return;
+
+    const benefits = serviceBenefitsInput.split(',').map(b => b.trim()).filter(Boolean);
+    const technologies = serviceTechnologiesInput.split(',').map(t => t.trim()).filter(Boolean);
+
+    if (editingService) {
+      await updateService(editingService.id, {
+        title: serviceTitle.trim(),
+        shortDesc: serviceShortDesc.trim() || serviceDescription.slice(0, 100),
+        description: serviceDescription.trim(),
+        avgTime: serviceAvgTime.trim(),
+        startingPrice: serviceStartingPrice.trim(),
+        benefits,
+        technologies
+      });
+    } else {
+      await addService({
+        title: serviceTitle.trim(),
+        slug: serviceTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        iconName: 'Code',
+        shortDesc: serviceShortDesc.trim() || serviceDescription.slice(0, 100),
+        description: serviceDescription.trim(),
+        avgTime: serviceAvgTime.trim(),
+        startingPrice: serviceStartingPrice.trim(),
+        benefits,
+        technologies
+      });
+    }
+
+    setIsServiceModalOpen(false);
+  };
+
+  // Client Management States
+  const [clientSearch, setClientSearch] = useState('');
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [editingClient, setEditingClient] = useState<ClientUser | null>(null);
+  const [viewingClient, setViewingClient] = useState<ClientUser | null>(null);
+
+  // Form states for Client creation/editing
+  const [clientFormName, setClientFormName] = useState('');
+  const [clientFormEmail, setClientFormEmail] = useState('');
+  const [clientFormCompany, setClientFormCompany] = useState('');
+  const [clientFormPhone, setClientFormPhone] = useState('');
+  const [clientFormCity, setClientFormCity] = useState('');
+  const [clientFormState, setClientFormState] = useState('');
+  const [clientFormPassword, setClientFormPassword] = useState('');
 
   // Edit Subscription Modal States
   const [editingSub, setEditingSub] = useState<ClientSubscription | null>(null);
@@ -213,6 +304,7 @@ export const AdminPanel: React.FC = () => {
   const [subSearch, setSubSearch] = useState('');
   const [subStatusFilter, setSubStatusFilter] = useState<'todos' | 'ativo' | 'inadimplente' | 'suspenso'>('todos');
   const [showNewSubModal, setShowNewSubModal] = useState(false);
+  const [selectedSubClientId, setSelectedSubClientId] = useState<string>('');
   const [subClientName, setSubClientName] = useState('');
   const [subClientEmail, setSubClientEmail] = useState('');
   const [subServiceName, setSubServiceName] = useState('Sustentação de App Mobile & Infraestrutura Cloud');
@@ -253,6 +345,7 @@ export const AdminPanel: React.FC = () => {
     });
 
     setShowNewSubModal(false);
+    setSelectedSubClientId('');
     setSubClientName('');
     setSubClientEmail('');
     setSubNotes('');
@@ -295,6 +388,39 @@ export const AdminPanel: React.FC = () => {
 
     setShowEditSubModal(false);
     setEditingSub(null);
+  };
+
+  const handleSaveClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientFormName.trim() || !clientFormEmail.trim()) {
+      alert('Por favor, informe ao menos o Nome e o E-mail do cliente.');
+      return;
+    }
+
+    if (editingClient) {
+      await updateClientUser(editingClient.id, {
+        name: clientFormName.trim(),
+        email: clientFormEmail.trim(),
+        company: clientFormCompany.trim(),
+        phone: clientFormPhone.trim(),
+        city: clientFormCity.trim(),
+        state: clientFormState.trim(),
+        ...(clientFormPassword.trim() ? { passwordHash: clientFormPassword.trim() } : {})
+      });
+    } else {
+      await addClientUser({
+        name: clientFormName.trim(),
+        email: clientFormEmail.trim(),
+        company: clientFormCompany.trim(),
+        phone: clientFormPhone.trim(),
+        city: clientFormCity.trim(),
+        state: clientFormState.trim(),
+        passwordHash: clientFormPassword.trim() || '123456'
+      });
+    }
+
+    setShowAddClientModal(false);
+    setEditingClient(null);
   };
 
   const handleLinkProposalToSub = (prop: Proposal) => {
@@ -427,16 +553,8 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Controls: Theme & Logout */}
+          {/* Controls: Logout */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
-              title="Alternar tema claro/escuro"
-            >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-            </button>
-
             <button
               onClick={logoutAdmin}
               className="py-2 px-3.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
@@ -487,6 +605,16 @@ export const AdminPanel: React.FC = () => {
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Orçamentos ({quotes.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('clients')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'clients' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Clientes ({clientUsers.length})</span>
           </button>
 
           <button
@@ -542,6 +670,16 @@ export const AdminPanel: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('services')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'services' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-blue-400" />
+            <span>Serviços do Site ({services.length})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('site_settings')}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border ${
               activeTab === 'site_settings' 
@@ -571,49 +709,49 @@ export const AdminPanel: React.FC = () => {
           {/* KPI Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            <div className="bento-card p-6 bg-slate-900/80 border border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
+            <div className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="flex items-center justify-between text-slate-400 relative z-10">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Receita Realizada</span>
-                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"><TrendingUp className="w-4 h-4" /></div>
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 relative z-10">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Receita Realizada</span>
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"><TrendingUp className="w-4 h-4" /></div>
               </div>
-              <p className="text-2xl font-black text-white relative z-10">
+              <p className="text-2xl font-black text-slate-900 dark:text-white relative z-10">
                 R$ {totalRevenue.toLocaleString('pt-BR')}
               </p>
-              <p className="text-[11px] text-emerald-400 font-semibold relative z-10">+18.5% comparado ao mês anterior</p>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold relative z-10">+18.5% comparado ao mês anterior</p>
             </div>
 
-            <div className="bento-card p-6 bg-slate-900/80 border border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
+            <div className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="flex items-center justify-between text-slate-400 relative z-10">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">A Receber (Pendente)</span>
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30"><Clock className="w-4 h-4" /></div>
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 relative z-10">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">A Receber (Pendente)</span>
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"><Clock className="w-4 h-4" /></div>
               </div>
-              <p className="text-2xl font-black text-white relative z-10">
+              <p className="text-2xl font-black text-slate-900 dark:text-white relative z-10">
                 R$ {totalPendingRevenue.toLocaleString('pt-BR')}
               </p>
-              <p className="text-[11px] text-amber-400 font-semibold relative z-10">{financials.filter(f => f.status === 'pendente').length} parcelas pendentes</p>
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold relative z-10">{financials.filter(f => f.status === 'pendente').length} parcelas pendentes</p>
             </div>
 
-            <div className="bento-card p-6 bg-slate-900/80 border border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
+            <div className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="flex items-center justify-between text-slate-400 relative z-10">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Projetos Ativos</span>
-                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30"><FolderGit2 className="w-4 h-4" /></div>
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 relative z-10">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Projetos Ativos</span>
+                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30"><FolderGit2 className="w-4 h-4" /></div>
               </div>
-              <p className="text-2xl font-black text-white relative z-10">
+              <p className="text-2xl font-black text-slate-900 dark:text-white relative z-10">
                 {projects.filter(p => p.status === 'em_andamento').length}
               </p>
-              <p className="text-[11px] text-blue-400 font-semibold relative z-10">Sincronização com App Mobile</p>
+              <p className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold relative z-10">Sincronização com App Mobile</p>
             </div>
 
-            <div className="bento-card p-6 bg-slate-900/80 border border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
+            <div className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-2 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="flex items-center justify-between text-slate-400 relative z-10">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Lucro Líquido</span>
-                <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30"><DollarSign className="w-4 h-4" /></div>
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 relative z-10">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Lucro Líquido</span>
+                <div className="p-2 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30"><DollarSign className="w-4 h-4" /></div>
               </div>
-              <p className="text-2xl font-black text-white relative z-10">
+              <p className="text-2xl font-black text-slate-900 dark:text-white relative z-10">
                 R$ {netProfit.toLocaleString('pt-BR')}
               </p>
               <p className="text-[11px] text-purple-400 font-semibold relative z-10">Margem operacional positiva</p>
@@ -1782,6 +1920,256 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      {/* TAB: GESTÃO DE CLIENTES */}
+      {activeTab === 'clients' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Header */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
+                <Users className="w-4 h-4 text-blue-500" />
+                <span>Painel de Controle • Base de Clientes</span>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                Gestão de Clientes
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Cadastre, visualize e gerencie a base de clientes, seus contratos de mensalidades, orçamentos solicitados e projetos.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setEditingClient(null);
+                  setClientFormName('');
+                  setClientFormEmail('');
+                  setClientFormCompany('');
+                  setClientFormPhone('');
+                  setClientFormCity('');
+                  setClientFormState('');
+                  setClientFormPassword('');
+                  setShowAddClientModal(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer transition-all"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Cadastrar Novo Cliente</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1 shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total de Clientes</span>
+              <p className="text-2xl font-black text-slate-900 dark:text-white">{clientUsers.length}</p>
+              <p className="text-[10px] text-slate-500">Cadastrados no Portal</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1 shadow-sm">
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Mensalidades Ativas</span>
+              <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {subscriptions.filter(s => s.status === 'ativo').length}
+              </p>
+              <p className="text-[10px] text-emerald-600/80">Contratos vigentes</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 space-y-1 shadow-sm">
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">Projetos Ativos</span>
+              <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                {projects.filter(p => p.status === 'em_andamento').length}
+              </p>
+              <p className="text-[10px] text-blue-600/80">Em desenvolvimento</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-1 shadow-sm">
+              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">Orçamentos Recebidos</span>
+              <p className="text-2xl font-black text-purple-600 dark:text-purple-400">
+                {quotes.length}
+              </p>
+              <p className="text-[10px] text-purple-600/80">Solicitações totais</p>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar por nome, e-mail, empresa ou cidade..."
+                value={clientSearch}
+                onChange={e => setClientSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              Exibindo {clientUsers.filter(c => 
+                c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                c.email.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                (c.company && c.company.toLowerCase().includes(clientSearch.toLowerCase())) ||
+                (c.city && c.city.toLowerCase().includes(clientSearch.toLowerCase()))
+              ).length} de {clientUsers.length} cliente(s)
+            </span>
+          </div>
+
+          {/* Clients List Table / Cards Grid */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-md">
+            {clientUsers.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <Users className="w-12 h-12 text-slate-400 mx-auto opacity-50" />
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                  Nenhum cliente cadastrado ainda
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Clique no botão "+ Cadastrar Novo Cliente" acima para incluir o primeiro cliente manualmente.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="p-4">Cliente / Empresa</th>
+                      <th className="p-4">Contato</th>
+                      <th className="p-4">Localização</th>
+                      <th className="p-4">Resumo de Vínculos</th>
+                      <th className="p-4">Data Cadastro</th>
+                      <th className="p-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                    {clientUsers
+                      .filter(c => 
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                        c.email.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                        (c.company && c.company.toLowerCase().includes(clientSearch.toLowerCase())) ||
+                        (c.city && c.city.toLowerCase().includes(clientSearch.toLowerCase()))
+                      )
+                      .map((client) => {
+                        const clientProjects = projects.filter(p => p.clientName.toLowerCase() === client.name.toLowerCase() || p.clientName.toLowerCase() === client.company.toLowerCase());
+                        const clientSubs = subscriptions.filter(s => s.clientName.toLowerCase() === client.name.toLowerCase() || s.clientName.toLowerCase() === client.company.toLowerCase());
+                        const clientQuotes = quotes.filter(q => q.clientName.toLowerCase() === client.name.toLowerCase() || q.email.toLowerCase() === client.email.toLowerCase());
+
+                        return (
+                          <tr key={client.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20 text-sm uppercase">
+                                  {client.avatar ? (
+                                    <img src={client.avatar} alt={client.name} className="w-full h-full rounded-2xl object-cover" />
+                                  ) : (
+                                    client.name.charAt(0)
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-extrabold text-slate-900 dark:text-white text-sm">
+                                    {client.name}
+                                  </p>
+                                  <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                                    {client.company || 'Pessoa Física'}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="p-4 space-y-0.5">
+                              <p className="font-medium text-slate-800 dark:text-slate-200">{client.email}</p>
+                              {client.phone && (
+                                <p className="text-[11px] text-slate-500 font-mono">
+                                  {client.phone}
+                                </p>
+                              )}
+                            </td>
+
+                            <td className="p-4 text-slate-600 dark:text-slate-300 font-medium">
+                              {client.city ? `${client.city} - ${client.state || 'UF'}` : 'Não informada'}
+                            </td>
+
+                            <td className="p-4">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold border border-blue-500/20">
+                                  {clientProjects.length} Projeto(s)
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                                  {clientSubs.length} Mensalidade(s)
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[10px] font-bold border border-purple-500/20">
+                                  {clientQuotes.length} Orçamento(s)
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="p-4 text-slate-500 text-[11px]">
+                              {client.createdAt ? new Date(client.createdAt).toLocaleDateString('pt-BR') : 'Recente'}
+                            </td>
+
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setSelectedSubClientId(client.id);
+                                    setSubClientName(client.company ? `${client.name} (${client.company})` : client.name);
+                                    setSubClientEmail(client.email);
+                                    setShowNewSubModal(true);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                  title="Cadastrar Nova Mensalidade para este cliente"
+                                >
+                                  <Repeat className="w-3.5 h-3.5" />
+                                  <span>+ Mensalidade</span>
+                                </button>
+                                <button
+                                  onClick={() => setViewingClient(client)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                  title="Ver Detalhes do Cliente"
+                                >
+                                  <span>Detalhes</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingClient(client);
+                                    setClientFormName(client.name);
+                                    setClientFormEmail(client.email);
+                                    setClientFormCompany(client.company || '');
+                                    setClientFormPhone(client.phone || '');
+                                    setClientFormCity(client.city || '');
+                                    setClientFormState(client.state || '');
+                                    setClientFormPassword('');
+                                    setShowAddClientModal(true);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                  title="Editar Cliente"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Tem certeza que deseja excluir o cliente ${client.name}?`)) {
+                                      deleteClientUser(client.id);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 cursor-pointer"
+                                  title="Excluir Cliente"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
       {/* TAB 7: ATUALIZAR SITE AO VIVO */}
       {activeTab === 'site_settings' && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -2167,6 +2555,179 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      {/* TAB: GESTÃO DE SERVIÇOS DO SITE */}
+      {activeTab === 'services' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Header */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
+                <Layers className="w-4 h-4 text-blue-500 animate-pulse" />
+                <span>Gestão do Catálogo de Serviços • Tempo Real</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                Serviços Oferecidos no Site
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+                Crie, edite e personalize os serviços exibidos na página pública de Serviços e no Portal do Cliente. As alterações são sincronizadas instantaneamente no banco Firestore.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveView('services')}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Ver no Site Público</span>
+              </button>
+              <button
+                onClick={handleOpenNewServiceModal}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all transform active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Cadastrar Novo Serviço</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Total de Serviços</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{services.length}</p>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Prazos de Entrega</p>
+                <p className="text-lg font-black text-slate-900 dark:text-white">2 a 12 semanas</p>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Sincronização</p>
+                <p className="text-sm font-bold text-emerald-500 flex items-center gap-1.5 mt-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Firestore On (Live)</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Services Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {services.map(service => (
+              <div 
+                key={service.id} 
+                className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md hover:shadow-xl transition-all flex flex-col justify-between space-y-4 relative group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 font-bold">
+                        <Code className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">{service.title}</h3>
+                        <p className="text-[11px] text-slate-400">ID: {service.id}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditServiceModal(service)}
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-all cursor-pointer"
+                        title="Editar Serviço"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteServiceConfirmId(service.id)}
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-slate-600 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-400 transition-all cursor-pointer"
+                        title="Excluir Serviço"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {service.description}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Prazo Médio</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">{service.avgTime}</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Modalidade</p>
+                      <p className="font-bold text-blue-600 dark:text-blue-400 mt-0.5">Sob Orçamento</p>
+                    </div>
+                  </div>
+
+                  {/* Benefits */}
+                  {service.benefits && service.benefits.length > 0 && (
+                    <div className="pt-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Benefícios:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {service.benefits.map((b, i) => (
+                          <span key={i} className="text-[11px] px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span>{b}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Technologies */}
+                  {service.technologies && service.technologies.length > 0 && (
+                    <div className="pt-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tecnologias:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {service.technologies.map((t, i) => (
+                          <span key={i} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 border border-blue-200/40 dark:border-blue-800/40">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">Publicado no site</span>
+                  <button
+                    onClick={() => handleOpenEditServiceModal(service)}
+                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Editar Informações</span>
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      )}
+
       {/* Proposal Generator Modal Popup */}
       {selectedQuoteForProp && (
         <ProposalGeneratorModal
@@ -2314,6 +2875,44 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateSubscription} className="space-y-4">
+              {/* Select Client Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span>Selecionar Cliente Cadastrado *</span>
+                  {selectedSubClientId && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Vinculado
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={selectedSubClientId}
+                  onChange={e => {
+                    const id = e.target.value;
+                    setSelectedSubClientId(id);
+                    if (id === 'custom') {
+                      setSubClientName('');
+                      setSubClientEmail('');
+                    } else if (id) {
+                      const found = clientUsers.find(c => c.id === id);
+                      if (found) {
+                        setSubClientName(found.company ? `${found.name} (${found.company})` : found.name);
+                        setSubClientEmail(found.email);
+                      }
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">-- Escolha um cliente da base cadastrada --</option>
+                  {clientUsers.map(client => (
+                    <option key={client.id} value={client.id}>
+                      👤 {client.name} {client.company ? `• ${client.company}` : ''} ({client.email})
+                    </option>
+                  ))}
+                  <option value="custom">✏️ Digitar outro cliente manualmente...</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Nome do Cliente / Empresa *
@@ -2330,7 +2929,7 @@ export const AdminPanel: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  E-mail do Cliente (Opcional - para vínculo de login)
+                  E-mail do Cliente (para acesso no portal)
                 </label>
                 <input
                   type="email"
@@ -2642,6 +3241,327 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      {/* MODAL: CADASTRAR / EDITAR CLIENTE */}
+      {showAddClientModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
+                  <UserPlus className="w-4 h-4 text-blue-500" />
+                  <span>{editingClient ? 'Editar Cadastro de Cliente' : 'Novo Cadastro de Cliente'}</span>
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
+                  {editingClient ? editingClient.name : 'Incluir Cliente no Sistema'}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddClientModal(false);
+                  setEditingClient(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveClient} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={clientFormName}
+                    onChange={e => setClientFormName(e.target.value)}
+                    placeholder="Ex: Ana Clara Souza"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    E-mail do Cliente *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={clientFormEmail}
+                    onChange={e => setClientFormEmail(e.target.value)}
+                    placeholder="cliente@empresa.com.br"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Empresa / Razão Social
+                  </label>
+                  <input
+                    type="text"
+                    value={clientFormCompany}
+                    onChange={e => setClientFormCompany(e.target.value)}
+                    placeholder="Ex: Tech Solutions Ltda"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Telefone / WhatsApp
+                  </label>
+                  <input
+                    type="text"
+                    value={clientFormPhone}
+                    onChange={e => setClientFormPhone(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    value={clientFormCity}
+                    onChange={e => setClientFormCity(e.target.value)}
+                    placeholder="Ex: São Paulo"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Estado (UF)
+                  </label>
+                  <input
+                    type="text"
+                    value={clientFormState}
+                    onChange={e => setClientFormState(e.target.value)}
+                    placeholder="Ex: SP"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Senha de Acesso ao Portal {editingClient && '(deixe em branco para manter a atual)'}
+                </label>
+                <input
+                  type="text"
+                  value={clientFormPassword}
+                  onChange={e => setClientFormPassword(e.target.value)}
+                  placeholder={editingClient ? '••••••••' : 'Defina a senha (padrão: 123456)'}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddClientModal(false);
+                    setEditingClient(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{editingClient ? 'Salvar Alterações' : 'Cadastrar Cliente'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DETALHES DO CLIENTE */}
+      {viewingClient && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-extrabold text-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 uppercase">
+                  {viewingClient.avatar ? (
+                    <img src={viewingClient.avatar} alt={viewingClient.name} className="w-full h-full rounded-2xl object-cover" />
+                  ) : (
+                    viewingClient.name.charAt(0)
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                    {viewingClient.name}
+                  </h3>
+                  <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                    {viewingClient.company || 'Pessoa Física'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {viewingClient.email} • {viewingClient.phone || 'Sem telefone'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setViewingClient(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* General Info Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Localização</span>
+                <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                  {viewingClient.city ? `${viewingClient.city} - ${viewingClient.state || ''}` : 'Não informada'}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Data de Cadastro</span>
+                <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                  {viewingClient.createdAt ? new Date(viewingClient.createdAt).toLocaleDateString('pt-BR') : 'Recente'}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase block">Projetos</span>
+                <p className="font-black text-blue-600 dark:text-blue-400 text-sm mt-0.5">
+                  {projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Mensalidades</span>
+                <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">
+                  {subscriptions.filter(s => s.clientName.toLowerCase() === viewingClient.name.toLowerCase() || s.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length}
+                </p>
+              </div>
+            </div>
+
+            {/* Linked Projects */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <FolderGit2 className="w-4 h-4 text-blue-500" />
+                <span>Projetos Vinculados ao Cliente</span>
+              </h4>
+              {projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length === 0 ? (
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
+                  Nenhum projeto encontrado para este cliente.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {projects
+                    .filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase())
+                    .map(proj => (
+                      <div key={proj.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">{proj.title}</p>
+                          <p className="text-[10px] text-slate-500">Valor: R$ {proj.totalValue.toLocaleString('pt-BR')} • Prazo: {proj.deadline}</p>
+                        </div>
+                        <span className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
+                          {proj.status === 'em_andamento' ? 'Em Andamento' : proj.status}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Linked Subscriptions */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Repeat className="w-4 h-4 text-emerald-500" />
+                <span>Contratos de Mensalidade</span>
+              </h4>
+              {subscriptions.filter(s => s.clientName.toLowerCase() === viewingClient.name.toLowerCase() || s.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length === 0 ? (
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
+                  Nenhuma mensalidade encontrada para este cliente.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {subscriptions
+                    .filter(s => s.clientName.toLowerCase() === viewingClient.name.toLowerCase() || s.clientName.toLowerCase() === viewingClient.company?.toLowerCase())
+                    .map(sub => (
+                      <div key={sub.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">{sub.serviceName}</p>
+                          <p className="text-[10px] text-slate-500">
+                            R$ {sub.monthlyValue.toLocaleString('pt-BR')}/mês • Vencimento: Dia {sub.billingCycleDay}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                          sub.status === 'ativo' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
+                        }`}>
+                          {sub.status}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Linked Quotes */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-purple-500" />
+                <span>Orçamentos Solicitados</span>
+              </h4>
+              {quotes.filter(q => q.clientName.toLowerCase() === viewingClient.name.toLowerCase() || q.email.toLowerCase() === viewingClient.email.toLowerCase()).length === 0 ? (
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
+                  Nenhum orçamento registrado para este e-mail/cliente.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {quotes
+                    .filter(q => q.clientName.toLowerCase() === viewingClient.name.toLowerCase() || q.email.toLowerCase() === viewingClient.email.toLowerCase())
+                    .map(quote => (
+                      <div key={quote.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">{quote.projectType}</p>
+                          <p className="text-[10px] text-slate-500">{quote.description.slice(0, 60)}...</p>
+                        </div>
+                        <span className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px]">
+                          {quote.status}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setViewingClient(null)}
+                className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs cursor-pointer hover:bg-slate-800"
+              >
+                Fechar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* New Financial Modal */}
       {showFinModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2701,6 +3621,170 @@ export const AdminPanel: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Service Modal Form (Add / Edit) */}
+      {isServiceModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-6 sm:p-8 space-y-6 shadow-2xl relative my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    {editingService ? 'Editar Serviço' : 'Cadastrar Novo Serviço'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {editingService ? `Alterando dados do serviço ID ${editingService.id}` : 'Insira os dados do serviço para exibir no site'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsServiceModalOpen(false)}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveService} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome do Serviço *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Desenvolvimento de Apps Mobile iOS & Android"
+                  value={serviceTitle}
+                  onChange={e => setServiceTitle(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Descrição Completa *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Descreva detalhadamente a solução tecnológica..."
+                  value={serviceDescription}
+                  onChange={e => setServiceDescription(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Prazo Médio de Entrega
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 4 a 8 semanas"
+                    value={serviceAvgTime}
+                    onChange={e => setServiceAvgTime(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Modelo de Orçamento
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Sob Orçamento / Sob Consulta"
+                    value={serviceStartingPrice}
+                    onChange={e => setServiceStartingPrice(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Benefícios (separados por vírgula)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Código único para iOS & Android, Interface Material Design, Sincronização em Tempo Real"
+                  value={serviceBenefitsInput}
+                  onChange={e => setServiceBenefitsInput(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Tecnologias Utilizadas (separadas por vírgula)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Flutter, Dart, Firebase, REST/GraphQL"
+                  value={serviceTechnologiesInput}
+                  onChange={e => setServiceTechnologiesInput(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsServiceModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{editingService ? 'Salvar Alterações' : 'Criar Serviço'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Service Deletion Confirm Modal */}
+      {deleteServiceConfirmId && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 space-y-5 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Excluir Serviço</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Tem certeza que deseja excluir este serviço? Ele deixará de ser exibido imediatamente no catálogo público do site.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setDeleteServiceConfirmId(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteService(deleteServiceConfirmId);
+                  setDeleteServiceConfirmId(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer shadow-lg shadow-rose-500/20"
+              >
+                Confirmar Exclusão
+              </button>
+            </div>
           </div>
         </div>
       )}

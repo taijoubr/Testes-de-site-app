@@ -7,8 +7,6 @@ import {
   Building2, 
   MapPin, 
   ArrowLeft, 
-  Sun, 
-  Moon, 
   Sparkles, 
   ShieldCheck, 
   FileText, 
@@ -22,9 +20,7 @@ export const ClientAuthPage: React.FC = () => {
   const { 
     loginClient, 
     registerClient, 
-    setActiveView, 
-    isDarkMode, 
-    toggleTheme 
+    setActiveView 
   } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -104,13 +100,6 @@ export const ClientAuthPage: React.FC = () => {
         </button>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
-            title="Alternar Tema"
-          >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-          </button>
         </div>
       </div>
 

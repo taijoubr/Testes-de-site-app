@@ -25,8 +25,6 @@ import {
   MapPin,
   LogOut,
   ArrowLeft,
-  Sun,
-  Moon,
   ExternalLink,
   Bot,
   Repeat,
@@ -49,9 +47,7 @@ export const ClientPortal: React.FC = () => {
     currentClientUser,
     logoutClient,
     setSelectedProposalIdForAcceptance,
-    setActiveView,
-    isDarkMode,
-    toggleTheme
+    setActiveView
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'quotes' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
@@ -197,14 +193,6 @@ export const ClientPortal: React.FC = () => {
                 <p className="text-[10px] text-slate-400">{currentClientUser?.company || 'Pessoa Física'}</p>
               </div>
             </div>
-
-            <button
-              onClick={toggleTheme}
-              className="p-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
-              title="Alternar Tema"
-            >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-            </button>
 
             <button
               onClick={logoutClient}

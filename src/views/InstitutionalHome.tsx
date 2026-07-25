@@ -15,8 +15,7 @@ import {
   Star, 
   ChevronRight,
   BarChart3,
-  Users2,
-  Lock
+  Users2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { INITIAL_SERVICES, INITIAL_PORTFOLIO } from '../data/initialData';
@@ -104,8 +103,8 @@ export const InstitutionalHome: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           
-          <div className="bento-card p-8 bg-slate-900/80 border border-slate-800 shadow-xl space-y-4 relative group hover:border-blue-500/50">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+          <div className="bento-card p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 relative group hover:border-blue-500/50">
+            <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
               <Users2 className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Atendimento Personalizado</h3>
@@ -114,8 +113,8 @@ export const InstitutionalHome: React.FC = () => {
             </p>
           </div>
 
-          <div className="bento-card p-8 bg-slate-900/80 border border-slate-800 shadow-xl space-y-4 relative group hover:border-indigo-500/50">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+          <div className="bento-card p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 relative group hover:border-indigo-500/50">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
               <Zap className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Desenvolvimento Sob Medida</h3>
@@ -124,8 +123,8 @@ export const InstitutionalHome: React.FC = () => {
             </p>
           </div>
 
-          <div className="bento-card p-8 bg-slate-900/80 border border-slate-800 shadow-xl space-y-4 relative group hover:border-emerald-500/50">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+          <div className="bento-card p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 relative group hover:border-emerald-500/50">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Segurança & Performance</h3>
@@ -259,28 +258,6 @@ export const InstitutionalHome: React.FC = () => {
             </div>
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-purple-600 dark:text-purple-400">
               <span>Acessar Portal do Cliente</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-          {/* Card 6: Área Restrita / Admin (Cadeado) */}
-          <div 
-            onClick={() => setActiveView(isAdminAuthenticated ? 'admin_panel' : 'admin_login')}
-            className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-amber-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
-          >
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
-                <Lock className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                Área Restrita (Admin)
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Autenticação com login e senha para gestores. Cadastro de novos administradores realizado exclusivamente por um Admin.
-              </p>
-            </div>
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
-              <span>{isAdminAuthenticated ? 'Acessar Painel Admin' : 'Login de Administrador'}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>

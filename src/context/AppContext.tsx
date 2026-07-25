@@ -31,7 +31,8 @@ import {
   ClientUser,
   ClientSubscription,
   SubscriptionStatus,
-  SiteConfig
+  SiteConfig,
+  ServiceItem
 } from '../types';
 
 import { 
@@ -47,7 +48,8 @@ import {
   INITIAL_ADMIN_USERS,
   INITIAL_CLIENT_USERS,
   INITIAL_SUBSCRIPTIONS,
-  INITIAL_SITE_CONFIG
+  INITIAL_SITE_CONFIG,
+  INITIAL_SERVICES
 } from '../data/initialData';
 
 export type ActiveView = 
@@ -97,11 +99,20 @@ interface AppContextType {
   clientUsers: ClientUser[];
   loginClient: (email: string, pass: string) => boolean;
   registerClient: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<boolean>;
+  addClientUser: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<boolean>;
+  updateClientUser: (id: string, data: Partial<ClientUser>) => Promise<void>;
+  deleteClientUser: (id: string) => Promise<void>;
   logoutClient: () => void;
 
   // Site Management Config
   siteConfig: SiteConfig;
   updateSiteConfig: (newConfigData: Partial<SiteConfig>) => Promise<void>;
+
+  // Services Catalog
+  services: ServiceItem[];
+  addService: (data: Omit<ServiceItem, 'id'>) => Promise<void>;
+  updateService: (id: string, data: Partial<ServiceItem>) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
 
   // Data collections
   quotes: QuoteRequest[];
@@ -167,6 +178,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(INITIAL_SITE_CONFIG);
 
   // State collections
+  const [services, setServices] = useState<ServiceItem[]>(INITIAL_SERVICES);
   const [quotes, setQuotes] = useState<QuoteRequest[]>(INITIAL_QUOTES);
   const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
@@ -397,6 +409,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }, (err) => handleFirestoreError(err, OperationType.GET, 'clientSubscriptions'));
 
+      // 13. Services Catalog
+      try {
+        const servSnap = await getDocs(collection(db, 'services'));
+        if (servSnap.empty) {
+          for (const item of INITIAL_SERVICES) {
+            await setDoc(doc(db, 'services', item.id), item);
+          }
+        }
+      } catch (err) {
+        console.warn('Services check warning:', err);
+      }
+
+      const unsubServices = onSnapshot(collection(db, 'services'), (snap) => {
+        if (!snap.empty) {
+          setServices(snap.docs.map(d => d.data() as ServiceItem));
+        }
+      }, (err) => handleFirestoreError(err, OperationType.GET, 'services'));
+
       return () => {
         unsubQuotes();
         unsubProposals();
@@ -410,6 +440,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubClientUsers();
         unsubSiteSettings();
         unsubSubscriptions();
+        unsubServices();
       };
     };
 
@@ -440,6 +471,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setNotifications(prev => [newNotif, ...prev]);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'siteSettings');
+    }
+  };
+
+  const addService = async (data: Omit<ServiceItem, 'id'>) => {
+    const newId = `s_${Date.now()}`;
+    const newService: ServiceItem = {
+      ...data,
+      id: newId
+    };
+    setServices(prev => [newService, ...prev]);
+    try {
+      await saveDoc('services', newId, newService);
+      await addNotification('Novo Serviço Cadastrado', `O serviço "${data.title}" foi adicionado ao site.`, 'project');
+      confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `services/${newId}`);
+    }
+  };
+
+  const updateService = async (id: string, data: Partial<ServiceItem>) => {
+    const existing = services.find(s => s.id === id);
+    if (!existing) return;
+    const updated = { ...existing, ...data };
+    setServices(prev => prev.map(s => s.id === id ? updated : s));
+    try {
+      await saveDoc('services', id, updated);
+      await addNotification('Serviço Atualizado', `Os dados do serviço "${updated.title}" foram salvos com sucesso.`, 'project');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `services/${id}`);
+    }
+  };
+
+  const deleteService = async (id: string) => {
+    const existing = services.find(s => s.id === id);
+    setServices(prev => prev.filter(s => s.id !== id));
+    try {
+      await deleteDoc(doc(db, 'services', id));
+      if (existing) {
+        await addNotification('Serviço Removido', `O serviço "${existing.title}" foi removido do catálogo.`, 'project');
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `services/${id}`);
     }
   };
 
@@ -544,6 +617,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `clientUsers/${newId}`);
       return false;
+    }
+  };
+
+  const addClientUser = async (data: Omit<ClientUser, 'id' | 'createdAt'>): Promise<boolean> => {
+    return registerClient(data);
+  };
+
+  const updateClientUser = async (id: string, data: Partial<ClientUser>) => {
+    const existing = clientUsers.find(c => c.id === id);
+    if (!existing) return;
+    const updated: ClientUser = {
+      ...existing,
+      ...data
+    };
+    try {
+      await saveDoc('clientUsers', id, updated);
+      await addNotification('Cliente Atualizado', `Os dados do cliente ${updated.name} foram atualizados.`, 'project');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `clientUsers/${id}`);
+    }
+  };
+
+  const deleteClientUser = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'clientUsers', id));
+      await addNotification('Cliente Removido', `O cadastro do cliente foi removido.`, 'project');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `clientUsers/${id}`);
     }
   };
 
@@ -1133,9 +1234,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clientUsers,
       loginClient,
       registerClient,
+      addClientUser,
+      updateClientUser,
+      deleteClientUser,
       logoutClient,
       siteConfig,
       updateSiteConfig,
+      services,
+      addService,
+      updateService,
+      deleteService,
       quotes,
       proposals,
       projects,
