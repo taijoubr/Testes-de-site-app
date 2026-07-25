@@ -18,10 +18,11 @@ import { ProposalAcceptancePage } from './views/ProposalAcceptancePage';
 import { QuoteWizardModal } from './components/QuoteWizardModal';
 
 const AppContent: React.FC = () => {
-  const { activeView, activeModal, closeModal } = useApp();
+  const { activeView } = useApp();
 
   const renderActiveView = () => {
     switch (activeView) {
+      case 'home':
       case 'institutional':
         return <InstitutionalHome />;
       case 'services':
@@ -37,9 +38,12 @@ const AppContent: React.FC = () => {
       case 'client_portal':
         return <ClientPortal />;
       case 'mobile_app':
+      case 'mobile_sim':
         return <MobileAppView />;
       case 'proposal_accept':
         return <ProposalAcceptancePage />;
+      case 'quote_wizard':
+        return <QuoteWizardModal />;
       default:
         return <InstitutionalHome />;
     }
@@ -55,11 +59,6 @@ const AppContent: React.FC = () => {
       <main className="flex-1">
         {renderActiveView()}
       </main>
-
-      {/* Global Modals */}
-      {activeModal === 'quote_wizard' && (
-        <QuoteWizardModal onClose={closeModal} />
-      )}
 
       {/* Footer */}
       <Footer />

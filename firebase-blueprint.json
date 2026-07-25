@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "QuoteRequest": {
+      "title": "Quote Request",
+      "description": "Orçamentos solicitados por clientes",
+      "type": "object",
+      "properties": {
+        "clientName": { "type": "string", "maxLength": 100 },
+        "company": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "whatsapp": { "type": "string", "maxLength": 30 },
+        "city": { "type": "string", "maxLength": 100 },
+        "state": { "type": "string", "maxLength": 50 },
+        "projectType": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "deadline": { "type": "string", "maxLength": 100 },
+        "budgetRange": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["clientName", "email", "description", "status"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "Propostas comerciais geradas e assinadas",
+      "type": "object",
+      "properties": {
+        "quoteId": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 200 },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "company": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "totalValue": { "type": "number" },
+        "paymentTerms": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["title", "clientName", "totalValue", "status"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Projetos em andamento com tarefas e arquivos",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "clientId": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "status": { "type": "string", "maxLength": 50 },
+        "progressPercentage": { "type": "number" },
+        "estimatedHours": { "type": "number" },
+        "completedHours": { "type": "number" }
+      },
+      "required": ["title", "clientName", "status"]
+    },
+    "FinancialTransaction": {
+      "title": "Financial Transaction",
+      "description": "Lançamentos e parcelas financeiras",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "maxLength": 50 },
+        "category": { "type": "string", "maxLength": 100 },
+        "amount": { "type": "number" },
+        "dueDate": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["title", "type", "amount", "status"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Mensagens de chat em tempo real entre cliente e equipe",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string", "maxLength": 100 },
+        "senderName": { "type": "string", "maxLength": 100 },
+        "senderRole": { "type": "string", "maxLength": 50 },
+        "text": { "type": "string", "maxLength": 5000 },
+        "timestamp": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["senderId", "senderName", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/quotes/{quoteId}": {
+      "schema": { "$ref": "#/entities/QuoteRequest" },
+      "description": "Coleção de orçamentos"
+    },
+    "/proposals/{proposalId}": {
+      "schema": { "$ref": "#/entities/Proposal" },
+      "description": "Coleção de propostas"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Coleção de projetos"
+    },
+    "/financials/{financialId}": {
+      "schema": { "$ref": "#/entities/FinancialTransaction" },
+      "description": "Coleção financeira"
+    },
+    "/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Coleção de mensagens"
+    }
+  }
+}
