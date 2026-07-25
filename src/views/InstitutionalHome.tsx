@@ -210,53 +210,154 @@ export const InstitutionalHome: React.FC = () => {
         </div>
       </section>
 
-      {/* Services Grid Section */}
+      {/* Site Topics Navigation Section - Separate Pages */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-          <div>
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
-              Nossa Expertise
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-3">
-              Serviços Especializados
-            </h2>
-          </div>
-          <button
-            onClick={() => setActiveView('services')}
-            className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-          >
-            <span>Ver Todos os 8 Serviços</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
+          <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+            Navegação por Áreas
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Explore Cada Área do Nosso Site
+          </h2>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
+            Acesse páginas dedicadas para cada tópico e conheça todos os detalhes dos nossos serviços, projetos e atendimento.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {INITIAL_SERVICES.slice(0, 4).map(service => (
-            <div 
-              key={service.id}
-              onClick={() => setActiveView('services')}
-              className="bento-card p-6 bg-slate-900/80 border border-slate-800 hover:border-blue-500/50 transition-all duration-300 group cursor-pointer flex flex-col justify-between shadow-lg"
-            >
-              <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Code2 className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base group-hover:text-blue-400 transition-colors">
-                  {service.title}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
-                  {service.shortDesc}
-                </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          {/* Card 1: Serviços */}
+          <div 
+            onClick={() => setActiveView('services')}
+            className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-blue-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+          >
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                <Code2 className="w-6 h-6" />
               </div>
-
-              <div className="pt-4 border-t border-slate-800/80 mt-4 flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-400">{service.startingPrice}</span>
-                <span className="font-bold text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                  Detalhes <ArrowRight className="w-3 h-3" />
-                </span>
-              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                Serviços Especializados
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Desenvolvimento de apps mobile, sistemas web SaaS, APIs resilientes e integração com IA Gemini.
+              </p>
             </div>
-          ))}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400">
+              <span>Acessar Página de Serviços</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 2: Portfólio */}
+          <div 
+            onClick={() => setActiveView('portfolio')}
+            className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-cyan-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+          >
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-100 dark:bg-cyan-950/80 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                <Globe className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                Portfólio de Projetos
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Casos de sucesso reais entregues com métricas de desempenho e detalhes técnicos de arquitetura.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-cyan-600 dark:text-cyan-400">
+              <span>Acessar Portfólio</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 3: Sobre Nós */}
+          <div 
+            onClick={() => setActiveView('about')}
+            className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-indigo-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+          >
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                <Users2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                Sobre a NCodes
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Nossa história, missão, visão, valores corporativos e a equipe de engenheiros responsável pelas entregas.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+              <span>Conhecer Nossa História</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 4: Contato */}
+          <div 
+            onClick={() => setActiveView('contact')}
+            className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-emerald-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+          >
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                <Zap className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                Contato & Canais
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Fale conosco via WhatsApp, e-mail corporativo ou envie sua proposta diretamente ao nosso atendimento.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <span>Página de Contato</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 5: Área do Cliente */}
+          <div 
+            onClick={() => setActiveView('client_portal')}
+            className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-purple-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+          >
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                Área do Cliente
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Acompanhe o andamento do projeto, converse com os devs via chat em tempo real e baixe entregáveis.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-purple-600 dark:text-purple-400">
+              <span>Acessar Portal do Cliente</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 6: Painel Administrativo */}
+          <div 
+            onClick={() => setActiveView('admin_panel')}
+            className="bento-card p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl hover:border-amber-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+          >
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                <Layers className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                Painel Administrativo
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Gestão interna de orçamentos, emissão de propostas, Kanban CRM de leads e controle financeiro.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
+              <span>Painel de Gestão</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
         </div>
       </section>
 

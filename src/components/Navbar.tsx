@@ -177,19 +177,6 @@ export const Navbar: React.FC = () => {
               <span>Área Cliente</span>
             </button>
 
-            <button
-              onClick={() => handleNavClick('mobile_sim')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                activeView === 'mobile_sim'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-              title="Simulador de App Mobile Flutter"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>App Mobile</span>
-            </button>
-
             <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1" />
 
             {/* Notifications Bell */}
@@ -333,7 +320,7 @@ export const Navbar: React.FC = () => {
             </button>
           </div>
 
-          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-2">
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2">
             <button
               onClick={() => handleNavClick('admin_panel')}
               className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold flex flex-col items-center justify-center gap-1 text-slate-800 dark:text-slate-200"
@@ -347,13 +334,6 @@ export const Navbar: React.FC = () => {
             >
               <UserCheck className="w-4 h-4 text-indigo-500" />
               <span>Área Cliente</span>
-            </button>
-            <button
-              onClick={() => handleNavClick('mobile_sim')}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold flex flex-col items-center justify-center gap-1 text-slate-800 dark:text-slate-200"
-            >
-              <Smartphone className="w-4 h-4 text-emerald-500" />
-              <span>App Mobile</span>
             </button>
           </div>
 
