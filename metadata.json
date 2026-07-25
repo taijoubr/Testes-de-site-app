@@ -1,0 +1,6 @@
+{
+  "name": "NCodes Technologies",
+  "description": "Plataforma digital da NCodes Technologies com site institucional, painel administrativo, portal do cliente, aceite digital de propostas, financeiro e simulador de aplicativo mobile.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
