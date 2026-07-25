@@ -135,32 +135,6 @@ export const ClientAuthPage: React.FC = () => {
               <span><strong>Aceite de Propostas & Contratos:</strong> Assinatura digital direta sem burocracia ou papelada.</span>
             </div>
           </div>
-
-          {/* Quick Demo Fill Box */}
-          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-              <span>Acesso Rápido de Demonstração</span>
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                type="button"
-                onClick={() => fillDemoClient('lucas@fintechalfa.com.br', 'cliente123')}
-                className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-mono border border-slate-700/60 transition-all text-left flex items-center justify-between"
-              >
-                <span>lucas@fintechalfa.com.br</span>
-                <span className="text-[10px] text-blue-400 font-bold ml-2">Preencher</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemoClient('mariana@clinicavivence.com.br', 'vivence2026')}
-                className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-mono border border-slate-700/60 transition-all text-left flex items-center justify-between"
-              >
-                <span>mariana@clinicavivence...</span>
-                <span className="text-[10px] text-blue-400 font-bold ml-2">Preencher</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Right Side: Auth Card */}

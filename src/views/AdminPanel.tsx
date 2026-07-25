@@ -3379,7 +3379,7 @@ export const AdminPanel: React.FC = () => {
                   type="text"
                   value={clientFormPassword}
                   onChange={e => setClientFormPassword(e.target.value)}
-                  placeholder={editingClient ? '••••••••' : 'Defina a senha (padrão: 123456)'}
+                  placeholder={editingClient ? '••••••••' : 'Digite a senha de acesso'}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono"
                 />
               </div>

@@ -256,18 +256,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // 9. Admin Users
       try {
         const admSnap = await getDocs(collection(db, 'adminUsers'));
-        if (admSnap.empty) {
-          for (const item of INITIAL_ADMIN_USERS) {
-            await setDoc(doc(db, 'adminUsers', item.id), item);
+        for (const d of admSnap.docs) {
+          if (d.id !== 'adm-1') {
+            await deleteDoc(doc(db, 'adminUsers', d.id));
           }
         }
+        await setDoc(doc(db, 'adminUsers', INITIAL_ADMIN_USERS[0].id), INITIAL_ADMIN_USERS[0]);
       } catch (err) {
-        console.warn('AdminUsers check warning:', err);
+        console.warn('AdminUsers setup warning:', err);
       }
 
       const unsubAdminUsers = onSnapshot(collection(db, 'adminUsers'), (snap) => {
         if (!snap.empty) {
           setAdminUsers(snap.docs.map(d => d.data() as AdminUser));
+        } else {
+          setAdminUsers(INITIAL_ADMIN_USERS);
         }
       }, (err) => handleFirestoreError(err, OperationType.GET, 'adminUsers'));
 

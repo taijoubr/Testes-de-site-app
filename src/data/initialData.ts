@@ -247,21 +247,12 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 export const INITIAL_ADMIN_USERS: AdminUser[] = [
   {
     id: 'adm-1',
-    name: 'Nikolas (Administrador Master)',
-    username: 'admin',
-    passwordHash: 'admin123',
+    name: 'Nikolas',
+    username: 'Nikolas',
+    passwordHash: 'Taijou13!',
     roleTitle: 'Administrador Master',
     createdAt: '2026-01-10T10:00:00.000Z',
     addedBy: 'Sistema NCodes'
-  },
-  {
-    id: 'adm-2',
-    name: 'Gabriel Souza',
-    username: 'nikolas',
-    passwordHash: 'ncodes2026',
-    roleTitle: 'Tech Lead / Engenheiro',
-    createdAt: '2026-02-01T14:30:00.000Z',
-    addedBy: 'Nikolas'
   }
 ];
 

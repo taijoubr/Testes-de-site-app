@@ -149,13 +149,6 @@ export const AdminLoginPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Quick Demo Helper Hint */}
-          <div className="pt-2 text-center border-t border-slate-800/80">
-            <p className="text-[10px] text-slate-500 font-mono">
-              Usuário inicial para testes: <span className="text-blue-400 font-bold">admin</span> | Senha: <span className="text-blue-400 font-bold">admin123</span>
-            </p>
-          </div>
-
         </div>
 
       </div>
