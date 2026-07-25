@@ -79,6 +79,7 @@ export const AdminPanel: React.FC = () => {
     generateSubscriptionBilling,
     leads, 
     updateQuoteStatus, 
+    deleteQuote,
     setSelectedProposalIdForAcceptance, 
     setActiveView,
     toggleProjectTask,
@@ -831,14 +832,23 @@ export const AdminPanel: React.FC = () => {
                         {q.aiAnalysis ? `R$ ${q.aiAnalysis.suggestedBudget.toLocaleString('pt-BR')}` : 'Analisando...'}
                       </td>
                       <td className="py-3 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedQuoteForProp(q);
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px]"
-                        >
-                          Elaborar Proposta
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedQuoteForProp(q);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px]"
+                          >
+                            Elaborar Proposta
+                          </button>
+                          <button
+                            onClick={() => deleteQuote(q.id)}
+                            title="Excluir Orçamento"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -898,6 +908,14 @@ export const AdminPanel: React.FC = () => {
                     >
                       <FileSignature className="w-3.5 h-3.5" />
                       <span>Gerar Proposta</span>
+                    </button>
+
+                    <button
+                      onClick={() => deleteQuote(q.id)}
+                      title="Excluir Orçamento"
+                      className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 border border-slate-200 dark:border-slate-800 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

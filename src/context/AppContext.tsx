@@ -130,6 +130,7 @@ interface AppContextType {
   createProposal: (data: Omit<Proposal, 'id' | 'createdAt' | 'status'>) => Proposal;
   acceptProposal: (proposalId: string, signatureName: string) => Promise<void>;
   updateQuoteStatus: (quoteId: string, status: QuoteStatus) => void;
+  deleteQuote: (quoteId: string) => Promise<void>;
   
   toggleProjectTask: (projectId: string, taskId: string) => void;
   addProjectHours: (projectId: string, hours: number) => void;
@@ -157,8 +158,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [selectedQuoteIdForProposal, setSelectedQuoteIdForProposal] = useState<string | undefined>();
-  const [selectedProposalIdForAcceptance, setSelectedProposalIdForAcceptance] = useState<string | undefined>('PROP-2026-001');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>('PRJ-2026-01');
+  const [selectedProposalIdForAcceptance, setSelectedProposalIdForAcceptance] = useState<string | undefined>(undefined);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
   
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<UserProfile>(TEAM_MEMBERS[0]); // Default Admin
@@ -191,152 +192,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Firestore Realtime Sync Effect
   useEffect(() => {
-    // Seed initial collections if empty and subscribe
+    // Purge test documents and subscribe
     const seedAndSubscribe = async () => {
-      // 1. Quotes
-      try {
-        const qSnap = await getDocs(collection(db, 'quotes'));
-        if (qSnap.empty) {
-          for (const item of INITIAL_QUOTES) {
-            await setDoc(doc(db, 'quotes', item.id), item);
+      // Clean up legacy test data from Firestore if present
+      const testCollectionsToClean = [
+        'quotes', 'proposals', 'projects', 'financials', 'clientSubscriptions', 
+        'chatMessages', 'tickets', 'leads', 'notifications', 'clientUsers'
+      ];
+
+      for (const colName of testCollectionsToClean) {
+        try {
+          const snap = await getDocs(collection(db, colName));
+          for (const d of snap.docs) {
+            await deleteDoc(doc(db, colName, d.id));
           }
+        } catch (err) {
+          console.warn(`Purge ${colName} warning:`, err);
         }
-      } catch (err) {
-        console.warn('Quotes check warning:', err);
       }
 
+      // 1. Quotes
       const unsubQuotes = onSnapshot(collection(db, 'quotes'), (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map(d => d.data() as QuoteRequest);
-          setQuotes(list.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        }
+        const list = snap.docs.map(d => d.data() as QuoteRequest);
+        setQuotes(list.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'quotes'));
 
       // 2. Proposals
-      try {
-        const pSnap = await getDocs(collection(db, 'proposals'));
-        if (pSnap.empty) {
-          for (const item of INITIAL_PROPOSALS) {
-            await setDoc(doc(db, 'proposals', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('Proposals check warning:', err);
-      }
-
       const unsubProposals = onSnapshot(collection(db, 'proposals'), (snap) => {
-        if (!snap.empty) {
-          setProposals(snap.docs.map(d => d.data() as Proposal));
-        }
+        setProposals(snap.docs.map(d => d.data() as Proposal));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'proposals'));
 
       // 3. Projects
-      try {
-        const prjSnap = await getDocs(collection(db, 'projects'));
-        if (prjSnap.empty) {
-          for (const item of INITIAL_PROJECTS) {
-            await setDoc(doc(db, 'projects', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('Projects check warning:', err);
-      }
-
       const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
-        if (!snap.empty) {
-          setProjects(snap.docs.map(d => d.data() as Project));
-        }
+        setProjects(snap.docs.map(d => d.data() as Project));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'projects'));
 
       // 4. Financials
-      try {
-        const finSnap = await getDocs(collection(db, 'financials'));
-        if (finSnap.empty) {
-          for (const item of INITIAL_FINANCIALS) {
-            await setDoc(doc(db, 'financials', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('Financials check warning:', err);
-      }
-
       const unsubFinancials = onSnapshot(collection(db, 'financials'), (snap) => {
-        if (!snap.empty) {
-          setFinancials(snap.docs.map(d => d.data() as FinancialTransaction));
-        }
+        setFinancials(snap.docs.map(d => d.data() as FinancialTransaction));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'financials'));
 
       // 5. Chat Messages
-      try {
-        const chatSnap = await getDocs(collection(db, 'chatMessages'));
-        if (chatSnap.empty) {
-          for (const item of INITIAL_CHAT_MESSAGES) {
-            await setDoc(doc(db, 'chatMessages', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('Chat check warning:', err);
-      }
-
       const unsubChat = onSnapshot(collection(db, 'chatMessages'), (snap) => {
-        if (!snap.empty) {
-          const msgs = snap.docs.map(d => d.data() as ChatMessage);
-          setChatMessages(msgs);
-        }
+        const msgs = snap.docs.map(d => d.data() as ChatMessage);
+        setChatMessages(msgs);
       }, (err) => handleFirestoreError(err, OperationType.GET, 'chatMessages'));
 
       // 6. Tickets
-      try {
-        const tSnap = await getDocs(collection(db, 'tickets'));
-        if (tSnap.empty) {
-          for (const item of INITIAL_TICKETS) {
-            await setDoc(doc(db, 'tickets', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('Tickets check warning:', err);
-      }
-
       const unsubTickets = onSnapshot(collection(db, 'tickets'), (snap) => {
-        if (!snap.empty) {
-          setTickets(snap.docs.map(d => d.data() as SupportTicket));
-        }
+        setTickets(snap.docs.map(d => d.data() as SupportTicket));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'tickets'));
 
       // 7. Leads
-      try {
-        const lSnap = await getDocs(collection(db, 'leads'));
-        if (lSnap.empty) {
-          for (const item of INITIAL_LEADS) {
-            await setDoc(doc(db, 'leads', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('Leads check warning:', err);
-      }
-
       const unsubLeads = onSnapshot(collection(db, 'leads'), (snap) => {
-        if (!snap.empty) {
-          setLeads(snap.docs.map(d => d.data() as LeadCRM));
-        }
+        setLeads(snap.docs.map(d => d.data() as LeadCRM));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'leads'));
 
       // 8. Notifications
-      try {
-        const nSnap = await getDocs(collection(db, 'notifications'));
-        if (nSnap.empty) {
-          for (const item of INITIAL_NOTIFICATIONS) {
-            await setDoc(doc(db, 'notifications', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('Notifications check warning:', err);
-      }
-
       const unsubNotifs = onSnapshot(collection(db, 'notifications'), (snap) => {
-        if (!snap.empty) {
-          setNotifications(snap.docs.map(d => d.data() as NotificationItem));
-        }
+        setNotifications(snap.docs.map(d => d.data() as NotificationItem));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'notifications'));
 
       // 9. Admin Users
@@ -358,21 +272,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, (err) => handleFirestoreError(err, OperationType.GET, 'adminUsers'));
 
       // 10. Client Users
-      try {
-        const cliSnap = await getDocs(collection(db, 'clientUsers'));
-        if (cliSnap.empty) {
-          for (const item of INITIAL_CLIENT_USERS) {
-            await setDoc(doc(db, 'clientUsers', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('ClientUsers check warning:', err);
-      }
-
       const unsubClientUsers = onSnapshot(collection(db, 'clientUsers'), (snap) => {
-        if (!snap.empty) {
-          setClientUsers(snap.docs.map(d => d.data() as ClientUser));
-        }
+        setClientUsers(snap.docs.map(d => d.data() as ClientUser));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'clientUsers'));
 
       // 11. Site Settings
@@ -392,21 +293,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, (err) => handleFirestoreError(err, OperationType.GET, 'siteSettings'));
 
       // 12. Client Subscriptions
-      try {
-        const subSnap = await getDocs(collection(db, 'clientSubscriptions'));
-        if (subSnap.empty) {
-          for (const item of INITIAL_SUBSCRIPTIONS) {
-            await setDoc(doc(db, 'clientSubscriptions', item.id), item);
-          }
-        }
-      } catch (err) {
-        console.warn('ClientSubscriptions check warning:', err);
-      }
-
       const unsubSubscriptions = onSnapshot(collection(db, 'clientSubscriptions'), (snap) => {
-        if (!snap.empty) {
-          setSubscriptions(snap.docs.map(d => d.data() as ClientSubscription));
-        }
+        setSubscriptions(snap.docs.map(d => d.data() as ClientSubscription));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'clientSubscriptions'));
 
       // 13. Services Catalog
@@ -926,6 +814,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const deleteQuote = async (quoteId: string) => {
+    setQuotes(prev => prev.filter(q => q.id !== quoteId));
+    try {
+      await deleteDoc(doc(db, 'quotes', quoteId));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `quotes/${quoteId}`);
+    }
+  };
+
   const toggleProjectTask = async (projectId: string, taskId: string) => {
     const prj = projects.find(p => p.id === projectId);
     if (!prj) return;
@@ -1257,6 +1154,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createProposal,
       acceptProposal,
       updateQuoteStatus,
+      deleteQuote,
       toggleProjectTask,
       addProjectHours,
       addProjectFile,
