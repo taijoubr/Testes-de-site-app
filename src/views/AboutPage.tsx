@@ -38,8 +38,8 @@ export const AboutPage: React.FC = () => {
             <p className="text-xs text-slate-400 mt-1">Sincronização em Tempo Real</p>
           </div>
           <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 text-center">
-            <p className="text-3xl font-black text-indigo-400">+50</p>
-            <p className="text-xs text-slate-400 mt-1">Projetos Lançados</p>
+            <p className="text-3xl font-black text-indigo-400">Nuvem</p>
+            <p className="text-xs text-slate-400 mt-1">Arquitetura Escalável</p>
           </div>
           <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 text-center">
             <p className="text-3xl font-black text-cyan-400">98.5%</p>

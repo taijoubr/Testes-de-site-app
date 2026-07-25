@@ -12,7 +12,12 @@ import {
   QrCode, 
   ShieldCheck,
   Bell,
-  Plus
+  Plus,
+  Globe,
+  Edit3,
+  Lock,
+  Upload,
+  Image
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -26,11 +31,58 @@ export const MobileAppView: React.FC = () => {
     sendChatMessage, 
     currentUser,
     setActiveView,
-    isClientAuthenticated
+    isClientAuthenticated,
+    siteConfig,
+    updateSiteConfig,
+    isAdminAuthenticated
   } = useApp();
 
   const [bottomNav, setBottomNav] = useState<'home' | 'projects' | 'financial' | 'chat' | 'profile'>('home');
   const [mobileChatInput, setMobileChatInput] = useState('');
+
+  // Mobile site config update state
+  const [mHeroTitle, setMHeroTitle] = useState(siteConfig?.heroTitle || '');
+  const [mHeroBadge, setMHeroBadge] = useState(siteConfig?.heroBadge || '');
+  const [mAnnouncement, setMAnnouncement] = useState(siteConfig?.announcementBanner || '');
+  const [mLogoUrl, setMLogoUrl] = useState(siteConfig?.logoUrl || '');
+  const [mSavedMsg, setMSavedMsg] = useState(false);
+  const [isUpdatingMobile, setIsUpdatingMobile] = useState(false);
+
+  React.useEffect(() => {
+    if (siteConfig) {
+      setMHeroTitle(siteConfig.heroTitle || '');
+      setMHeroBadge(siteConfig.heroBadge || '');
+      setMAnnouncement(siteConfig.announcementBanner || '');
+      setMLogoUrl(siteConfig.logoUrl || '');
+    }
+  }, [siteConfig]);
+
+  const handleMobileLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setMLogoUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleMobileUpdateSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingMobile(true);
+    await updateSiteConfig({
+      heroTitle: mHeroTitle,
+      heroBadge: mHeroBadge,
+      announcementBanner: mAnnouncement,
+      logoUrl: mLogoUrl
+    });
+    setIsUpdatingMobile(false);
+    setMSavedMsg(true);
+    setTimeout(() => setMSavedMsg(false), 3000);
+  };
 
   const activeProject = projects[0];
 
@@ -225,19 +277,110 @@ export const MobileAppView: React.FC = () => {
                 </div>
               )}
 
-              {/* PROFILE SCREEN */}
+              {/* PROFILE & SITE MANAGEMENT SCREEN */}
               {bottomNav === 'profile' && (
                 <div className="space-y-4 animate-in fade-in duration-200 text-center">
-                  <img src={currentUser.avatar} alt={currentUser.name} className="w-16 h-16 rounded-full mx-auto border-2 border-emerald-500 object-cover" />
+                  <img src={currentUser.avatar} alt={currentUser.name} className="w-14 h-14 rounded-full mx-auto border-2 border-emerald-500 object-cover shadow-lg" />
                   <div>
                     <h3 className="font-bold text-white text-sm">{currentUser.name}</h3>
                     <p className="text-[10px] text-slate-400">{currentUser.email}</p>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-left text-[11px] space-y-1">
-                    <p className="text-slate-400">Role: <strong className="text-white">{currentUser.role.toUpperCase()}</strong></p>
-                    <p className="text-slate-400">Sincronização: <strong className="text-emerald-400">Ativa (Firestore)</strong></p>
+                    <p className="text-slate-400">Cargo: <strong className="text-white">{currentUser.role.toUpperCase()}</strong></p>
+                    <p className="text-slate-400">Status Banco: <strong className="text-emerald-400">Firestore Realtime Sync</strong></p>
                   </div>
+
+                  {/* Mobile Site Update Card for Admins */}
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-blue-500/30 text-left space-y-3 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-1.5 text-blue-400 font-extrabold text-[11px]">
+                        <Globe className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                        <span>Atualizar Site via Mobile</span>
+                      </div>
+                      <span className="text-[9px] px-2 py-0.5 rounded bg-blue-950 text-blue-300 font-mono">LIVE</span>
+                    </div>
+
+                    {mSavedMsg && (
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-[10px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Site e App Atualizados com Sucesso!</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleMobileUpdateSite} className="space-y-2.5">
+                      {/* Logo Upload Field */}
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-0.5">
+                          Logo da Empresa / Marca:
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {mLogoUrl && (
+                            <img src={mLogoUrl} alt="Logo preview" className="w-8 h-8 object-contain rounded bg-slate-900 border border-slate-800 p-0.5" />
+                          )}
+                          <label className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[10px] font-semibold text-blue-400 flex items-center justify-center gap-1 cursor-pointer">
+                            <Upload className="w-3 h-3" />
+                            <span>{mLogoUrl ? 'Trocar Logo' : 'Enviar Imagem do Logo'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleMobileLogoUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-0.5">
+                          Badge do Hero:
+                        </label>
+                        <input
+                          type="text"
+                          value={mHeroBadge}
+                          onChange={e => setMHeroBadge(e.target.value)}
+                          placeholder="Texto da Badge..."
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-0.5">
+                          Título do Hero:
+                        </label>
+                        <input
+                          type="text"
+                          value={mHeroTitle}
+                          onChange={e => setMHeroTitle(e.target.value)}
+                          placeholder="Título do Site..."
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 mb-0.5">
+                          Banner de Anúncio no Topo:
+                        </label>
+                        <input
+                          type="text"
+                          value={mAnnouncement}
+                          onChange={e => setMAnnouncement(e.target.value)}
+                          placeholder="Banner de aviso..."
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-white"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isUpdatingMobile}
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Globe className="w-3 h-3" />
+                        <span>{isUpdatingMobile ? 'Publicando...' : 'Publicar Alterações no Site'}</span>
+                      </button>
+                    </form>
+                  </div>
+
                 </div>
               )}
 

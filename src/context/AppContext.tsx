@@ -10,6 +10,11 @@ import {
   getDocs 
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+
+const saveDoc = async (colName: string, id: string, data: any) => {
+  const sanitized = JSON.parse(JSON.stringify(data));
+  await setDoc(doc(db, colName, id), sanitized);
+};
 import { 
   QuoteRequest, 
   Proposal, 
@@ -23,7 +28,10 @@ import {
   UserRole,
   QuoteStatus,
   AdminUser,
-  ClientUser
+  ClientUser,
+  ClientSubscription,
+  SubscriptionStatus,
+  SiteConfig
 } from '../types';
 
 import { 
@@ -37,7 +45,9 @@ import {
   TEAM_MEMBERS,
   INITIAL_NOTIFICATIONS,
   INITIAL_ADMIN_USERS,
-  INITIAL_CLIENT_USERS
+  INITIAL_CLIENT_USERS,
+  INITIAL_SUBSCRIPTIONS,
+  INITIAL_SITE_CONFIG
 } from '../data/initialData';
 
 export type ActiveView = 
@@ -89,11 +99,16 @@ interface AppContextType {
   registerClient: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<boolean>;
   logoutClient: () => void;
 
+  // Site Management Config
+  siteConfig: SiteConfig;
+  updateSiteConfig: (newConfigData: Partial<SiteConfig>) => Promise<void>;
+
   // Data collections
   quotes: QuoteRequest[];
   proposals: Proposal[];
   projects: Project[];
   financials: FinancialTransaction[];
+  subscriptions: ClientSubscription[];
   chatMessages: ChatMessage[];
   tickets: SupportTicket[];
   leads: LeadCRM[];
@@ -111,6 +126,13 @@ interface AppContextType {
   
   addFinancialTransaction: (data: Omit<FinancialTransaction, 'id'>) => void;
   updateFinancialStatus: (id: string, status: FinancialTransaction['status']) => void;
+
+  // Subscriptions & Monthly Fees Actions
+  addSubscription: (data: Omit<ClientSubscription, 'id'>) => Promise<void>;
+  updateSubscription: (subId: string, data: Partial<ClientSubscription>) => Promise<void>;
+  updateSubscriptionStatus: (subId: string, status: SubscriptionStatus, nextDueDate?: string, lastPaymentDate?: string) => Promise<void>;
+  deleteSubscription: (subId: string) => Promise<void>;
+  generateSubscriptionBilling: (subId: string) => Promise<void>;
   
   sendChatMessage: (text: string, projectId?: string, attachments?: { name: string; type: string; url: string }[], isAudio?: boolean) => void;
   createSupportTicket: (title: string, category: string, priority: SupportTicket['priority']) => void;
@@ -141,11 +163,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentClientUser, setCurrentClientUser] = useState<ClientUser | null>(null);
   const [clientUsers, setClientUsers] = useState<ClientUser[]>(INITIAL_CLIENT_USERS);
 
+  // Site Configuration State
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(INITIAL_SITE_CONFIG);
+
   // State collections
   const [quotes, setQuotes] = useState<QuoteRequest[]>(INITIAL_QUOTES);
   const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
   const [financials, setFinancials] = useState<FinancialTransaction[]>(INITIAL_FINANCIALS);
+  const [subscriptions, setSubscriptions] = useState<ClientSubscription[]>(INITIAL_SUBSCRIPTIONS);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS);
   const [leads, setLeads] = useState<LeadCRM[]>(INITIAL_LEADS);
@@ -337,6 +363,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }, (err) => handleFirestoreError(err, OperationType.GET, 'clientUsers'));
 
+      // 11. Site Settings
+      try {
+        const siteSnap = await getDocs(collection(db, 'siteSettings'));
+        if (siteSnap.empty) {
+          await setDoc(doc(db, 'siteSettings', 'main'), INITIAL_SITE_CONFIG);
+        }
+      } catch (err) {
+        console.warn('SiteSettings check warning:', err);
+      }
+
+      const unsubSiteSettings = onSnapshot(doc(db, 'siteSettings', 'main'), (snap) => {
+        if (snap.exists()) {
+          setSiteConfig(snap.data() as SiteConfig);
+        }
+      }, (err) => handleFirestoreError(err, OperationType.GET, 'siteSettings'));
+
+      // 12. Client Subscriptions
+      try {
+        const subSnap = await getDocs(collection(db, 'clientSubscriptions'));
+        if (subSnap.empty) {
+          for (const item of INITIAL_SUBSCRIPTIONS) {
+            await setDoc(doc(db, 'clientSubscriptions', item.id), item);
+          }
+        }
+      } catch (err) {
+        console.warn('ClientSubscriptions check warning:', err);
+      }
+
+      const unsubSubscriptions = onSnapshot(collection(db, 'clientSubscriptions'), (snap) => {
+        if (!snap.empty) {
+          setSubscriptions(snap.docs.map(d => d.data() as ClientSubscription));
+        }
+      }, (err) => handleFirestoreError(err, OperationType.GET, 'clientSubscriptions'));
+
       return () => {
         unsubQuotes();
         unsubProposals();
@@ -348,11 +408,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubNotifs();
         unsubAdminUsers();
         unsubClientUsers();
+        unsubSiteSettings();
+        unsubSubscriptions();
       };
     };
 
     seedAndSubscribe();
   }, []);
+
+  const updateSiteConfig = async (newConfigData: Partial<SiteConfig>): Promise<void> => {
+    const updated: SiteConfig = {
+      ...siteConfig,
+      ...newConfigData,
+      lastUpdated: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      updatedBy: currentAdminUser?.name || currentUser?.name || 'Administrador'
+    };
+    setSiteConfig(updated);
+    try {
+      await setDoc(doc(db, 'siteSettings', 'main'), updated);
+      confetti({ particleCount: 35, spread: 70, origin: { y: 0.6 } });
+      
+      // Add notification
+      const newNotif: NotificationItem = {
+        id: `notif-${Date.now()}`,
+        title: 'Site Atualizado com Sucesso!',
+        description: `O site foi atualizado em tempo real por ${updated.updatedBy}.`,
+        type: 'project',
+        timestamp: 'Agora',
+        read: false
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'siteSettings');
+    }
+  };
 
   // Admin Login and Management Handlers
   const loginAdmin = (username: string, pass: string): boolean => {
@@ -500,10 +589,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       type,
       timestamp: 'Agora mesmo',
       read: false,
-      link
+      ...(link ? { link } : {})
     };
     try {
-      await setDoc(doc(db, 'notifications', newNotif.id), newNotif);
+      await saveDoc('notifications', newNotif.id, newNotif);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `notifications/${newNotif.id}`);
     }
@@ -653,7 +742,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]
       };
 
-      await setDoc(doc(db, 'projects', newProjectId), newProject);
+      await saveDoc('projects', newProjectId, newProject);
 
       // Automatically create initial entry invoice (30% entry fee) in Firestore
       const entryAmount = Math.round(prop.totalValue * 0.3);
@@ -670,7 +759,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         projectId: newProjectId
       };
 
-      await setDoc(doc(db, 'financials', newFinancial.id), newFinancial);
+      await saveDoc('financials', newFinancial.id, newFinancial);
+
+      // Automatically instantiate or link Client Subscription for recurring monthly fee or single value agreement
+      const subValue = prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? prop.recurringMonthlyValue : Math.round(prop.totalValue / 12);
+      const subId = `SUB-PROP-${Date.now()}`;
+      const today = new Date();
+      const nextDue = new Date(today.getFullYear(), today.getMonth() + 1, 10).toISOString().split('T')[0];
+      const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${subValue}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
+
+      const autoSub: ClientSubscription = {
+        id: subId,
+        clientName: prop.clientName,
+        clientEmail: `${prop.clientName.toLowerCase().replace(/\s+/g, '')}@cliente.com.br`,
+        serviceName: `Contrato de Sustentação & Suporte - ${prop.title}`,
+        monthlyValue: subValue,
+        billingCycleDay: 10,
+        status: 'ativo',
+        startDate: today.toISOString().split('T')[0],
+        nextDueDate: nextDue,
+        paymentMethod: 'pix',
+        notes: `Vinculado automaticamente ao Aceite Digital da Proposta ${proposalId}. Valor total do projeto: R$ ${prop.totalValue.toLocaleString('pt-BR')}.`,
+        pixCopyPaste: defaultPix,
+        proposalId,
+        ...(prop.quoteId ? { quoteId: prop.quoteId } : {}),
+        billingType: prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? 'recorrente' : 'valor_unico',
+        oneTimeTotalValue: prop.totalValue
+      };
+      await saveDoc('clientSubscriptions', subId, autoSub);
 
       // Add Lead conversion in CRM
       const newLead: LeadCRM = {
@@ -683,7 +799,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         value: prop.totalValue,
         nextFollowUp: 'Projeto em Andamento'
       };
-      await setDoc(doc(db, 'leads', newLead.id), newLead);
+      await saveDoc('leads', newLead.id, newLead);
 
       await addNotification('Proposta Aprovada Digitalmente! 🎉', `${prop.clientName} assinou o contrato da proposta ${proposalId}. Projeto ${newProjectId} iniciado!`, 'project');
 
@@ -804,6 +920,93 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addSubscription = async (data: Omit<ClientSubscription, 'id'>) => {
+    const subId = `SUB-${Date.now()}`;
+    const newSub: ClientSubscription = {
+      ...data,
+      id: subId
+    };
+    try {
+      await saveDoc('clientSubscriptions', subId, newSub);
+      await addNotification('Nova Mensalidade Cadastrada', `Contrato de R$ ${data.monthlyValue.toLocaleString('pt-BR')}/mês cadastrado para ${data.clientName}.`, 'payment');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `clientSubscriptions/${subId}`);
+    }
+  };
+
+  const updateSubscription = async (subId: string, data: Partial<ClientSubscription>) => {
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+
+    const updated: ClientSubscription = {
+      ...sub,
+      ...data
+    };
+
+    try {
+      await saveDoc('clientSubscriptions', subId, updated);
+      await addNotification('Mensalidade Atualizada', `Os dados da mensalidade de ${updated.clientName} foram alterados.`, 'payment');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `clientSubscriptions/${subId}`);
+    }
+  };
+
+  const updateSubscriptionStatus = async (subId: string, status: SubscriptionStatus, nextDueDate?: string, lastPaymentDate?: string) => {
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+
+    const updated: ClientSubscription = {
+      ...sub,
+      status,
+      nextDueDate: nextDueDate || sub.nextDueDate,
+      lastPaymentDate: lastPaymentDate || sub.lastPaymentDate
+    };
+
+    try {
+      await saveDoc('clientSubscriptions', subId, updated);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `clientSubscriptions/${subId}`);
+    }
+  };
+
+  const deleteSubscription = async (subId: string) => {
+    try {
+      await deleteDoc(doc(db, 'clientSubscriptions', subId));
+      await addNotification('Mensalidade Removida', `Assinatura ${subId} foi removida.`, 'payment');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `clientSubscriptions/${subId}`);
+    }
+  };
+
+  const generateSubscriptionBilling = async (subId: string) => {
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const monthNum = (new Date().getMonth() + 1).toString().padStart(2, '0');
+    
+    const newFin: FinancialTransaction = {
+      id: `FIN-SUB-${Date.now()}`,
+      title: `Mensalidade Mês ${monthNum} - ${sub.serviceName}`,
+      type: 'receita',
+      category: 'Mensalidade de Serviço',
+      amount: sub.monthlyValue,
+      dueDate: sub.nextDueDate || todayStr,
+      status: 'pendente',
+      paymentMethod: sub.paymentMethod || 'pix',
+      clientName: sub.clientName,
+      subscriptionId: sub.id,
+      isRecurring: true
+    };
+
+    try {
+      await setDoc(doc(db, 'financials', newFin.id), newFin);
+      await addNotification('Fatura de Mensalidade Gerada', `Cobrança de R$ ${sub.monthlyValue.toLocaleString('pt-BR')} gerada para ${sub.clientName}.`, 'payment');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `financials/${newFin.id}`);
+    }
+  };
+
   const sendChatMessage = async (text: string, projectId?: string, attachments?: { name: string; type: string; url: string }[], isAudio?: boolean) => {
     const msgId = `msg-${Date.now()}`;
     const newMsg: ChatMessage = {
@@ -820,7 +1023,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      await setDoc(doc(db, 'chatMessages', msgId), newMsg);
+      await saveDoc('chatMessages', msgId, newMsg);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `chatMessages/${msgId}`);
     }
@@ -840,7 +1043,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         };
         try {
-          await setDoc(doc(db, 'chatMessages', replyId), autoReply);
+          await saveDoc('chatMessages', replyId, autoReply);
         } catch (e) {
           console.warn('Auto reply write error:', e);
         }
@@ -862,7 +1065,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      await setDoc(doc(db, 'tickets', newTicket.id), newTicket);
+      await saveDoc('tickets', newTicket.id, newTicket);
       await addNotification('Novo Chamado Aberto', `Chamado ${newTicket.id} criado por ${currentUser.name}.`, 'ticket');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `tickets/${newTicket.id}`);
@@ -874,7 +1077,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!lead) return;
 
     try {
-      await setDoc(doc(db, 'leads', leadId), { ...lead, stage });
+      await saveDoc('leads', leadId, { ...lead, stage });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `leads/${leadId}`);
     }
@@ -885,7 +1088,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!notif) return;
 
     try {
-      await setDoc(doc(db, 'notifications', id), { ...notif, read: true });
+      await saveDoc('notifications', id, { ...notif, read: true });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `notifications/${id}`);
     }
@@ -931,10 +1134,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loginClient,
       registerClient,
       logoutClient,
+      siteConfig,
+      updateSiteConfig,
       quotes,
       proposals,
       projects,
       financials,
+      subscriptions,
       chatMessages,
       tickets,
       leads,
@@ -948,6 +1154,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addProjectFile,
       addFinancialTransaction,
       updateFinancialStatus,
+      addSubscription,
+      updateSubscription,
+      updateSubscriptionStatus,
+      deleteSubscription,
+      generateSubscriptionBilling,
       sendChatMessage,
       createSupportTicket,
       updateLeadStage,

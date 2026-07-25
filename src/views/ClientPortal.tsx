@@ -28,7 +28,9 @@ import {
   Sun,
   Moon,
   ExternalLink,
-  Bot
+  Bot,
+  Repeat,
+  Check
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -38,6 +40,7 @@ export const ClientPortal: React.FC = () => {
     proposals,
     projects, 
     financials, 
+    subscriptions,
     chatMessages, 
     tickets, 
     sendChatMessage, 
@@ -523,9 +526,84 @@ export const ClientPortal: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: FINANCIAL STATEMENT & PIX */}
+        {/* TAB 3: FINANCIAL STATEMENT & SUBSCRIPTIONS */}
         {activeTab === 'financials' && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            
+            {/* Active Subscriptions / Monthly Fees Card */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">
+                    <Repeat className="w-4 h-4 text-emerald-500" />
+                    <span>Meus Planos & Mensalidades Contratadas</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Assinaturas e Serviços Recorrentes</h3>
+                  <p className="text-xs text-slate-500 mt-1">Acompanhe seus contratos de sustentação, manutenção contínua e licenças ativas.</p>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Recorrente</span>
+                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                    R$ {subscriptions.filter(s => s.status === 'ativo').reduce((acc, curr) => acc + curr.monthlyValue, 0).toLocaleString('pt-BR')}/mês
+                  </span>
+                </div>
+              </div>
+
+              {subscriptions.length === 0 ? (
+                <p className="text-xs text-slate-500 italic py-4 text-center">Nenhum plano mensal atrelado à sua conta no momento.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {subscriptions.map(sub => (
+                    <div key={sub.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Contrato de Serviço</span>
+                          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{sub.serviceName}</h4>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
+                          sub.status === 'ativo' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                          sub.status === 'inadimplente' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                          'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        }`}>
+                          {sub.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Valor Mensal</span>
+                          <span className="font-extrabold text-slate-900 dark:text-white">R$ {sub.monthlyValue.toLocaleString('pt-BR')}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Vencimento</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">Todo Dia {sub.billingCycleDay}</span>
+                        </div>
+                      </div>
+
+                      {sub.pixCopyPaste && (
+                        <div className="pt-2 flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-slate-400">Próx: <strong>{sub.nextDueDate}</strong></span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(sub.pixCopyPaste || '');
+                              setPixCopied(true);
+                              setTimeout(() => setPixCopied(false), 2500);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all"
+                          >
+                            <QrCode className="w-3 h-3" />
+                            <span>{pixCopied ? 'Pix Copiado!' : 'Copiar Pix Mês'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Financial Transactions & Invoices List */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div>

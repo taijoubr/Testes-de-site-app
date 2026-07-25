@@ -92,5 +92,17 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if true;
     }
+
+    // Site Settings collection (public configuration for site header, hero, contact)
+    match /siteSettings/{settingsId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Client Subscriptions collection (mensalidades e serviços recorrentes)
+    match /clientSubscriptions/{subscriptionId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
   }
 }

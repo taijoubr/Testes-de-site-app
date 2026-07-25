@@ -11,7 +11,9 @@ import {
   UserProfile,
   NotificationItem,
   AdminUser,
-  ClientUser
+  ClientUser,
+  ClientSubscription,
+  SiteConfig
 } from '../types';
 
 export const INITIAL_SERVICES: ServiceItem[] = [
@@ -412,6 +414,109 @@ export const INITIAL_FINANCIALS: FinancialTransaction[] = [
     status: 'pago',
     paymentMethod: 'cartao',
     isRecurring: true
+  },
+  {
+    id: 'FIN-106',
+    title: 'Mensalidade Mês 07 - FinTech Alfa (Sustentação App)',
+    type: 'receita',
+    category: 'Mensalidade de Serviço',
+    amount: 1800,
+    dueDate: '2026-07-10',
+    paymentDate: '2026-07-09',
+    status: 'pago',
+    paymentMethod: 'pix',
+    clientName: 'Lucas Ferreira',
+    subscriptionId: 'SUB-101',
+    isRecurring: true
+  },
+  {
+    id: 'FIN-107',
+    title: 'Mensalidade Mês 07 - Clínica Vivence (Hospedagem & Suporte)',
+    type: 'receita',
+    category: 'Mensalidade de Serviço',
+    amount: 950,
+    dueDate: '2026-07-15',
+    paymentDate: '2026-07-14',
+    status: 'pago',
+    paymentMethod: 'pix',
+    clientName: 'Mariana Santos',
+    subscriptionId: 'SUB-102',
+    isRecurring: true
+  },
+  {
+    id: 'FIN-108',
+    title: 'Mensalidade Mês 07 - Nexus Logística (Licença API & IA)',
+    type: 'receita',
+    category: 'Mensalidade de Serviço',
+    amount: 2400,
+    dueDate: '2026-07-20',
+    status: 'pendente',
+    paymentMethod: 'pix',
+    clientName: 'Roberto Silva',
+    subscriptionId: 'SUB-103',
+    isRecurring: true
+  }
+];
+
+export const INITIAL_SUBSCRIPTIONS: ClientSubscription[] = [
+  {
+    id: 'SUB-101',
+    clientName: 'Lucas Ferreira',
+    clientEmail: 'lucas@fintechalfa.com.br',
+    serviceName: 'Sustentação de App Mobile & Cloud AWS/Firebase',
+    monthlyValue: 1800,
+    billingCycleDay: 10,
+    status: 'ativo',
+    startDate: '2026-01-10',
+    nextDueDate: '2026-08-10',
+    paymentMethod: 'pix',
+    notes: 'Contrato anual com suporte até 20hs/mês e monitoramento 24/7.',
+    lastPaymentDate: '2026-07-09',
+    pixCopyPaste: '00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-42661417400052040000530398654071800.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304E2D1'
+  },
+  {
+    id: 'SUB-102',
+    clientName: 'Mariana Santos',
+    clientEmail: 'mariana@clinicavivence.com.br',
+    serviceName: 'Hospedagem Dedicada & Manutenção Preventiva Web',
+    monthlyValue: 950,
+    billingCycleDay: 15,
+    status: 'ativo',
+    startDate: '2026-02-15',
+    nextDueDate: '2026-08-15',
+    paymentMethod: 'pix',
+    notes: 'Incluso backup diário de banco de dados e certificados SSL.',
+    lastPaymentDate: '2026-07-14',
+    pixCopyPaste: '00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-4266141740005204000053039865406950.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304C1B8'
+  },
+  {
+    id: 'SUB-103',
+    clientName: 'Roberto Silva',
+    clientEmail: 'roberto@nexuslog.com.br',
+    serviceName: 'Licenciamento de APIs de Logística & Automação IA',
+    monthlyValue: 2400,
+    billingCycleDay: 20,
+    status: 'inadimplente',
+    startDate: '2026-03-01',
+    nextDueDate: '2026-07-20',
+    paymentMethod: 'pix',
+    notes: 'Mensalidade do mês de Julho pendente de pagamento.',
+    lastPaymentDate: '2026-06-20',
+    pixCopyPaste: '00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-42661417400052040000530398654072400.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304B8A2'
+  },
+  {
+    id: 'SUB-104',
+    clientName: 'Eduardo Ramos',
+    clientEmail: 'eduardo@odontoplus.com.br',
+    serviceName: 'Sustentação de Sistema de Gestão Odontológica',
+    monthlyValue: 1200,
+    billingCycleDay: 5,
+    status: 'suspenso',
+    startDate: '2025-11-05',
+    nextDueDate: '2026-08-05',
+    paymentMethod: 'boleto',
+    notes: 'Serviço temporariamente pausado por solicitação do cliente.',
+    lastPaymentDate: '2026-05-05'
   }
 ];
 
@@ -626,3 +731,22 @@ export const INITIAL_CLIENT_USERS: ClientUser[] = [
     state: 'RJ'
   }
 ];
+
+export const INITIAL_SITE_CONFIG: SiteConfig = {
+  id: 'main',
+  companyName: 'NCodes Technologies',
+  logoUrl: '',
+  heroBadge: 'Cadastre-se e solicite seu orçamento online',
+  heroTitle: 'Transformamos Ideias em Software de Alto Desempenho',
+  heroSubtitle: 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis, sistemas web empresariais, automações com IA e APIs na nuvem. Cadastre-se na nossa Área do Cliente para solicitar seu orçamento de forma rápida e segura.',
+  phone: '(11) 99887-6655',
+  whatsapp: '5511998876655',
+  email: 'contato@ncodestechnologies.com.br',
+  address: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
+  announcementBanner: '',
+  isAnnouncementActive: false,
+  primaryColor: '#2563eb',
+  maintenanceMode: false,
+  lastUpdated: '25/07/2026 12:00',
+  updatedBy: 'Admin Master'
+};

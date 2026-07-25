@@ -95,6 +95,7 @@ export interface Proposal {
   scope: string[];
   schedule: ProposalDeliverable[];
   totalValue: number;
+  recurringMonthlyValue?: number;
   paymentTerms: string;
   contractText: string;
   status: 'pendente' | 'aceito' | 'rejeitado';
@@ -147,6 +148,28 @@ export interface Project {
 
 export type FinancialStatus = 'pago' | 'pendente' | 'atrasado' | 'cancelado' | 'reembolsado';
 
+export type SubscriptionStatus = 'ativo' | 'inadimplente' | 'suspenso' | 'cancelado';
+
+export interface ClientSubscription {
+  id: string;
+  clientName: string;
+  clientEmail?: string;
+  serviceName: string;
+  monthlyValue: number;
+  billingCycleDay: number;
+  status: SubscriptionStatus;
+  startDate: string;
+  nextDueDate: string;
+  paymentMethod: 'pix' | 'cartao' | 'boleto' | 'transferencia';
+  notes?: string;
+  lastPaymentDate?: string;
+  pixCopyPaste?: string;
+  proposalId?: string;
+  quoteId?: string;
+  billingType?: 'recorrente' | 'valor_unico';
+  oneTimeTotalValue?: number;
+}
+
 export interface FinancialTransaction {
   id: string;
   title: string;
@@ -156,9 +179,10 @@ export interface FinancialTransaction {
   dueDate: string;
   paymentDate?: string;
   status: FinancialStatus;
-  paymentMethod: 'pix' | 'cartao' | 'transferencia' | 'dinheiro';
+  paymentMethod: 'pix' | 'cartao' | 'transferencia' | 'dinheiro' | 'boleto';
   clientName?: string;
   projectId?: string;
+  subscriptionId?: string;
   invoiceUrl?: string;
   isRecurring?: boolean;
 }
@@ -239,4 +263,23 @@ export interface NotificationItem {
   timestamp: string;
   read: boolean;
   link?: string;
+}
+
+export interface SiteConfig {
+  id: string;
+  companyName: string;
+  logoUrl?: string;
+  heroBadge: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  address: string;
+  announcementBanner: string;
+  isAnnouncementActive: boolean;
+  primaryColor: string;
+  maintenanceMode: boolean;
+  lastUpdated: string;
+  updatedBy: string;
 }

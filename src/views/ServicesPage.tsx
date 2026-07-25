@@ -87,9 +87,9 @@ export const ServicesPage: React.FC = () => {
 
               <button
                 onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-500/20"
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer"
               >
-                <span>Solicitar na Área Cliente</span>
+                <span>Cadastre-se e solicite seu orçamento</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

@@ -44,12 +44,26 @@ import {
   Sun,
   Moon,
   ArrowLeft,
-  Globe
+  Globe,
+  Upload,
+  Image,
+  Repeat,
+  CreditCard,
+  Calendar,
+  AlertTriangle,
+  PauseCircle,
+  PlayCircle,
+  XCircle,
+  Copy,
+  Check,
+  QrCode,
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 
 import { useApp } from '../context/AppContext';
 import { ProposalGeneratorModal } from '../components/ProposalGeneratorModal';
-import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus } from '../types';
+import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal } from '../types';
 
 export const AdminPanel: React.FC = () => {
   const { 
@@ -57,6 +71,12 @@ export const AdminPanel: React.FC = () => {
     proposals, 
     projects, 
     financials, 
+    subscriptions,
+    addSubscription,
+    updateSubscription,
+    updateSubscriptionStatus,
+    deleteSubscription,
+    generateSubscriptionBilling,
     leads, 
     updateQuoteStatus, 
     setSelectedProposalIdForAcceptance, 
@@ -75,10 +95,99 @@ export const AdminPanel: React.FC = () => {
     addAdminUser,
     deleteAdminUser,
     isDarkMode,
-    toggleTheme
+    toggleTheme,
+    siteConfig,
+    updateSiteConfig
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'projects' | 'financials' | 'crm' | 'team' | 'admin_users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'subscriptions' | 'projects' | 'financials' | 'crm' | 'team' | 'admin_users' | 'site_settings'>('dashboard');
+
+  // Edit Subscription Modal States
+  const [editingSub, setEditingSub] = useState<ClientSubscription | null>(null);
+  const [showEditSubModal, setShowEditSubModal] = useState(false);
+  const [editSubClientName, setEditSubClientName] = useState('');
+  const [editSubClientEmail, setEditSubClientEmail] = useState('');
+  const [editSubServiceName, setEditSubServiceName] = useState('');
+  const [editSubMonthlyValue, setEditSubMonthlyValue] = useState<number>(0);
+  const [editSubBillingCycleDay, setEditSubBillingCycleDay] = useState<number>(10);
+  const [editSubStatus, setEditSubStatus] = useState<SubscriptionStatus>('ativo');
+  const [editSubPaymentMethod, setEditSubPaymentMethod] = useState<'pix' | 'cartao' | 'boleto' | 'transferencia'>('pix');
+  const [editSubNotes, setEditSubNotes] = useState('');
+  const [editSubBillingType, setEditSubBillingType] = useState<'recorrente' | 'valor_unico'>('recorrente');
+  const [editSubOneTimeTotalValue, setEditSubOneTimeTotalValue] = useState<number>(0);
+
+  // Site Configuration Form States
+  const [editCompanyName, setEditCompanyName] = useState(siteConfig?.companyName || 'NCodes Technologies');
+  const [editLogoUrl, setEditLogoUrl] = useState(siteConfig?.logoUrl || '');
+  const [editHeroBadge, setEditHeroBadge] = useState(siteConfig?.heroBadge || 'Cadastre-se e solicite seu orçamento online');
+  const [editHeroTitle, setEditHeroTitle] = useState(siteConfig?.heroTitle || 'Transformamos Ideias em Software de Alto Desempenho');
+  const [editHeroSubtitle, setEditHeroSubtitle] = useState(siteConfig?.heroSubtitle || 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis em Flutter, sistemas web empresariais, automações com IA e APIs na nuvem.');
+  const [editPhone, setEditPhone] = useState(siteConfig?.phone || '(11) 99887-6655');
+  const [editWhatsapp, setEditWhatsapp] = useState(siteConfig?.whatsapp || '5511998876655');
+  const [editEmail, setEditEmail] = useState(siteConfig?.email || 'contato@ncodestechnologies.com.br');
+  const [editAddress, setEditAddress] = useState(siteConfig?.address || 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP');
+  const [editAnnouncementBanner, setEditAnnouncementBanner] = useState(siteConfig?.announcementBanner || '');
+  const [editIsAnnouncementActive, setEditIsAnnouncementActive] = useState(siteConfig?.isAnnouncementActive ?? false);
+  const [editMaintenanceMode, setEditMaintenanceMode] = useState(siteConfig?.maintenanceMode ?? false);
+  const [isPublishingSite, setIsPublishingSite] = useState(false);
+  const [sitePublishSuccess, setSitePublishSuccess] = useState(false);
+
+  // Sync state if siteConfig changes from remote Firestore
+  React.useEffect(() => {
+    if (siteConfig) {
+      setEditCompanyName(siteConfig.companyName || 'NCodes Technologies');
+      setEditLogoUrl(siteConfig.logoUrl || '');
+      setEditHeroBadge(siteConfig.heroBadge || '');
+      setEditHeroTitle(siteConfig.heroTitle || '');
+      setEditHeroSubtitle(siteConfig.heroSubtitle || '');
+      setEditPhone(siteConfig.phone || '');
+      setEditWhatsapp(siteConfig.whatsapp || '');
+      setEditEmail(siteConfig.email || '');
+      setEditAddress(siteConfig.address || '');
+      setEditAnnouncementBanner(siteConfig.announcementBanner || '');
+      setEditIsAnnouncementActive(siteConfig.isAnnouncementActive ?? false);
+      setEditMaintenanceMode(siteConfig.maintenanceMode ?? false);
+    }
+  }, [siteConfig]);
+
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) {
+        alert('Selecione uma imagem com menos de 4MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setEditLogoUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePublishSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsPublishingSite(true);
+    await updateSiteConfig({
+      companyName: editCompanyName,
+      logoUrl: editLogoUrl,
+      heroBadge: editHeroBadge,
+      heroTitle: editHeroTitle,
+      heroSubtitle: editHeroSubtitle,
+      phone: editPhone,
+      whatsapp: editWhatsapp,
+      email: editEmail,
+      address: editAddress,
+      announcementBanner: editAnnouncementBanner,
+      isAnnouncementActive: editIsAnnouncementActive,
+      maintenanceMode: editMaintenanceMode
+    });
+    setIsPublishingSite(false);
+    setSitePublishSuccess(true);
+    setTimeout(() => setSitePublishSuccess(false), 4000);
+  };
 
   // New Admin User Modal State
   const [showNewAdminModal, setShowNewAdminModal] = useState(false);
@@ -98,6 +207,104 @@ export const AdminPanel: React.FC = () => {
   const [finAmount, setFinAmount] = useState(5000);
   const [finDueDate, setFinDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [finPaymentMethod, setFinPaymentMethod] = useState<'pix' | 'cartao' | 'transferencia' | 'dinheiro'>('pix');
+
+  // Subscriptions & Client Recurring Fees State
+  const [finSubTab, setFinSubTab] = useState<'subscriptions' | 'transactions'>('subscriptions');
+  const [subSearch, setSubSearch] = useState('');
+  const [subStatusFilter, setSubStatusFilter] = useState<'todos' | 'ativo' | 'inadimplente' | 'suspenso'>('todos');
+  const [showNewSubModal, setShowNewSubModal] = useState(false);
+  const [subClientName, setSubClientName] = useState('');
+  const [subClientEmail, setSubClientEmail] = useState('');
+  const [subServiceName, setSubServiceName] = useState('Sustentação de App Mobile & Infraestrutura Cloud');
+  const [subMonthlyValue, setSubMonthlyValue] = useState(1800);
+  const [subBillingCycleDay, setSubBillingCycleDay] = useState(10);
+  const [subPaymentMethod, setSubPaymentMethod] = useState<'pix' | 'cartao' | 'boleto' | 'transferencia'>('pix');
+  const [subNotes, setSubNotes] = useState('');
+  const [copiedSubPixId, setCopiedSubPixId] = useState<string | null>(null);
+
+  // Subscription Calculations
+  const totalMRR = subscriptions.filter(s => s.status === 'ativo').reduce((acc, curr) => acc + curr.monthlyValue, 0);
+  const totalInadimplenciaMRR = subscriptions.filter(s => s.status === 'inadimplente').reduce((acc, curr) => acc + curr.monthlyValue, 0);
+  const activeSubsCount = subscriptions.filter(s => s.status === 'ativo').length;
+
+  const handleCreateSubscription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subClientName.trim() || !subServiceName.trim() || !subMonthlyValue) {
+      alert('Por favor, preencha os campos obrigatórios.');
+      return;
+    }
+
+    const today = new Date();
+    const nextDueDate = new Date(today.getFullYear(), today.getMonth() + 1, Number(subBillingCycleDay)).toISOString().split('T')[0];
+    const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${subMonthlyValue}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
+
+    await addSubscription({
+      clientName: subClientName.trim(),
+      clientEmail: subClientEmail.trim() || undefined,
+      serviceName: subServiceName.trim(),
+      monthlyValue: Number(subMonthlyValue),
+      billingCycleDay: Number(subBillingCycleDay),
+      status: 'ativo',
+      startDate: today.toISOString().split('T')[0],
+      nextDueDate,
+      paymentMethod: subPaymentMethod,
+      notes: subNotes.trim() || undefined,
+      pixCopyPaste: defaultPix
+    });
+
+    setShowNewSubModal(false);
+    setSubClientName('');
+    setSubClientEmail('');
+    setSubNotes('');
+  };
+
+  const handleOpenEditSub = (sub: ClientSubscription) => {
+    setEditingSub(sub);
+    setEditSubClientName(sub.clientName);
+    setEditSubClientEmail(sub.clientEmail || '');
+    setEditSubServiceName(sub.serviceName);
+    setEditSubMonthlyValue(sub.monthlyValue);
+    setEditSubBillingCycleDay(sub.billingCycleDay);
+    setEditSubStatus(sub.status);
+    setEditSubPaymentMethod(sub.paymentMethod);
+    setEditSubNotes(sub.notes || '');
+    setEditSubBillingType(sub.billingType || 'recorrente');
+    setEditSubOneTimeTotalValue(sub.oneTimeTotalValue || sub.monthlyValue * 12);
+    setShowEditSubModal(true);
+  };
+
+  const handleSaveEditSub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSub) return;
+
+    const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${editSubMonthlyValue}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
+
+    await updateSubscription(editingSub.id, {
+      clientName: editSubClientName.trim(),
+      clientEmail: editSubClientEmail.trim() || undefined,
+      serviceName: editSubServiceName.trim(),
+      monthlyValue: Number(editSubMonthlyValue),
+      billingCycleDay: Number(editSubBillingCycleDay),
+      status: editSubStatus,
+      paymentMethod: editSubPaymentMethod,
+      notes: editSubNotes.trim() || undefined,
+      billingType: editSubBillingType,
+      oneTimeTotalValue: Number(editSubOneTimeTotalValue),
+      pixCopyPaste: defaultPix
+    });
+
+    setShowEditSubModal(false);
+    setEditingSub(null);
+  };
+
+  const handleLinkProposalToSub = (prop: Proposal) => {
+    setSubClientName(prop.clientName);
+    setSubClientEmail(`${prop.clientName.toLowerCase().replace(/\s+/g, '')}@cliente.com.br`);
+    setSubServiceName(`Sustentação & Manutenção - ${prop.title}`);
+    setSubMonthlyValue(prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? prop.recurringMonthlyValue : Math.round(prop.totalValue / 12));
+    setSubNotes(`Referente à Proposta ${prop.id} aprovada. Valor total do projeto: R$ ${prop.totalValue.toLocaleString('pt-BR')}.`);
+    setShowNewSubModal(true);
+  };
 
   // Financial calculations
   const totalRevenue = financials.filter(f => f.type === 'receita' && f.status === 'pago').reduce((acc, curr) => acc + curr.amount, 0);
@@ -283,6 +490,18 @@ export const AdminPanel: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('subscriptions')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'subscriptions'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                : 'bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+            }`}
+          >
+            <Repeat className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Mensalidades ({subscriptions.length})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('projects')}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'projects' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -320,6 +539,18 @@ export const AdminPanel: React.FC = () => {
           >
             <Lock className="w-3.5 h-3.5 text-amber-400" />
             <span>Usuários Admin ({adminUsers.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('site_settings')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border ${
+              activeTab === 'site_settings' 
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-400 shadow-lg shadow-blue-500/20' 
+                : 'bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span>Atualizar Site (LIVE)</span>
           </button>
 
           <button
@@ -587,6 +818,302 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      {/* EXCLUSIVE TAB: GESTÃO E ALTERAÇÃO DE MENSALIDADES (MRR) & CONTRATOS */}
+      {activeTab === 'subscriptions' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Header & Flow Explanation */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">
+                  <Repeat className="w-4 h-4 text-emerald-500 animate-spin-slow" />
+                  <span>Área Exclusiva do Painel Restrito</span>
+                </div>
+                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+                  Gestão & Alteração de Mensalidades de Clientes
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Gerencie contratos, altere valores de mensalidades ou vincule orçamentos aprovados aos seus clientes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    setSubClientName('');
+                    setSubClientEmail('');
+                    setSubServiceName('');
+                    setSubMonthlyValue(1200);
+                    setSubNotes('');
+                    setShowNewSubModal(true);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Cadastrar Nova Mensalidade</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Receita Mensal Recorrente (MRR)</span>
+                <span className="text-2xl font-black text-slate-900 dark:text-white block mt-1">
+                  R$ {totalMRR.toLocaleString('pt-BR')}<span className="text-xs font-medium text-slate-500"> /mês</span>
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase block">Assinaturas Ativas</span>
+                <span className="text-2xl font-black text-slate-900 dark:text-white block mt-1">
+                  {activeSubsCount} <span className="text-xs font-medium text-slate-500">contratos</span>
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase block">Orçamentos Aprovados A Vincular</span>
+                <span className="text-2xl font-black text-slate-900 dark:text-white block mt-1">
+                  {proposals.filter(p => p.status === 'aceito').length} <span className="text-xs font-medium text-slate-500">propostas</span>
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase block">Inadimplência</span>
+                <span className="text-2xl font-black text-rose-600 dark:text-rose-400 block mt-1">
+                  R$ {totalInadimplenciaMRR.toLocaleString('pt-BR')}
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Section: Orçamentos / Propostas Aprovadas Prontas para Vincular Mensalidade */}
+          {proposals.filter(p => p.status === 'aceito').length > 0 && (
+            <div className="bg-gradient-to-br from-blue-900/10 via-emerald-900/10 to-slate-900/20 dark:bg-slate-900 p-6 rounded-3xl border border-blue-500/30 dark:border-emerald-500/30 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span>Aprovados via Aceite Digital</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Propostas Aprovadas Prontas para Vincular Mensalidade
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Estes clientes já aceitaram o orçamento. Clique abaixo para ativar a mensalidade no cadastro do cliente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {proposals.filter(p => p.status === 'aceito').map(prop => {
+                  const alreadyLinked = subscriptions.some(s => s.proposalId === prop.id || s.clientName === prop.clientName);
+                  return (
+                    <div key={prop.id} className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">{prop.id}</span>
+                          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">{prop.clientName}</h4>
+                          <p className="text-xs text-slate-500">{prop.company || 'Empresa'} • {prop.title}</p>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          Aceito
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-700">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Valor Total do Projeto:</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">R$ {prop.totalValue.toLocaleString('pt-BR')}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Mensalidade Estimada:</span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">
+                            R$ {(prop.recurringMonthlyValue || Math.round(prop.totalValue / 12)).toLocaleString('pt-BR')}/mês
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleLinkProposalToSub(prop)}
+                        className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          alreadyLinked
+                            ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                        }`}
+                      >
+                        <Repeat className="w-3.5 h-3.5" />
+                        <span>{alreadyLinked ? 'Alterar Mensalidade / Cobrança Vinculada' : 'Vincular Mensalidade ao Cliente'}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Main Active Subscriptions Table and Editing Section */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+            
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Contratos de Mensalidades Cadastradas ({subscriptions.length})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Gerencie valores, dias de vencimento, formas de pagamento ou altere entre mensalidade recorrente e valor único.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={subSearch}
+                    onChange={e => setSubSearch(e.target.value)}
+                    placeholder="Buscar cliente ou serviço..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <select
+                  value={subStatusFilter}
+                  onChange={e => setSubStatusFilter(e.target.value as any)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
+                >
+                  <option value="todos">Todos os Status</option>
+                  <option value="ativo">Ativos</option>
+                  <option value="inadimplente">Inadimplentes</option>
+                  <option value="suspenso">Suspensos</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
+                    <th className="pb-3 px-3">Cliente / Contato</th>
+                    <th className="pb-3 px-3">Serviço / Contrato</th>
+                    <th className="pb-3 px-3">Modalidade</th>
+                    <th className="pb-3 px-3">Valor da Mensalidade</th>
+                    <th className="pb-3 px-3">Vencimento</th>
+                    <th className="pb-3 px-3">Status</th>
+                    <th className="pb-3 px-3 text-right">Ações de Alteração</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {subscriptions
+                    .filter(s => {
+                      const matchSearch = s.clientName.toLowerCase().includes(subSearch.toLowerCase()) ||
+                                          s.serviceName.toLowerCase().includes(subSearch.toLowerCase());
+                      const matchStatus = subStatusFilter === 'todos' || s.status === subStatusFilter;
+                      return matchSearch && matchStatus;
+                    })
+                    .map(sub => (
+                      <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs shrink-0">
+                              {sub.clientName.charAt(0)}
+                            </div>
+                            <div>
+                              <span className="block">{sub.clientName}</span>
+                              {sub.clientEmail && (
+                                <span className="block text-[10px] text-slate-400 font-normal">{sub.clientEmail}</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-3 font-medium text-slate-800 dark:text-slate-200 max-w-xs">
+                          <span className="font-semibold block">{sub.serviceName}</span>
+                          {sub.notes && (
+                            <span className="text-[10px] text-slate-400 truncate block max-w-[220px]">{sub.notes}</span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                            sub.billingType === 'valor_unico' 
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' 
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                          }`}>
+                            {sub.billingType === 'valor_unico' ? 'Valor Único' : 'Recorrente'}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 font-black text-slate-900 dark:text-white">
+                          R$ {sub.monthlyValue.toLocaleString('pt-BR')}
+                          <span className="text-[10px] text-slate-400 font-normal block uppercase">{sub.paymentMethod}</span>
+                        </td>
+
+                        <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-300">
+                          Dia {sub.billingCycleDay}
+                          <span className="block text-[10px] text-slate-400 font-sans">Próx: {sub.nextDueDate}</span>
+                        </td>
+
+                        <td className="py-3 px-3">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase inline-flex items-center gap-1 ${
+                            sub.status === 'ativo' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                            sub.status === 'inadimplente' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                            sub.status === 'suspenso' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+                            'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                          }`}>
+                            {sub.status === 'ativo' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                            {sub.status === 'inadimplente' && <AlertTriangle className="w-3 h-3 text-rose-500" />}
+                            {sub.status === 'suspenso' && <PauseCircle className="w-3 h-3 text-amber-500" />}
+                            {sub.status}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            
+                            {/* Botão EXCLUSIVO de Alterar Mensalidade */}
+                            <button
+                              onClick={() => handleOpenEditSub(sub)}
+                              className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all shadow-sm"
+                              title="Alterar mensalidade, valores, vencimentos ou modalidade"
+                            >
+                              <Settings className="w-3 h-3" />
+                              <span>Alterar Mensalidade</span>
+                            </button>
+
+                            {/* Emitir Fatura */}
+                            <button
+                              onClick={() => generateSubscriptionBilling(sub.id)}
+                              className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 font-bold text-[10px] cursor-pointer"
+                              title="Emitir fatura no financeiro"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Deletar */}
+                            <button
+                              onClick={() => deleteSubscription(sub.id)}
+                              className="p-1.5 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 font-bold text-[10px] cursor-pointer"
+                              title="Remover contrato"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
       {/* TAB 3: PROJECTS KANBAN & CHECKLIST */}
       {activeTab === 'projects' && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -686,81 +1213,394 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: FINANCIAL MANAGEMENT */}
+      {/* TAB 4: FINANCIAL MANAGEMENT & CLIENT SUBSCRIPTIONS */}
       {activeTab === 'financials' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Gestão Financeira, Faturamento & Pix</h2>
-              <p className="text-xs text-slate-500">Controle de receitas, parcelas, despesas e fluxo de caixa.</p>
+          
+          {/* Top Section Header & Summary Metrics Bar */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">
+                  <Repeat className="w-4 h-4 text-emerald-500 animate-spin-slow" />
+                  <span>Gestão Financeira & Recorrência de Clientes (MRR)</span>
+                </div>
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                  Controle de Mensalidades & Fluxo de Caixa
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Acompanhe contratos de sustentação, cobranças de mensalidades recorrentes de serviços, faturamento por Pix e controle de inadimplência.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setShowNewSubModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Nova Mensalidade de Cliente</span>
+                </button>
+
+                <button
+                  onClick={() => setShowFinModal(true)}
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Lançamento Avulso</span>
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={() => setShowFinModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Novo Lançamento</span>
-            </button>
+            {/* Financial Metrics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 space-y-1">
+                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase">
+                  <span>Receita Mensal Recorrente (MRR)</span>
+                  <Repeat className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  R$ {totalMRR.toLocaleString('pt-BR')}
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400"> / mês</span>
+                </div>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  {activeSubsCount} contrato(s) ativo(s) com cobrança
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                <div className="flex items-center justify-between text-blue-600 dark:text-blue-400 text-xs font-bold uppercase">
+                  <span>Contratos de Serviços</span>
+                  <Briefcase className="w-4 h-4 text-blue-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  {subscriptions.length} <span className="text-xs font-medium text-slate-500">clientes</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  {activeSubsCount} ativos • {subscriptions.length - activeSubsCount} pendente/pausado
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 space-y-1">
+                <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 text-xs font-bold uppercase">
+                  <span>Inadimplência / Pendentes</span>
+                  <AlertTriangle className="w-4 h-4 text-rose-500" />
+                </div>
+                <div className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                  R$ {totalInadimplenciaMRR.toLocaleString('pt-BR')}
+                </div>
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+                  {subscriptions.filter(s => s.status === 'inadimplente').length} mensalidade(s) com atraso
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 text-xs font-bold uppercase">
+                  <span>Caixa Confirmado (Receitas)</span>
+                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  R$ {totalRevenue.toLocaleString('pt-BR')}
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  Lucro líquido estimado: R$ {netProfit.toLocaleString('pt-BR')}
+                </p>
+              </div>
+
+            </div>
+
+            {/* Sub-tab Navigation Buttons */}
+            <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <button
+                onClick={() => setFinSubTab('subscriptions')}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
+                  finSubTab === 'subscriptions'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <Repeat className="w-3.5 h-3.5" />
+                <span>Mensalidades de Clientes (MRR)</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-bold">
+                  {subscriptions.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setFinSubTab('transactions')}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
+                  finSubTab === 'transactions'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Extrato Avulso & Fluxo de Caixa</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold">
+                  {financials.length}
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* Transactions Table */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
-                    <th className="pb-3">Descrição / Cliente</th>
-                    <th className="pb-3">Tipo</th>
-                    <th className="pb-3">Categoria</th>
-                    <th className="pb-3">Vencimento</th>
-                    <th className="pb-3">Valor</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {financials.map(f => (
-                    <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="py-3 font-semibold text-slate-900 dark:text-white">
-                        {f.title}
-                        <span className="block text-[10px] text-slate-400 font-normal">{f.clientName || 'NCodes Interno'}</span>
-                      </td>
-                      <td className="py-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${f.type === 'receita' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                          {f.type}
-                        </span>
-                      </td>
-                      <td className="py-3 text-slate-600 dark:text-slate-300">{f.category}</td>
-                      <td className="py-3 text-slate-500">{f.dueDate}</td>
-                      <td className="py-3 font-bold text-slate-900 dark:text-white">
-                        R$ {f.amount.toLocaleString('pt-BR')}
-                      </td>
-                      <td className="py-3">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                          f.status === 'pago' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                        }`}>
-                          {f.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        {f.status !== 'pago' ? (
-                          <button
-                            onClick={() => updateFinancialStatus(f.id, 'pago')}
-                            className="px-3 py-1 rounded bg-emerald-600 text-white font-bold text-[10px]"
-                          >
-                            Dar Baixa (Pago)
-                          </button>
-                        ) : (
-                          <span className="text-[10px] text-emerald-500 font-bold">✓ Confirmado</span>
-                        )}
-                      </td>
+          {/* SUB-TAB 1: MENSALIDADES DE CLIENTES (MRR) */}
+          {finSubTab === 'subscriptions' && (
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+              
+              {/* Search & Filter Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={subSearch}
+                    onChange={e => setSubSearch(e.target.value)}
+                    placeholder="Buscar cliente ou serviço..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Filter className="w-3.5 h-3.5 text-slate-400" />
+                  <select
+                    value={subStatusFilter}
+                    onChange={e => setSubStatusFilter(e.target.value as any)}
+                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="todos">Todos os Status</option>
+                    <option value="ativo">Somente Ativos</option>
+                    <option value="inadimplente">Somente Inadimplentes</option>
+                    <option value="suspenso">Somente Suspensos</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Subscriptions Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
+                      <th className="pb-3 px-3">Cliente / E-mail</th>
+                      <th className="pb-3 px-3">Serviço de Mensalidade</th>
+                      <th className="pb-3 px-3">Valor Mensal</th>
+                      <th className="pb-3 px-3">Dia Venc.</th>
+                      <th className="pb-3 px-3">Próx. Vencimento</th>
+                      <th className="pb-3 px-3">Status</th>
+                      <th className="pb-3 px-3 text-right">Ações & Faturamento</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {subscriptions
+                      .filter(s => {
+                        const matchSearch = s.clientName.toLowerCase().includes(subSearch.toLowerCase()) ||
+                                            s.serviceName.toLowerCase().includes(subSearch.toLowerCase());
+                        const matchStatus = subStatusFilter === 'todos' || s.status === subStatusFilter;
+                        return matchSearch && matchStatus;
+                      })
+                      .map(sub => (
+                        <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs">
+                                {sub.clientName.charAt(0)}
+                              </div>
+                              <div>
+                                <span>{sub.clientName}</span>
+                                {sub.clientEmail && (
+                                  <span className="block text-[10px] text-slate-400 font-normal">{sub.clientEmail}</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3 font-medium text-slate-800 dark:text-slate-200 max-w-xs">
+                            <span className="font-semibold block">{sub.serviceName}</span>
+                            {sub.notes && (
+                              <span className="text-[10px] text-slate-400 truncate block max-w-[200px]">{sub.notes}</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 font-extrabold text-slate-900 dark:text-white">
+                            R$ {sub.monthlyValue.toLocaleString('pt-BR')}
+                            <span className="text-[10px] text-slate-400 font-normal block uppercase">{sub.paymentMethod}</span>
+                          </td>
+
+                          <td className="py-3 px-3 font-bold text-slate-700 dark:text-slate-300">
+                            Dia {sub.billingCycleDay}
+                          </td>
+
+                          <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-400">
+                            {sub.nextDueDate}
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase inline-flex items-center gap-1 ${
+                              sub.status === 'ativo' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                              sub.status === 'inadimplente' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                              sub.status === 'suspenso' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+                              'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            }`}>
+                              {sub.status === 'ativo' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                              {sub.status === 'inadimplente' && <AlertTriangle className="w-3 h-3 text-rose-500" />}
+                              {sub.status === 'suspenso' && <PauseCircle className="w-3 h-3 text-amber-500" />}
+                              {sub.status}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              
+                              {/* Gerar Fatura no Financeiro */}
+                              <button
+                                onClick={() => generateSubscriptionBilling(sub.id)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all"
+                                title="Emitir fatura do mês atual no financeiro"
+                              >
+                                <CreditCard className="w-3 h-3" />
+                                <span>Emitir Fatura</span>
+                              </button>
+
+                              {/* Dar Baixa (Pago) */}
+                              {sub.status !== 'ativo' && (
+                                <button
+                                  onClick={() => {
+                                    const nextMonth = new Date();
+                                    nextMonth.setMonth(nextMonth.getMonth() + 1);
+                                    nextMonth.setDate(sub.billingCycleDay);
+                                    updateSubscriptionStatus(sub.id, 'ativo', nextMonth.toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] cursor-pointer"
+                                  title="Marcar mensalidade como paga e renovar vencimento"
+                                >
+                                  Dar Baixa (Pago)
+                                </button>
+                              )}
+
+                              {/* Marcar Inadimplente */}
+                              {sub.status === 'ativo' && (
+                                <button
+                                  onClick={() => updateSubscriptionStatus(sub.id, 'inadimplente')}
+                                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 cursor-pointer"
+                                  title="Marcar como inadimplente"
+                                >
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Copiar Pix */}
+                              {sub.pixCopyPaste && (
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(sub.pixCopyPaste || '');
+                                    setCopiedSubPixId(sub.id);
+                                    setTimeout(() => setCopiedSubPixId(null), 2500);
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                                  title="Copiar Pix Copia e Cola"
+                                >
+                                  {copiedSubPixId === sub.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
+
+                              {/* Delete Subscription */}
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Deseja cancelar e remover a mensalidade do cliente ${sub.clientName}?`)) {
+                                    deleteSubscription(sub.id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                                title="Remover contrato"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+
             </div>
-          </div>
+          )}
+
+          {/* SUB-TAB 2: TRANSAÇÕES AVULSAS & FLUXO DE CAIXA */}
+          {finSubTab === 'transactions' && (
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Lançamentos de Caixa & Parcelas Avulsas</h3>
+                  <p className="text-xs text-slate-500">Histórico completo de entradas de projetos, mensalidades geradas e despesas operacionais.</p>
+                </div>
+                <button
+                  onClick={() => setShowFinModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Novo Lançamento Manual</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
+                      <th className="pb-3">Descrição / Cliente</th>
+                      <th className="pb-3">Tipo</th>
+                      <th className="pb-3">Categoria</th>
+                      <th className="pb-3">Vencimento</th>
+                      <th className="pb-3">Valor</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {financials.map(f => (
+                      <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="py-3 font-semibold text-slate-900 dark:text-white">
+                          {f.title}
+                          <span className="block text-[10px] text-slate-400 font-normal">{f.clientName || 'NCodes Interno'}</span>
+                        </td>
+                        <td className="py-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${f.type === 'receita' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}`}>
+                            {f.type}
+                          </span>
+                        </td>
+                        <td className="py-3 text-slate-600 dark:text-slate-300">{f.category}</td>
+                        <td className="py-3 text-slate-500">{f.dueDate}</td>
+                        <td className="py-3 font-bold text-slate-900 dark:text-white">
+                          R$ {f.amount.toLocaleString('pt-BR')}
+                        </td>
+                        <td className="py-3">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
+                            f.status === 'pago' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}>
+                            {f.status}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          {f.status !== 'pago' ? (
+                            <button
+                              onClick={() => updateFinancialStatus(f.id, 'pago')}
+                              className="px-3 py-1 rounded bg-emerald-600 text-white font-bold text-[10px] cursor-pointer"
+                            >
+                              Dar Baixa (Pago)
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-emerald-500 font-bold">✓ Confirmado</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
@@ -942,6 +1782,391 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
+      {/* TAB 7: ATUALIZAR SITE AO VIVO */}
+      {activeTab === 'site_settings' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Header */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-cyan-500 uppercase tracking-wider mb-1">
+                <Globe className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span>Gestão do Conteúdo do Site Público • Tempo Real</span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                Atualização do Site Institucional
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Altere os textos do Hero, banners de anúncio, telefones e informações institucionais. As alterações são publicadas instantaneamente no site e aplicativo mobile.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>Firestore Sync On</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Presets Bar */}
+          <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <span className="font-bold text-slate-300 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Modelos de Texto Rápidos:</span>
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditHeroBadge('Cadastre-se e solicite seu orçamento online');
+                  setEditHeroTitle('Transformamos Ideias em Software de Alto Desempenho');
+                  setEditHeroSubtitle('Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis em Flutter, sistemas web empresariais e automações com IA.');
+                  setEditAnnouncementBanner('🚀 Novo Portal do Cliente no ar: Cadastre-se e receba seu orçamento automatizado por IA em minutos!');
+                  setEditIsAnnouncementActive(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 font-semibold transition-all cursor-pointer"
+              >
+                Campanha Orçamento & Cadastro
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditHeroBadge('Inteligência Artificial Integrada ao seu Negócio');
+                  setEditHeroTitle('Sistemas Web & Apps com IA Gemini Nativa');
+                  setEditHeroSubtitle('Crie soluções de software preparadas para o futuro com chatbots avançados, processamento de documentos e automação inteligente.');
+                  setEditAnnouncementBanner('✨ Agende uma demonstração gratuita de automação com Inteligência Artificial para sua empresa!');
+                  setEditIsAnnouncementActive(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold transition-all cursor-pointer"
+              >
+                Divulgação de IA & Inovação
+              </button>
+            </div>
+          </div>
+
+          {/* Success Toast Banner */}
+          {sitePublishSuccess && (
+            <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-between animate-in slide-in-from-top duration-300 shadow-xl">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>Site e aplicativo atualizados com sucesso no Cloud Firestore! Todos os visitantes verão o novo conteúdo imediatamente.</span>
+              </div>
+              <span className="text-[10px] opacity-80">{siteConfig?.lastUpdated}</span>
+            </div>
+          )}
+
+          {/* Form & Live Preview Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Form Inputs Column */}
+            <form onSubmit={handlePublishSite} className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6 shadow-xl">
+              
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-blue-500" />
+                  <span>Editar Textos do Cabeçalho e Hero</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Estes dados aparecem na página principal (Início) do site.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {/* Logo Upload Card */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Image className="w-4 h-4 text-blue-500" />
+                      <span>Logo da Empresa / Marca</span>
+                    </label>
+                    {editLogoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setEditLogoUrl('')}
+                        className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Remover Logo</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    {/* Logo Preview Box */}
+                    <div className="w-24 h-24 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-700 p-2 flex items-center justify-center shrink-0 relative group">
+                      {editLogoUrl ? (
+                        <img
+                          src={editLogoUrl}
+                          alt="Logo Preview"
+                          className="max-h-full max-w-full object-contain rounded"
+                        />
+                      ) : (
+                        <div className="text-center space-y-1">
+                          <Image className="w-7 h-7 text-slate-500 mx-auto" />
+                          <span className="text-[9px] font-bold text-slate-500 uppercase block">Sem Logo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload Controls */}
+                    <div className="flex-1 space-y-2 w-full">
+                      <label className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-blue-600/20">
+                        <Upload className="w-4 h-4" />
+                        <span>Enviar Imagem Direta do Computador</span>
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                          onChange={handleLogoFileUpload}
+                          className="hidden"
+                        />
+                      </label>
+
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={editLogoUrl}
+                          onChange={(e) => setEditLogoUrl(e.target.value)}
+                          placeholder="Ou cole a URL da imagem (http/https)..."
+                          className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-800 dark:text-slate-200 outline-none"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Suporta PNG, JPG, WEBP e SVG. Tamanho recomendado: até 500x200px.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nome Oficial da Agência / Empresa
+                  </label>
+                  <input
+                    type="text"
+                    value={editCompanyName}
+                    onChange={(e) => setEditCompanyName(e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Badge de Destaque no Topo do Hero
+                  </label>
+                  <input
+                    type="text"
+                    value={editHeroBadge}
+                    onChange={(e) => setEditHeroBadge(e.target.value)}
+                    required
+                    placeholder="Ex: Cadastre-se e solicite seu orçamento online"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Título Principal do Hero
+                  </label>
+                  <input
+                    type="text"
+                    value={editHeroTitle}
+                    onChange={(e) => setEditHeroTitle(e.target.value)}
+                    required
+                    placeholder="Ex: Transformamos Ideias em Software de Alto Desempenho"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Subtítulo Descritivo
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editHeroSubtitle}
+                    onChange={(e) => setEditHeroSubtitle(e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-normal text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Top Banner Control Section */}
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <span>Banner de Alerta / Comunicado no Topo do Site</span>
+                  </h3>
+
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={editIsAnnouncementActive} 
+                      onChange={(e) => setEditIsAnnouncementActive(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <span className="ml-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {editIsAnnouncementActive ? 'Ativo' : 'Oculto'}
+                    </span>
+                  </label>
+                </div>
+
+                <div>
+                  <input
+                    type="text"
+                    value={editAnnouncementBanner}
+                    onChange={(e) => setEditAnnouncementBanner(e.target.value)}
+                    placeholder="Texto da faixa de aviso no topo da navegação..."
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Information Section */}
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-4">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Canais Oficiais de Atendimento
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      Telefone Principal
+                    </label>
+                    <input
+                      type="text"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      WhatsApp Comercial
+                    </label>
+                    <input
+                      type="text"
+                      value={editWhatsapp}
+                      onChange={(e) => setEditWhatsapp(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      E-mail Institucional
+                    </label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      Endereço da Sede
+                    </label>
+                    <input
+                      type="text"
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Action Button */}
+              <div className="pt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+                <div className="text-[11px] text-slate-500">
+                  Última edição: <strong className="text-slate-700 dark:text-slate-300">{siteConfig?.lastUpdated || 'Hoje'}</strong> por {siteConfig?.updatedBy || 'Admin'}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isPublishingSite}
+                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-xl shadow-blue-500/25 flex items-center gap-2 transition-all transform active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Globe className="w-4 h-4 animate-spin-slow" />
+                  <span>{isPublishingSite ? 'Publicando alterações...' : '🚀 Publicar & Atualizar Site ao Vivo'}</span>
+                </button>
+              </div>
+
+            </form>
+
+            {/* Live Preview Card Column */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-4 sticky top-24">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-rose-500" />
+                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <span className="text-[11px] font-mono text-slate-400 ml-2">Preview ao Vivo</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-blue-900/60 text-blue-300 font-mono">
+                    https://site-ncodes.com
+                  </span>
+                </div>
+
+                {/* Banner Preview */}
+                {editIsAnnouncementActive && editAnnouncementBanner && (
+                  <div className="p-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-medium flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+                    <span className="truncate">{editAnnouncementBanner}</span>
+                  </div>
+                )}
+
+                {/* Header Preview */}
+                <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between text-xs font-bold text-white">
+                  <div className="flex items-center gap-2">
+                    {editLogoUrl ? (
+                      <img src={editLogoUrl} alt="Logo" className="h-6 max-w-[80px] object-contain rounded" />
+                    ) : null}
+                    <span>{editCompanyName || 'NCodes Technologies'}</span>
+                  </div>
+                  <span className="text-[10px] px-2.5 py-1 rounded-lg bg-blue-600 text-white">Cadastre-se & Solicite</span>
+                </div>
+
+                {/* Hero Preview Card */}
+                <div className="p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 space-y-3">
+                  <div className="inline-block px-3 py-1 rounded-full bg-blue-950 border border-blue-800 text-[10px] font-bold text-cyan-400 uppercase">
+                    ✨ {editHeroBadge || 'Badge Hero'}
+                  </div>
+                  <h4 className="text-lg font-black text-white leading-tight">
+                    {editHeroTitle || 'Título Principal'}
+                  </h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {editHeroSubtitle || 'Subtítulo do hero em tempo real...'}
+                  </p>
+
+                  <div className="pt-2 flex items-center gap-2">
+                    <div className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-[11px]">
+                      Cadastre-se e solicite seu orçamento
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                  <p><strong>Atendimento:</strong> {editPhone} | {editWhatsapp}</p>
+                  <p><strong>E-mail:</strong> {editEmail}</p>
+                  <p className="text-[10px] opacity-75">{editAddress}</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
       {/* Proposal Generator Modal Popup */}
       {selectedQuoteForProp && (
         <ProposalGeneratorModal
@@ -1064,6 +2289,355 @@ export const AdminPanel: React.FC = () => {
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* New Client Subscription Modal */}
+      {showNewSubModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Repeat className="w-5 h-5 text-emerald-500" />
+                  <span>Cadastrar Nova Mensalidade Recorrente</span>
+                </h3>
+                <p className="text-xs text-slate-500">Contrato de serviço contínuo com cobrança automática recorrente.</p>
+              </div>
+              <button
+                onClick={() => setShowNewSubModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubscription} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome do Cliente / Empresa *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={subClientName}
+                  onChange={e => setSubClientName(e.target.value)}
+                  placeholder="Ex: Farmácia Vida & Saúde LTDA"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  E-mail do Cliente (Opcional - para vínculo de login)
+                </label>
+                <input
+                  type="email"
+                  value={subClientEmail}
+                  onChange={e => setSubClientEmail(e.target.value)}
+                  placeholder="contato@farmaciavida.com.br"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Serviço / Nome do Plano Contratado *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={subServiceName}
+                  onChange={e => setSubServiceName(e.target.value)}
+                  placeholder="Ex: Sustentação de App Mobile & Hospedagem AWS VIP"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Valor Mensal (R$) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={subMonthlyValue}
+                    onChange={e => setSubMonthlyValue(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-extrabold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Dia de Vencimento *
+                  </label>
+                  <select
+                    value={subBillingCycleDay}
+                    onChange={e => setSubBillingCycleDay(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value={5}>Dia 05</option>
+                    <option value={10}>Dia 10</option>
+                    <option value={15}>Dia 15</option>
+                    <option value={20}>Dia 20</option>
+                    <option value={25}>Dia 25</option>
+                    <option value={30}>Dia 30</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Forma Principal
+                  </label>
+                  <select
+                    value={subPaymentMethod}
+                    onChange={e => setSubPaymentMethod(e.target.value as any)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 uppercase"
+                  >
+                    <option value="pix">PIX</option>
+                    <option value="cartao">Cartão de Crédito</option>
+                    <option value="boleto">Boleto Bancário</option>
+                    <option value="transferencia">Transferência</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Observações / Escopo do Contrato
+                </label>
+                <textarea
+                  rows={2}
+                  value={subNotes}
+                  onChange={e => setSubNotes(e.target.value)}
+                  placeholder="Ex: Inclui até 8 horas de manutenção mensal e monitoramento de servidores 24/7."
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowNewSubModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Repeat className="w-4 h-4" />
+                  <span>Ativar Mensalidade</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EXCLUSIVO PARA ALTERAR MENSALIDADE DO CLIENTE */}
+      {showEditSubModal && editingSub && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
+                  <Settings className="w-4 h-4 text-blue-500" />
+                  <span>Painel Restrito • Alteração de Mensalidade</span>
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
+                  Alterar Valores de {editingSub.clientName}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditSubModal(false);
+                  setEditingSub(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditSub} className="space-y-4">
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Modalidade de Cobrança
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditSubBillingType('recorrente')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      editSubBillingType === 'recorrente'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <Repeat className="w-3.5 h-3.5" />
+                    <span>Mensalidade Recorrente</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditSubBillingType('valor_unico')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      editSubBillingType === 'valor_unico'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>Valor Final Único</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nome do Cliente / Empresa
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editSubClientName}
+                    onChange={e => setEditSubClientName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    E-mail do Cliente
+                  </label>
+                  <input
+                    type="email"
+                    value={editSubClientEmail}
+                    onChange={e => setEditSubClientEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome do Serviço / Plano Contratado
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editSubServiceName}
+                  onChange={e => setEditSubServiceName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {editSubBillingType === 'recorrente' ? 'Valor Mensal (R$)' : 'Valor da Parcela (R$)'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    value={editSubMonthlyValue}
+                    onChange={e => setEditSubMonthlyValue(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-emerald-600 dark:text-emerald-400 font-extrabold"
+                  />
+                </div>
+
+                {editSubBillingType === 'valor_unico' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Valor Final Único (R$)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editSubOneTimeTotalValue}
+                      onChange={e => setEditSubOneTimeTotalValue(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-purple-600 dark:text-purple-400 font-extrabold"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Dia Vencimento
+                  </label>
+                  <select
+                    value={editSubBillingCycleDay}
+                    onChange={e => setEditSubBillingCycleDay(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  >
+                    <option value={5}>Dia 05</option>
+                    <option value={10}>Dia 10</option>
+                    <option value={15}>Dia 15</option>
+                    <option value={20}>Dia 20</option>
+                    <option value={25}>Dia 25</option>
+                    <option value={30}>Dia 30</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Status do Contrato
+                  </label>
+                  <select
+                    value={editSubStatus}
+                    onChange={e => setEditSubStatus(e.target.value as SubscriptionStatus)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white uppercase"
+                  >
+                    <option value="ativo">Ativo</option>
+                    <option value="inadimplente">Inadimplente</option>
+                    <option value="suspenso">Suspenso</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Observações / Notas do Contrato
+                </label>
+                <textarea
+                  rows={2}
+                  value={editSubNotes}
+                  onChange={e => setEditSubNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditSubModal(false);
+                    setEditingSub(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Salvar Alterações de Mensalidade</span>
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
       )}

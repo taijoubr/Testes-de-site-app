@@ -112,9 +112,60 @@
         "createdAt": { "type": "string", "maxLength": 50 }
       },
       "required": ["id", "name", "email", "passwordHash"]
+    },
+    "SiteConfig": {
+      "title": "Site Config",
+      "description": "Configuração pública do site e informações institucionais",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string", "maxLength": 200 },
+        "logoUrl": { "type": "string" },
+        "heroBadge": { "type": "string", "maxLength": 300 },
+        "heroTitle": { "type": "string", "maxLength": 500 },
+        "heroSubtitle": { "type": "string", "maxLength": 2000 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "whatsapp": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 150 },
+        "address": { "type": "string", "maxLength": 300 },
+        "announcementBanner": { "type": "string", "maxLength": 500 },
+        "isAnnouncementActive": { "type": "boolean" },
+        "primaryColor": { "type": "string", "maxLength": 50 },
+        "maintenanceMode": { "type": "boolean" },
+        "lastUpdated": { "type": "string", "maxLength": 100 },
+        "updatedBy": { "type": "string", "maxLength": 100 }
+      }
+    },
+    "ClientSubscription": {
+      "title": "Client Subscription",
+      "description": "Mensalidades e assinaturas recorrentes de clientes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 100 },
+        "clientName": { "type": "string", "maxLength": 150 },
+        "clientEmail": { "type": "string", "maxLength": 150 },
+        "serviceName": { "type": "string", "maxLength": 200 },
+        "monthlyValue": { "type": "number" },
+        "billingCycleDay": { "type": "number" },
+        "status": { "type": "string", "enum": ["ativo", "inadimplente", "suspenso", "cancelado"] },
+        "startDate": { "type": "string", "maxLength": 50 },
+        "nextDueDate": { "type": "string", "maxLength": 50 },
+        "paymentMethod": { "type": "string", "enum": ["pix", "cartao", "boleto", "transferencia"] },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "lastPaymentDate": { "type": "string", "maxLength": 50 },
+        "pixCopyPaste": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "clientName", "serviceName", "monthlyValue", "billingCycleDay", "status", "nextDueDate"]
     }
   },
   "firestore": {
+    "/siteSettings/{settingsId}": {
+      "schema": { "$ref": "#/entities/SiteConfig" },
+      "description": "Configurações institucionais públicas e ao vivo do site"
+    },
+    "/clientSubscriptions/{subscriptionId}": {
+      "schema": { "$ref": "#/entities/ClientSubscription" },
+      "description": "Coleção de mensalidades e assinaturas recorrentes de clientes"
+    },
     "/quotes/{quoteId}": {
       "schema": { "$ref": "#/entities/QuoteRequest" },
       "description": "Coleção de orçamentos"

@@ -22,7 +22,7 @@ import { useApp } from '../context/AppContext';
 import { INITIAL_SERVICES, INITIAL_PORTFOLIO } from '../data/initialData';
 
 export const InstitutionalHome: React.FC = () => {
-  const { setActiveView, isAdminAuthenticated, isClientAuthenticated } = useApp();
+  const { setActiveView, isAdminAuthenticated, isClientAuthenticated, siteConfig } = useApp();
 
   return (
     <div className="space-y-24 pb-20">
@@ -34,131 +34,57 @@ export const InstitutionalHome: React.FC = () => {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-tr from-blue-600/20 via-indigo-600/10 to-transparent blur-3xl pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            {/* Hero Copy - Bento Main Tile */}
-            <div className="lg:col-span-7 space-y-8 text-center lg:text-left">
-              
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-950/80 border border-blue-800/60 text-blue-300 text-xs font-semibold uppercase tracking-wider backdrop-blur-md shadow-inner">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                <span>NCodes Technologies • Soluções Digitais Sob Medida</span>
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] text-white">
-                Transformamos ideias em <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent text-glow-blue">soluções digitais</span>.
-              </h1>
-
-              <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis em Flutter, sistemas web empresariais, automações com IA Gemini e APIs resilientes com sincronização Cloud Firestore em tempo real.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                <button
-                  onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
-                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-500/25 flex items-center justify-center gap-3 transition-all transform active:scale-95 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Acessar Área do Cliente</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => setActiveView('services')}
-                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800 text-slate-200 font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer backdrop-blur-sm"
-                >
-                  <span>Conhecer Nossos Serviços</span>
-                </button>
-              </div>
-
-              {/* Bento Stats Band */}
-              <div className="pt-8 border-t border-slate-800/80 grid grid-cols-3 gap-4 text-center lg:text-left">
-                <div className="p-3 rounded-2xl bg-slate-900/50 border border-slate-800/60 backdrop-blur-sm">
-                  <p className="text-2xl sm:text-3xl font-black text-white bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">100%</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Tempo Real & Nuvem</p>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-900/50 border border-slate-800/60 backdrop-blur-sm">
-                  <p className="text-2xl sm:text-3xl font-black text-white bg-gradient-to-r from-indigo-400 to-blue-400 bg-clip-text text-transparent">+50</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Sistemas Entregues</p>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-900/50 border border-slate-800/60 backdrop-blur-sm">
-                  <p className="text-2xl sm:text-3xl font-black text-white bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">99.9%</p>
-                  <p className="text-xs text-slate-400 mt-0.5">SLA de Disponibilidade</p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Visual Hero Mockup Graphic - Bento Card Preview */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-md lg:max-w-none">
-                
-                {/* Main Card Graphic */}
-                <div className="bento-card p-6 shadow-2xl space-y-4 relative overflow-hidden border border-blue-500/20">
-                  <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
-
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-rose-500/80 shadow-sm shadow-rose-500/50" />
-                      <div className="w-3 h-3 rounded-full bg-amber-500/80 shadow-sm shadow-amber-500/50" />
-                      <div className="w-3 h-3 rounded-full bg-emerald-500/80 shadow-sm shadow-emerald-500/50" />
-                    </div>
-                    <span className="text-[11px] font-mono text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded-full border border-cyan-800/50">
-                      ncodes-tech-core.v3
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between hover:border-blue-500/40 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                          <Smartphone className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white">Flutter Mobile App</p>
-                          <p className="text-[10px] text-slate-400">iOS & Android Real-time Sync</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Ativo</span>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between hover:border-indigo-500/40 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                          <BarChart3 className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white">Painel Web Admin</p>
-                          <p className="text-[10px] text-slate-400">Financeiro & Gestão de Projetos</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Sincronizado</span>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between hover:border-purple-500/40 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                          <Bot className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white">Gemini AI Engine</p>
-                          <p className="text-[10px] text-slate-400">Automação de Atendimento</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">24/7 Conectado</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80">
-                    <span className="text-[11px]">Cloud Firestore & FCM</span>
-                    <span className="text-cyan-400 font-mono text-[10px] bg-cyan-950/50 px-2 py-0.5 rounded">Latency: 12ms</span>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-8">
+          
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-950/80 border border-blue-800/60 text-blue-300 text-xs font-semibold uppercase tracking-wider backdrop-blur-md shadow-inner">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span>{siteConfig.heroBadge || 'Cadastre-se e solicite seu orçamento online'}</span>
           </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] text-white">
+            {siteConfig.heroTitle ? (
+              <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent text-glow-blue">
+                {siteConfig.heroTitle}
+              </span>
+            ) : (
+              <>Transformamos ideias em <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent text-glow-blue">soluções digitais</span>.</>
+            )}
+          </h1>
+
+          <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed max-w-2xl mx-auto">
+            {siteConfig.heroSubtitle || 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis, sistemas web empresariais, automações com IA e APIs na nuvem. Cadastre-se na nossa Área do Cliente para solicitar seu orçamento de forma rápida e segura.'}
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+            <button
+              onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-500/25 flex items-center justify-center gap-3 transition-all transform active:scale-95 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Cadastre-se e solicite seu orçamento</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setActiveView('services')}
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800 text-slate-200 font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer backdrop-blur-sm"
+            >
+              <span>Conhecer Nossos Serviços</span>
+            </button>
+          </div>
+
+          {/* Highlights Band */}
+          <div className="pt-8 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md mx-auto">
+            <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/60 backdrop-blur-sm text-center">
+              <p className="text-2xl font-black text-white bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">100%</p>
+              <p className="text-xs text-slate-400 mt-0.5">Tempo Real & Nuvem</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/60 backdrop-blur-sm text-center">
+              <p className="text-2xl font-black text-white bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">24/7</p>
+              <p className="text-xs text-slate-400 mt-0.5">Suporte & Monitoramento</p>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -431,17 +357,17 @@ export const InstitutionalHome: React.FC = () => {
           <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-cyan-400/20 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 max-w-2xl space-y-4">
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Pronto para levar seu projeto digital ao próximo nível?
+              Cadastre-se e solicite seu orçamento sem compromisso
             </h2>
             <p className="text-sm sm:text-base text-blue-100 leading-relaxed">
-              Acesse a Área do Cliente para solicitar novos orçamentos, acompanhar chamados e visualizar o andamento dos seus projetos em tempo real.
+              Crie sua conta em poucos segundos na Área do Cliente para enviar os detalhes do seu projeto, receber propostas com estimativa de IA e acompanhar todo o desenvolvimento em tempo real.
             </p>
             <div className="pt-2 flex flex-col sm:flex-row gap-4">
               <button
                 onClick={() => setActiveView(isClientAuthenticated ? 'client_portal' : 'client_auth')}
                 className="px-8 py-3.5 rounded-2xl bg-white text-blue-900 hover:bg-slate-100 font-bold text-sm shadow-xl transition-all cursor-pointer"
               >
-                Acessar Área do Cliente
+                Cadastre-se & Solicite seu Orçamento
               </button>
               <button
                 onClick={() => setActiveView('contact')}

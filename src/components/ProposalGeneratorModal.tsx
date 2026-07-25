@@ -13,7 +13,8 @@ export const ProposalGeneratorModal: React.FC<ProposalGeneratorModalProps> = ({ 
 
   const [title, setTitle] = useState(`Proposta Técnica e Comercial - ${quote.projectType}`);
   const [totalValue, setTotalValue] = useState(quote.aiAnalysis?.suggestedBudget || 18500);
-  const [paymentTerms, setPaymentTerms] = useState('30% de entrada no aceite digital + 3 parcelas mensais fixas via Pix.');
+  const [recurringMonthlyValue, setRecurringMonthlyValue] = useState(1200);
+  const [paymentTerms, setPaymentTerms] = useState('30% de entrada no aceite digital + parcelas mensais via Pix.');
   const [description, setDescription] = useState(`Desenvolvimento da solução ${quote.projectType} para a empresa ${quote.company || quote.clientName}.`);
 
   const [scopeItems, setScopeItems] = useState<string[]>([
@@ -54,6 +55,7 @@ export const ProposalGeneratorModal: React.FC<ProposalGeneratorModalProps> = ({ 
         { phase: 'Fase 4 - Homologação, Treinamento & Publicação Lojas', duration: '15 dias', deliverable: 'Lançamento oficial nas stores + documentação' }
       ],
       totalValue: Number(totalValue),
+      recurringMonthlyValue: Number(recurringMonthlyValue),
       paymentTerms,
       contractText: `CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TECNOLOGIA
 
@@ -105,10 +107,10 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Valor Total do Projeto (R$)
+                Valor Total (R$)
               </label>
               <div className="relative">
                 <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -124,6 +126,22 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Mensalidade (R$/mês)
+              </label>
+              <div className="relative">
+                <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="number"
+                  value={recurringMonthlyValue}
+                  onChange={e => setRecurringMonthlyValue(Number(e.target.value))}
+                  placeholder="Ex: 1200"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-bold text-blue-600 dark:text-blue-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Condições de Pagamento
               </label>
               <input
@@ -131,7 +149,7 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
                 required
                 value={paymentTerms}
                 onChange={e => setPaymentTerms(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
               />
             </div>
           </div>

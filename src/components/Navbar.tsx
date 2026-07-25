@@ -30,7 +30,8 @@ export const Navbar: React.FC = () => {
     setCurrentUserRole,
     notifications,
     isAdminAuthenticated,
-    isClientAuthenticated
+    isClientAuthenticated,
+    siteConfig
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -64,22 +65,34 @@ export const Navbar: React.FC = () => {
             onClick={() => handleNavClick('home')} 
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 p-0.5 shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Code2 className="w-6 h-6 text-blue-400 group-hover:rotate-12 transition-transform duration-200" />
+            {siteConfig?.logoUrl ? (
+              <div className="h-11 max-w-[180px] flex items-center justify-center p-1 rounded-xl bg-slate-900/10 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50 group-hover:scale-105 transition-transform duration-200">
+                <img 
+                  src={siteConfig.logoUrl} 
+                  alt={siteConfig.companyName || 'Logo'} 
+                  className="max-h-9 max-w-[160px] object-contain rounded"
+                />
               </div>
-            </div>
+            ) : (
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 p-0.5 shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
+                <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                  <Code2 className="w-6 h-6 text-blue-400 group-hover:rotate-12 transition-transform duration-200" />
+                </div>
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 dark:from-white dark:via-blue-100 dark:to-indigo-200 bg-clip-text text-transparent">
-                  NCodes
+                  {siteConfig?.companyName || 'NCodes'}
                 </span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50">
-                  Tech
-                </span>
+                {!siteConfig?.logoUrl && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50">
+                    Tech
+                  </span>
+                )}
               </div>
               <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 tracking-wider uppercase">
-                Technologies
+                {siteConfig?.logoUrl ? 'Soluções Digitais' : 'Technologies'}
               </p>
             </div>
           </div>
@@ -153,10 +166,10 @@ export const Navbar: React.FC = () => {
                   ? 'ring-2 ring-indigo-400'
                   : ''
               }`}
-              title="Área do Cliente (Login / Cadastro & Orçamentos)"
+              title="Cadastre-se e Solicite seu Orçamento na Área do Cliente"
             >
               <UserCheck className="w-4 h-4" />
-              <span>Área do Cliente</span>
+              <span>Cadastre-se & Solicite Orçamento</span>
             </button>
 
             {/* Padlock Icon for Admin Area */}
@@ -320,10 +333,10 @@ export const Navbar: React.FC = () => {
             </button>
             <button
               onClick={() => handleNavClick(isClientAuthenticated ? 'client_portal' : 'client_auth')}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold flex flex-col items-center justify-center gap-1 text-slate-800 dark:text-slate-200"
+              className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-950/40 text-xs font-semibold flex flex-col items-center justify-center gap-1 text-indigo-700 dark:text-indigo-300"
             >
               <UserCheck className="w-4 h-4 text-indigo-500" />
-              <span>Área Cliente</span>
+              <span>Cadastre-se & Orçamento</span>
             </button>
           </div>
 

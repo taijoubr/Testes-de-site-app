@@ -121,15 +121,15 @@ export const ClientAuthPage: React.FC = () => {
         <div className="lg:col-span-5 space-y-6 text-left">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold">
             <Sparkles className="w-4 h-4" />
-            <span>Área Exclusiva do Cliente</span>
+            <span>Cadastre-se e solicite seu orçamento</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
-            Gestão Transparente dos Seus <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Projetos & Orçamentos</span>
+            Cadastre-se e solicite seu <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">orçamento sob medida</span>
           </h1>
 
           <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-            Acesse o ambiente centralizado para solicitar e aprovar orçamentos, acompanhar o avanço das tarefas em tempo real, interagir com os desenvolvedores e visualizar entregáveis.
+            Crie sua conta gratuitamente para solicitar e aprovar orçamentos em minutos, contar com análise inteligente por IA, acompanhar o avanço das tarefas e interagir com nossa equipe em tempo real.
           </p>
 
           <div className="space-y-3 pt-2">
