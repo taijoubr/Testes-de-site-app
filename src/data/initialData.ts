@@ -190,7 +190,235 @@ export const INITIAL_PORTFOLIO: PortfolioProject[] = [
   }
 ];
 
-export const INITIAL_QUOTES: QuoteRequest[] = [];
+export const INITIAL_QUOTES: QuoteRequest[] = [
+  {
+    id: 'ORC-2026-001',
+    clientName: 'Carlos Eduardo Santos',
+    company: 'Santos Logistics & Tech',
+    email: 'carlos@santoslogistics.com.br',
+    phone: '(11) 98765-4321',
+    whatsapp: '(11) 98765-4321',
+    city: 'São Paulo',
+    state: 'SP',
+    projectType: 'Sistema Web Empresarial (ERP / SaaS)',
+    projectTitle: 'Plataforma SaaS de Gestão de Frota & Logística',
+    category: 'Sistemas Web',
+    description: 'Necessitamos de um sistema web completo para controle de frotas, rotas, comissões de motoristas e integração via webhook com rastreadores GPS. Painel administrativo em React + backend seguro.',
+    deadline: '45 dias úteis',
+    budgetRange: 'R$ 20.000 a R$ 35.000',
+    status: 'orcamento_disponivel',
+    createdAt: '2026-07-20T10:15:00.000Z',
+    updatedAt: '2026-07-25T14:30:00.000Z',
+    assignedTo: 'usr-1',
+    assignedToName: 'Nikolas P.',
+    assignedToRole: 'Engenheiro Chefe de Software',
+    offeredValue: 28500,
+    offeredDeadline: '40 dias úteis',
+    paymentTerms: '50% de entrada + 3 parcelas mensais de 16,66% sem juros ou 10% de desconto à vista via Pix',
+    scopeItems: [
+      'Painel Web Administrativo Responsivo em React + Vite',
+      'API RESTful em Node.js / Express com Criptografia de Dados',
+      'Módulo de Rastreamento GPS e Integração de Telemetria',
+      'Gestão de Custos de Frota e Manutenção Preventiva',
+      'Relatórios Interativos em PDF e Excel',
+      'Controle Avançado de Permissões (RBAC) e Audit Log'
+    ],
+    selectedFeatures: [
+      'Autenticação de Usuários',
+      'Painel de Relatórios & BI',
+      'Exportação PDF / Excel',
+      'Notificações em Tempo Real',
+      'Integrações via API'
+    ],
+    attachments: [
+      {
+        id: 'att-101',
+        name: 'Especificacao_Tecnica_Frota_NCodes.pdf',
+        size: '2.4 MB',
+        type: 'application/pdf',
+        uploadedBy: 'Engenharia NCodes',
+        uploadedRole: 'admin',
+        createdAt: '2026-07-24T16:00:00.000Z',
+        url: '#'
+      },
+      {
+        id: 'att-102',
+        name: 'Diagrama_Arquitetura_SaaS.png',
+        size: '1.1 MB',
+        type: 'image/png',
+        uploadedBy: 'Engenharia NCodes',
+        uploadedRole: 'admin',
+        createdAt: '2026-07-24T16:05:00.000Z',
+        url: '#'
+      }
+    ],
+    timeline: [
+      {
+        id: 'tl-1',
+        timestamp: '2026-07-20T10:15:00.000Z',
+        dateStr: '20/07/2026',
+        timeStr: '10:15',
+        user: 'Carlos Eduardo Santos (Cliente)',
+        userRole: 'client',
+        statusChangedTo: 'solicitado',
+        statusLabel: 'Solicitação Enviada',
+        notes: 'Solicitação de orçamento enviada através do Portal do Cliente.'
+      },
+      {
+        id: 'tl-2',
+        timestamp: '2026-07-20T10:16:00.000Z',
+        dateStr: '20/07/2026',
+        timeStr: '10:16',
+        user: 'IA Engenharia NCodes',
+        userRole: 'system',
+        statusChangedTo: 'em_analise',
+        statusLabel: 'Em Análise',
+        notes: 'Análise técnica de viabilidade e estimativa de esforço iniciada por Inteligência Artificial.'
+      },
+      {
+        id: 'tl-3',
+        timestamp: '2026-07-22T11:00:00.000Z',
+        dateStr: '22/07/2026',
+        timeStr: '11:00',
+        user: 'Nikolas P. (Atendimento)',
+        userRole: 'admin',
+        statusChangedTo: 'em_analise',
+        statusLabel: 'Atendimento Atribuído',
+        notes: 'Projeto atribuído ao Engenheiro Nikolas P. para refinamento de escopo e precificação.'
+      },
+      {
+        id: 'tl-4',
+        timestamp: '2026-07-25T14:30:00.000Z',
+        dateStr: '25/07/2026',
+        timeStr: '14:30',
+        user: 'Nikolas P. (Atendimento)',
+        userRole: 'admin',
+        statusChangedTo: 'orcamento_disponivel',
+        statusLabel: 'Orçamento Disponível',
+        notes: 'Orçamento técnico concluído! Proposta comercial no valor de R$ 28.500,00 liberada para avaliação e aprovação do cliente.'
+      }
+    ],
+    aiAnalysis: {
+      recommendedTech: ['React', 'Node.js', 'PostgreSQL', 'Tailwind CSS', 'Recharts'],
+      estimatedHours: 160,
+      suggestedBudget: 28500,
+      complexity: 'Alta',
+      summary: 'Projeto de alta complexidade com requisitos rigorosos de integração e visualização gráfica de dados de telemetria.'
+    }
+  },
+  {
+    id: 'ORC-2026-002',
+    clientName: 'Mariana Lima',
+    company: 'FinPay Digital',
+    email: 'mariana@finpaydigital.com.br',
+    phone: '(11) 97777-6666',
+    whatsapp: '(11) 97777-6666',
+    city: 'Campinas',
+    state: 'SP',
+    projectType: 'Aplicativo Mobile iOS/Android + Painel Web',
+    projectTitle: 'Aplicativo Móvel de Pagamentos Pix & Carteira Digital',
+    category: 'Aplicativos Mobile',
+    description: 'Desenvolvimento de app Flutter com autenticação por biometria, geração de QR Code Pix copia-e-cola e painel de conciliação financeira.',
+    deadline: '60 dias',
+    budgetRange: 'R$ 35.000 a R$ 50.000',
+    status: 'em_negociacao',
+    createdAt: '2026-07-22T09:00:00.000Z',
+    updatedAt: '2026-07-26T11:20:00.000Z',
+    assignedTo: 'usr-1',
+    assignedToName: 'Nikolas P.',
+    assignedToRole: 'Gerente de Contas',
+    offeredValue: 42000,
+    offeredDeadline: '50 dias úteis',
+    paymentTerms: '40% entrada + 3x de 20% conforme marcos de entrega',
+    scopeItems: [
+      'Aplicativo iOS & Android em Flutter com biometria',
+      'Integração de APIs de Pagamento Pix (BACEN)',
+      'Painel Web de Conciliação Financeira',
+      'Notificações Push via Firebase Cloud Messaging'
+    ],
+    timeline: [
+      {
+        id: 'tl-201',
+        timestamp: '2026-07-22T09:00:00.000Z',
+        dateStr: '22/07/2026',
+        timeStr: '09:00',
+        user: 'Mariana Lima (Cliente)',
+        userRole: 'client',
+        statusChangedTo: 'solicitado',
+        statusLabel: 'Solicitação Enviada',
+        notes: 'Solicitação enviada com especificação de carteira digital.'
+      },
+      {
+        id: 'tl-202',
+        timestamp: '2026-07-24T10:00:00.000Z',
+        dateStr: '24/07/2026',
+        timeStr: '10:00',
+        user: 'Nikolas P.',
+        userRole: 'admin',
+        statusChangedTo: 'orcamento_disponivel',
+        statusLabel: 'Orçamento Liberado',
+        notes: 'Valor proposto: R$ 42.000,00 para entrega completa em 50 dias úteis.'
+      },
+      {
+        id: 'tl-203',
+        timestamp: '2026-07-26T11:20:00.000Z',
+        dateStr: '26/07/2026',
+        timeStr: '11:20',
+        user: 'Mariana Lima (Cliente)',
+        userRole: 'client',
+        statusChangedTo: 'em_negociacao',
+        statusLabel: 'Em Negociação',
+        notes: 'Cliente solicitou ajuste na condição de pagamento e inclusão de recurso de cashback.'
+      }
+    ]
+  },
+  {
+    id: 'ORC-2026-003',
+    clientName: 'Roberto Alves',
+    company: 'Alves & Associados',
+    email: 'roberto@alvesadvocacia.com.br',
+    phone: '(21) 99888-1122',
+    whatsapp: '(21) 99888-1122',
+    city: 'Rio de Janeiro',
+    state: 'RJ',
+    projectType: 'Automações com Inteligência Artificial / Gemini',
+    projectTitle: 'Agente de IA para Triagem e Atendimento Jurídico',
+    category: 'Inteligência Artificial',
+    description: 'Sistema com agente IA Gemini para triagem de contratos, agendamento automático e respostas a clientes do escritório no WhatsApp.',
+    deadline: '30 dias',
+    budgetRange: 'R$ 10.000 a R$ 20.000',
+    status: 'aguardando_informacoes',
+    createdAt: '2026-07-25T15:00:00.000Z',
+    updatedAt: '2026-07-26T08:45:00.000Z',
+    assignedTo: 'usr-1',
+    assignedToName: 'Nikolas P.',
+    assignedToRole: 'Engenheiro AI',
+    timeline: [
+      {
+        id: 'tl-301',
+        timestamp: '2026-07-25T15:00:00.000Z',
+        dateStr: '25/07/2026',
+        timeStr: '15:00',
+        user: 'Roberto Alves (Cliente)',
+        userRole: 'client',
+        statusChangedTo: 'solicitado',
+        statusLabel: 'Solicitação Enviada',
+        notes: 'Solicitação de automação com IA cadastrada.'
+      },
+      {
+        id: 'tl-302',
+        timestamp: '2026-07-26T08:45:00.000Z',
+        dateStr: '26/07/2026',
+        timeStr: '08:45',
+        user: 'Nikolas P. (Engenharia NCodes)',
+        userRole: 'admin',
+        statusChangedTo: 'aguardando_informacoes',
+        statusLabel: 'Aguardando Informações',
+        notes: 'Solicitamos dados adicionais: "Por gentileza, informe qual API de WhatsApp (Z-API ou Meta Cloud API) vocês utilizam atualmente no escritório?"'
+      }
+    ]
+  }
+];
 
 export const INITIAL_PROPOSALS: Proposal[] = [];
 

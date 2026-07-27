@@ -28,9 +28,13 @@ import {
   ExternalLink,
   Bot,
   Repeat,
-  Check
+  Check,
+  History,
+  AlertTriangle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { QuoteTrackerModal } from '../components/QuoteTrackerModal';
+import { QuoteRequest } from '../types';
 
 export const ClientPortal: React.FC = () => {
   const { 
@@ -52,6 +56,9 @@ export const ClientPortal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'quotes' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
   
+  // Quote Tracker Modal State
+  const [selectedQuoteForTracker, setSelectedQuoteForTracker] = useState<QuoteRequest | null>(null);
+
   // Quote Modal State
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [description, setDescription] = useState('');
@@ -330,6 +337,8 @@ export const ClientPortal: React.FC = () => {
               <div className="grid grid-cols-1 gap-6">
                 {myQuotes.map(quote => {
                   const associatedProp = proposals.find(p => p.quoteId === quote.id || p.id === quote.proposalId);
+                  const isPendingInfo = quote.status === 'aguardando_informacoes';
+
                   return (
                     <div 
                       key={quote.id}
@@ -337,45 +346,89 @@ export const ClientPortal: React.FC = () => {
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 border-slate-100 dark:border-slate-800">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{quote.id}</span>
                             <span className="text-slate-300">•</span>
                             <span className="text-xs font-semibold text-slate-500">{new Date(quote.createdAt).toLocaleDateString('pt-BR')}</span>
+                            {quote.assignedToName && (
+                              <>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-[11px] text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                                  Resp: {quote.assignedToName}
+                                </span>
+                              </>
+                            )}
                           </div>
                           <h4 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
-                            Solicitação de Orçamento #{quote.id}
+                            {quote.projectTitle || quote.projectType || `Solicitação #${quote.id}`}
                           </h4>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase ${
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase flex items-center gap-1.5 ${
                             quote.status === 'aprovado' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                            quote.status === 'proposta_enviada' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' :
+                            quote.status === 'orcamento_disponivel' || quote.status === 'proposta_enviada' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                            quote.status === 'aguardando_informacoes' ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 animate-pulse' :
                             quote.status === 'em_analise' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' :
+                            quote.status === 'recusado' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' :
                             'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                           }`}>
-                            {(quote.status || '').replace('_', ' ')}
+                            <span className="w-2 h-2 rounded-full bg-current" />
+                            {quote.status === 'solicitado' ? 'Solicitação Enviada' :
+                             quote.status === 'em_analise' ? 'Em Análise Técnica' :
+                             quote.status === 'aguardando_informacoes' ? 'Aguardando Informações' :
+                             quote.status === 'orcamento_disponivel' ? 'Orçamento Disponível' :
+                             (quote.status || '').replace('_', ' ')}
                           </span>
                         </div>
                       </div>
+
+                      {/* Pending Info Alert */}
+                      {isPendingInfo && (
+                        <div className="p-3.5 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-between gap-3 text-xs text-orange-300">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
+                            <span>A equipe solicitou dados adicionais para concluir o orçamento.</span>
+                          </div>
+                          <button
+                            onClick={() => setSelectedQuoteForTracker(quote)}
+                            className="px-3 py-1 bg-orange-500 text-slate-950 font-bold rounded-lg text-xs hover:bg-orange-400 shrink-0"
+                          >
+                            Responder
+                          </button>
+                        </div>
+                      )}
 
                       <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                         <strong className="block text-slate-900 dark:text-white mb-1">Descrição do Projeto:</strong>
                         {quote.description}
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                         <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
                           <span className="text-slate-400 text-[10px] uppercase font-bold block">Prazo Estimado</span>
-                          <span className="font-bold text-slate-900 dark:text-white">{quote.deadline}</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{quote.offeredDeadline || quote.deadline}</span>
                         </div>
                         <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Faixa de Investimento</span>
-                          <span className="font-bold text-slate-900 dark:text-white">{quote.budgetRange}</span>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Valor Oferecido / Faixa</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            {quote.offeredValue ? `R$ ${quote.offeredValue.toLocaleString('pt-BR')}` : quote.budgetRange}
+                          </span>
                         </div>
-                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 col-span-2 sm:col-span-1">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Contato do Projeto</span>
-                          <span className="font-bold text-slate-900 dark:text-white truncate block">{quote.phone}</span>
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Última Atualização</span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {quote.updatedAt ? new Date(quote.updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Recente'}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-center">
+                          <button
+                            onClick={() => setSelectedQuoteForTracker(quote)}
+                            className="w-full h-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+                          >
+                            <History className="w-3.5 h-3.5" />
+                            <span>Ver Linha do Tempo</span>
+                          </button>
                         </div>
                       </div>
 
@@ -944,6 +997,14 @@ export const ClientPortal: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Quote Tracker Modal */}
+      {selectedQuoteForTracker && (
+        <QuoteTrackerModal
+          quote={selectedQuoteForTracker}
+          onClose={() => setSelectedQuoteForTracker(null)}
+        />
       )}
 
     </div>

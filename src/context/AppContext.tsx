@@ -20,6 +20,9 @@ const saveDoc = async (colName: string, id: string, data: any) => {
 };
 import { 
   QuoteRequest, 
+  QuoteAttachment,
+  QuoteTimelineItem,
+  QuoteVersion,
   Proposal, 
   Project, 
   FinancialTransaction, 
@@ -134,6 +137,14 @@ interface AppContextType {
   createProposal: (data: Omit<Proposal, 'id' | 'createdAt' | 'status'>) => Proposal;
   acceptProposal: (proposalId: string, signatureName: string) => Promise<void>;
   updateQuoteStatus: (quoteId: string, status: QuoteStatus, customMessage?: string) => Promise<void>;
+  updateQuoteDetails: (quoteId: string, updates: Partial<QuoteRequest>, notes?: string) => Promise<void>;
+  addQuoteTimelineItem: (quoteId: string, notes: string, user?: string, userRole?: 'admin' | 'client' | 'system', statusChangedTo?: QuoteStatus) => Promise<void>;
+  addQuoteAttachment: (quoteId: string, attachment: Omit<QuoteAttachment, 'id' | 'createdAt'>) => Promise<void>;
+  approveQuoteByClient: (quoteId: string) => Promise<void>;
+  refuseQuoteByClient: (quoteId: string, reason?: string) => Promise<void>;
+  requestQuoteChangesByClient: (quoteId: string, changeRequestText: string) => Promise<void>;
+  respondToQuoteRequest: (quoteId: string, responseText: string) => Promise<void>;
+  convertQuoteToProject: (quoteId: string) => Promise<string | undefined>;
   deleteQuote: (quoteId: string) => Promise<void>;
   
   toggleProjectTask: (projectId: string, taskId: string) => void;
@@ -1028,28 +1039,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateQuoteStatus = async (quoteId: string, status: QuoteStatus, customMessage?: string) => {
     const q = quotes.find(item => item.id === quoteId);
     if (q) {
+      const nowISO = new Date().toISOString();
+      const dateObj = new Date();
+      const dateStr = dateObj.toLocaleDateString('pt-BR');
+      const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      const statusLabels: Record<QuoteStatus, string> = {
+        solicitado: 'Solicitação Enviada',
+        em_analise: 'Em Análise',
+        aguardando_informacoes: 'Aguardando Informações',
+        orcamento_disponivel: 'Orçamento Disponível',
+        proposta_enviada: 'Orçamento Disponível',
+        em_negociacao: 'Em Negociação',
+        aprovado: 'Aprovado',
+        recusado: 'Recusado',
+        rejeitado: 'Recusado',
+        cancelado: 'Cancelado'
+      };
+
+      const newTimelineItem = {
+        id: `tl-${Date.now()}`,
+        timestamp: nowISO,
+        dateStr,
+        timeStr,
+        user: currentAdminUser ? `${currentAdminUser.name} (Atendimento)` : 'Equipe NCodes',
+        userRole: 'admin' as const,
+        statusChangedTo: status,
+        statusLabel: statusLabels[status] || status,
+        notes: customMessage || `Status alterado para ${statusLabels[status] || status}.`
+      };
+
+      const existingTimeline = q.timeline || [];
+
       const updated = { 
         ...q, 
         status, 
         adminNotes: customMessage || q.adminNotes,
-        updatedAt: new Date().toISOString() 
+        updatedAt: nowISO,
+        timeline: [...existingTimeline, newTimelineItem]
       };
+
       try {
         await setDoc(doc(db, 'quotes', quoteId), updated);
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
       }
-
-      const statusLabels: Record<QuoteStatus, string> = {
-        solicitado: 'Solicitado',
-        em_analise: 'Em Análise Técnica',
-        em_elaboracao: 'Em Elaboração de Proposta',
-        proposta_enviada: 'Proposta Emitida',
-        em_negociacao: 'Em Negociação',
-        aprovado: 'Aprovado / Em Execução',
-        rejeitado: 'Recusado',
-        cancelado: 'Cancelado'
-      };
 
       // Notify Client via Email
       if (q.email) {
@@ -1081,7 +1115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await addNotification(
         'Posicionamento de Orçamento Atualizado',
-        `Status do orçamento #${quoteId} (${q.clientName}) alterado para ${statusLabels[status] || status}. E-mail enviado ao cliente.`,
+        `Status do orçamento #${quoteId} (${q.clientName}) alterado para ${statusLabels[status] || status}.`,
         'quote'
       );
 
@@ -1093,13 +1127,375 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           senderName: 'NCodes Tech',
           senderRole: 'admin',
           senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80',
-          text: `🔔 Atualização do Orçamento #${quoteId}: O status do seu projeto foi alterado para "${statusLabels[status] || status}". ${customMessage ? `\n\nObservação da equipe: "${customMessage}"` : ''}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          text: `🔔 Atualização do Orçamento #${quoteId}: Status alterado para "${statusLabels[status] || status}". ${customMessage ? `\n\nObservação: "${customMessage}"` : ''}`,
+          timestamp: timeStr
         };
         await saveDoc('chatMessages', updateChatMsg.id, updateChatMsg);
       } catch (chatErr) {
         console.warn('Status update chat message save error:', chatErr);
       }
+    }
+  };
+
+  const updateQuoteDetails = async (quoteId: string, updates: Partial<QuoteRequest>, notes?: string) => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+    const dateStr = dateObj.toLocaleDateString('pt-BR');
+    const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // Versioning
+    const currentVersions = q.versions || [];
+    const newVersion = {
+      versionNumber: currentVersions.length + 1,
+      updatedAt: nowISO,
+      updatedBy: currentAdminUser ? currentAdminUser.name : 'Equipe NCodes',
+      value: updates.offeredValue ?? q.offeredValue,
+      estimatedDays: updates.offeredDeadline ?? q.offeredDeadline,
+      paymentTerms: updates.paymentTerms ?? q.paymentTerms,
+      notes: notes || 'Atualização dos valores e escopo do orçamento'
+    };
+
+    const newTimelineItem = {
+      id: `tl-${Date.now()}`,
+      timestamp: nowISO,
+      dateStr,
+      timeStr,
+      user: currentAdminUser ? `${currentAdminUser.name} (Atendimento)` : 'Equipe NCodes',
+      userRole: 'admin' as const,
+      statusChangedTo: updates.status || q.status,
+      statusLabel: 'Orçamento Atualizado',
+      notes: notes || `Valores/Escopo atualizados. Valor: R$ ${(updates.offeredValue || q.offeredValue || 0).toLocaleString('pt-BR')}`
+    };
+
+    const updatedQuote: QuoteRequest = {
+      ...q,
+      ...updates,
+      updatedAt: nowISO,
+      versions: [...currentVersions, newVersion],
+      timeline: [...(q.timeline || []), newTimelineItem]
+    };
+
+    try {
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+      await addNotification('Orçamento Atualizado', `Valores do orçamento #${quoteId} foram atualizados pela equipe.`, 'quote');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
+    }
+  };
+
+  const addQuoteTimelineItem = async (
+    quoteId: string, 
+    notes: string, 
+    user?: string, 
+    userRole: 'admin' | 'client' | 'system' = 'admin',
+    statusChangedTo?: QuoteStatus
+  ) => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+    const item = {
+      id: `tl-${Date.now()}`,
+      timestamp: nowISO,
+      dateStr: dateObj.toLocaleDateString('pt-BR'),
+      timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      user: user || (userRole === 'client' ? (currentClientUser?.name || 'Cliente') : 'Equipe NCodes'),
+      userRole,
+      statusChangedTo: statusChangedTo || q.status,
+      statusLabel: statusChangedTo ? statusChangedTo : undefined,
+      notes
+    };
+
+    const updatedQuote = {
+      ...q,
+      updatedAt: nowISO,
+      timeline: [...(q.timeline || []), item]
+    };
+
+    try {
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
+    }
+  };
+
+  const addQuoteAttachment = async (quoteId: string, attachment: Omit<QuoteAttachment, 'id' | 'createdAt'>) => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return;
+
+    const nowISO = new Date().toISOString();
+    const newAtt: QuoteAttachment = {
+      ...attachment,
+      id: `att-${Date.now()}`,
+      createdAt: nowISO
+    };
+
+    const dateObj = new Date();
+    const timelineEntry = {
+      id: `tl-${Date.now()}`,
+      timestamp: nowISO,
+      dateStr: dateObj.toLocaleDateString('pt-BR'),
+      timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      user: attachment.uploadedBy,
+      userRole: attachment.uploadedRole,
+      notes: `Anexo enviado: ${attachment.name} (${attachment.size})`,
+      attachments: [newAtt]
+    };
+
+    const updatedQuote = {
+      ...q,
+      updatedAt: nowISO,
+      attachments: [...(q.attachments || []), newAtt],
+      timeline: [...(q.timeline || []), timelineEntry]
+    };
+
+    try {
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
+    }
+  };
+
+  const approveQuoteByClient = async (quoteId: string) => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+
+    const timelineItem = {
+      id: `tl-${Date.now()}`,
+      timestamp: nowISO,
+      dateStr: dateObj.toLocaleDateString('pt-BR'),
+      timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      user: currentClientUser ? `${currentClientUser.name} (Cliente)` : (q.clientName || 'Cliente'),
+      userRole: 'client' as const,
+      statusChangedTo: 'aprovado' as QuoteStatus,
+      statusLabel: 'Aprovado pelo Cliente',
+      notes: 'Orçamento e proposta comercial aprovados pelo cliente no Portal.'
+    };
+
+    const updatedQuote: QuoteRequest = {
+      ...q,
+      status: 'aprovado',
+      updatedAt: nowISO,
+      timeline: [...(q.timeline || []), timelineItem]
+    };
+
+    try {
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+      await addNotification('Orçamento Aprovado pelo Cliente! 🎉', `O cliente ${q.clientName} aprovou o orçamento #${quoteId}.`, 'quote');
+      
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+
+      // Auto convert to Project if not converted yet
+      if (!q.convertedProjectId) {
+        await convertQuoteToProject(quoteId);
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
+    }
+  };
+
+  const refuseQuoteByClient = async (quoteId: string, reason?: string) => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+
+    const timelineItem = {
+      id: `tl-${Date.now()}`,
+      timestamp: nowISO,
+      dateStr: dateObj.toLocaleDateString('pt-BR'),
+      timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      user: currentClientUser ? `${currentClientUser.name} (Cliente)` : (q.clientName || 'Cliente'),
+      userRole: 'client' as const,
+      statusChangedTo: 'recusado' as QuoteStatus,
+      statusLabel: 'Recusado pelo Cliente',
+      notes: reason ? `Orçamento recusado pelo cliente. Motivo informado: "${reason}"` : 'Orçamento recusado pelo cliente.'
+    };
+
+    const updatedQuote: QuoteRequest = {
+      ...q,
+      status: 'recusado',
+      refusalReason: reason,
+      updatedAt: nowISO,
+      timeline: [...(q.timeline || []), timelineItem]
+    };
+
+    try {
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+      await addNotification('Orçamento Recusado', `O cliente ${q.clientName} recusou o orçamento #${quoteId}. Motivo: ${reason || 'Não informado'}`, 'quote');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
+    }
+  };
+
+  const requestQuoteChangesByClient = async (quoteId: string, changeRequestText: string) => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+
+    const timelineItem = {
+      id: `tl-${Date.now()}`,
+      timestamp: nowISO,
+      dateStr: dateObj.toLocaleDateString('pt-BR'),
+      timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      user: currentClientUser ? `${currentClientUser.name} (Cliente)` : (q.clientName || 'Cliente'),
+      userRole: 'client' as const,
+      statusChangedTo: 'em_negociacao' as QuoteStatus,
+      statusLabel: 'Solicitação de Alteração',
+      notes: `Solicitação de alteração do cliente: "${changeRequestText}"`
+    };
+
+    const updatedQuote: QuoteRequest = {
+      ...q,
+      status: 'em_negociacao',
+      updatedAt: nowISO,
+      timeline: [...(q.timeline || []), timelineItem]
+    };
+
+    try {
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+      await addNotification('Solicitação de Ajuste de Orçamento', `${q.clientName} solicitou ajustes no orçamento #${quoteId}: "${changeRequestText.slice(0, 60)}..."`, 'quote');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
+    }
+  };
+
+  const respondToQuoteRequest = async (quoteId: string, responseText: string) => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+
+    const isClient = !!currentClientUser;
+    const newStatus: QuoteStatus = isClient ? 'em_analise' : 'aguardando_informacoes';
+
+    const timelineItem = {
+      id: `tl-${Date.now()}`,
+      timestamp: nowISO,
+      dateStr: dateObj.toLocaleDateString('pt-BR'),
+      timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      user: isClient ? `${currentClientUser?.name} (Cliente)` : (currentAdminUser ? `${currentAdminUser.name} (Atendimento)` : 'Equipe NCodes'),
+      userRole: isClient ? ('client' as const) : ('admin' as const),
+      statusChangedTo: newStatus,
+      statusLabel: isClient ? 'Informações Fornecidas' : 'Informações Solicitadas',
+      notes: responseText
+    };
+
+    const updatedQuote: QuoteRequest = {
+      ...q,
+      status: newStatus,
+      updatedAt: nowISO,
+      timeline: [...(q.timeline || []), timelineItem]
+    };
+
+    try {
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+      await addNotification('Resposta ao Orçamento', `Nova mensagem registrada no orçamento #${quoteId}.`, 'quote');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
+    }
+  };
+
+  const convertQuoteToProject = async (quoteId: string): Promise<string | undefined> => {
+    const q = quotes.find(item => item.id === quoteId);
+    if (!q) return undefined;
+
+    const newProjectId = `PRJ-${Date.now().toString().slice(-5)}`;
+    const nowISO = new Date().toISOString();
+
+    const initialTasks = (q.scopeItems && q.scopeItems.length > 0)
+      ? q.scopeItems.map((item, idx) => ({
+          id: `tsk-${idx + 1}`,
+          title: item,
+          completed: false,
+          category: 'Desenvolvimento'
+        }))
+      : [
+          { id: 'tsk-1', title: 'Alinhamento de Escopo e Arquitetura', completed: true, category: 'Planejamento' },
+          { id: 'tsk-2', title: 'Criação de Protótipos UI/UX', completed: false, category: 'Design' },
+          { id: 'tsk-3', title: 'Desenvolvimento do Frontend Responsivo', completed: false, category: 'Desenvolvimento' },
+          { id: 'tsk-4', title: 'Desenvolvimento de APIs e Banco de Dados', completed: false, category: 'Backend' },
+          { id: 'tsk-5', title: 'Homologação e Testes de Segurança', completed: false, category: 'QA' },
+          { id: 'tsk-6', title: 'Lançamento & Publicação em Produção', completed: false, category: 'Lançamento' }
+        ];
+
+    const projectFiles = (q.attachments || []).map(att => ({
+      id: att.id,
+      name: att.name,
+      size: att.size,
+      uploadedBy: att.uploadedBy,
+      date: new Date(att.createdAt).toLocaleDateString('pt-BR'),
+      type: (att.name.endsWith('.pdf') ? 'pdf' : att.name.endsWith('.png') || att.name.endsWith('.jpg') ? 'image' : 'doc') as any,
+      url: att.url
+    }));
+
+    const newProject: Project = {
+      id: newProjectId,
+      title: q.projectTitle || q.projectType || 'Novo Projeto NCodes',
+      clientName: q.clientName,
+      clientId: q.email,
+      category: q.category || q.projectType,
+      description: q.description,
+      status: 'planejamento',
+      progressPercentage: 5,
+      estimatedHours: q.aiAnalysis?.estimatedHours || 120,
+      completedHours: 0,
+      team: ['Nikolas P. (Engenheiro Chefe)', 'Lucas V. (Dev Lead)', 'Carolina M. (Design Lead)'],
+      technologies: q.aiAnalysis?.recommendedTech || ['React', 'TypeScript', 'Node.js', 'Tailwind CSS'],
+      startDate: new Date().toLocaleDateString('pt-BR'),
+      endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
+      tasks: initialTasks,
+      files: projectFiles,
+      proposalId: q.proposalId
+    };
+
+    try {
+      await saveDoc('projects', newProjectId, newProject);
+
+      // Update quote with convertedProjectId
+      const updatedQuote = {
+        ...q,
+        status: 'aprovado' as QuoteStatus,
+        convertedProjectId: newProjectId,
+        updatedAt: nowISO,
+        timeline: [
+          ...(q.timeline || []),
+          {
+            id: `tl-${Date.now()}`,
+            timestamp: nowISO,
+            dateStr: new Date().toLocaleDateString('pt-BR'),
+            timeStr: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            user: 'Sistema NCodes',
+            userRole: 'system' as const,
+            statusChangedTo: 'aprovado' as QuoteStatus,
+            statusLabel: 'Convertido em Projeto',
+            notes: `Orçamento #${quoteId} convertido em projeto de execução real #${newProjectId}.`
+          }
+        ]
+      };
+      await setDoc(doc(db, 'quotes', quoteId), updatedQuote);
+
+      await addNotification('Projeto Criado com Sucesso! 🚀', `Orçamento #${quoteId} convertido no Projeto #${newProjectId}.`, 'project');
+
+      return newProjectId;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `projects/${newProjectId}`);
+      return undefined;
     }
   };
 
@@ -1444,6 +1840,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createProposal,
       acceptProposal,
       updateQuoteStatus,
+      updateQuoteDetails,
+      addQuoteTimelineItem,
+      addQuoteAttachment,
+      approveQuoteByClient,
+      refuseQuoteByClient,
+      requestQuoteChangesByClient,
+      respondToQuoteRequest,
+      convertQuoteToProject,
       deleteQuote,
       toggleProjectTask,
       addProjectHours,

@@ -46,12 +46,48 @@ export interface ClientUser {
 export type QuoteStatus = 
   | 'solicitado' 
   | 'em_analise' 
-  | 'em_elaboracao' 
+  | 'aguardando_informacoes'
+  | 'orcamento_disponivel'
   | 'proposta_enviada' 
   | 'em_negociacao' 
   | 'aprovado' 
+  | 'recusado'
   | 'rejeitado' 
   | 'cancelado';
+
+export interface QuoteAttachment {
+  id: string;
+  name: string;
+  size: string;
+  type: string;
+  uploadedBy: string;
+  uploadedRole: 'admin' | 'client';
+  createdAt: string;
+  url: string;
+}
+
+export interface QuoteTimelineItem {
+  id: string;
+  timestamp: string;
+  dateStr?: string;
+  timeStr?: string;
+  user: string;
+  userRole: 'admin' | 'client' | 'system';
+  statusChangedTo?: QuoteStatus;
+  statusLabel?: string;
+  notes: string;
+  attachments?: QuoteAttachment[];
+}
+
+export interface QuoteVersion {
+  versionNumber: number;
+  updatedAt: string;
+  updatedBy: string;
+  value?: number;
+  estimatedDays?: string;
+  paymentTerms?: string;
+  notes?: string;
+}
 
 export interface QuoteRequest {
   id: string;
@@ -75,6 +111,23 @@ export interface QuoteRequest {
   selectedFeatures?: string[];
   references?: string;
   additionalNotes?: string;
+  
+  // Responsável e Valores Oferecidos
+  assignedTo?: string;
+  assignedToName?: string;
+  assignedToRole?: string;
+  
+  offeredValue?: number;
+  offeredDeadline?: string;
+  paymentTerms?: string;
+  scopeItems?: string[];
+  refusalReason?: string;
+  
+  // Anexos, Linha do Tempo e Versões
+  attachments?: QuoteAttachment[];
+  timeline?: QuoteTimelineItem[];
+  versions?: QuoteVersion[];
+
   aiAnalysis?: {
     recommendedTech: string[];
     estimatedHours: number;
@@ -83,6 +136,7 @@ export interface QuoteRequest {
     summary: string;
   };
   proposalId?: string;
+  convertedProjectId?: string;
 }
 
 export interface ProposalDeliverable {

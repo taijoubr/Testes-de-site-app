@@ -66,6 +66,7 @@ import {
 
 import { useApp } from '../context/AppContext';
 import { ProposalGeneratorModal } from '../components/ProposalGeneratorModal';
+import { AdminQuoteManagementModal } from '../components/AdminQuoteManagementModal';
 import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem } from '../types';
 
 export const AdminPanel: React.FC = () => {
@@ -196,6 +197,9 @@ export const AdminPanel: React.FC = () => {
   const [clientFormCity, setClientFormCity] = useState('');
   const [clientFormState, setClientFormState] = useState('');
   const [clientFormPassword, setClientFormPassword] = useState('');
+
+  // Quote Admin Management State
+  const [selectedQuoteForAdminManagement, setSelectedQuoteForAdminManagement] = useState<QuoteRequest | null>(null);
 
   // Edit Subscription Modal States
   const [editingSub, setEditingSub] = useState<ClientSubscription | null>(null);
@@ -926,6 +930,14 @@ export const AdminPanel: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setSelectedQuoteForAdminManagement(q)}
+                      className="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Gerenciar & Acompanhar</span>
+                    </button>
+
                     <select
                       value={q.status}
                       onChange={e => updateQuoteStatus(q.id, e.target.value as QuoteStatus)}
@@ -933,10 +945,11 @@ export const AdminPanel: React.FC = () => {
                     >
                       <option value="solicitado">Solicitado</option>
                       <option value="em_analise">Em Análise</option>
-                      <option value="em_elaboracao">Em Elaboração</option>
-                      <option value="proposta_enviada">Proposta Enviada</option>
+                      <option value="aguardando_informacoes">Aguardando Informações</option>
+                      <option value="orcamento_disponivel">Orçamento Disponível</option>
+                      <option value="em_negociacao">Em Negociação</option>
                       <option value="aprovado">Aprovado</option>
-                      <option value="rejeitado">Rejeitado</option>
+                      <option value="recusado">Recusado</option>
                     </select>
 
                     <button
@@ -4241,6 +4254,14 @@ export const AdminPanel: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Admin Quote Management Modal */}
+      {selectedQuoteForAdminManagement && (
+        <AdminQuoteManagementModal
+          quote={selectedQuoteForAdminManagement}
+          onClose={() => setSelectedQuoteForAdminManagement(null)}
+        />
       )}
 
       </div>
