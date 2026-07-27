@@ -37,30 +37,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { QuoteTrackerModal } from '../components/QuoteTrackerModal';
 import { QuoteRequest } from '../types';
-import { DEFAULT_QUOTE_CATEGORIES } from '../data/initialData';
-
-const CLIENT_PREDEFINED_FEATURES = [
-  'Área administrativa',
-  'Cadastro de clientes',
-  'Área do cliente',
-  'Gestão financeira',
-  'Agendamento',
-  'Integração com APIs',
-  'Relatórios',
-  'Controle de estoque',
-  'Notificações Push / E-mail',
-  'Automação com IA / Gemini',
-  'Pagamentos Pix / Gateway'
-];
-
-const CLIENT_QUOTE_CATEGORIES = [
-  { id: 'Site Institucional', label: 'Site Institucional', desc: 'Landing page, site institucional e apresentação de serviços' },
-  { id: 'Site com Sistema de Gestão', label: 'Site com Sistema de Gestão', desc: 'Plataforma web completa com painel administrativo e dados' },
-  { id: 'Aplicativo Mobile iOS/Android', label: 'Aplicativo Mobile', desc: 'App mobile híbrido ou nativo para App Store e Google Play' },
-  { id: 'Sistema Web Empresarial (ERP/CRM/SaaS)', label: 'Sistema Web Empresarial', desc: 'Sistema para processos de alta complexidade' },
-  { id: 'Automações com Inteligência Artificial', label: 'Automação com IA', desc: 'Chatbots inteligentes, leitores de documentos ou agentes' },
-  { id: 'Outro', label: 'Outro / Sob Medida', desc: 'Projeto personalizado ou integração específica' }
-];
+import { DEFAULT_QUOTE_CATEGORIES, DEFAULT_QUOTE_FEATURES } from '../data/initialData';
 
 export const ClientPortal: React.FC = () => {
   const { 
@@ -86,6 +63,12 @@ export const ClientPortal: React.FC = () => {
       ? siteConfig.quoteCategories
       : DEFAULT_QUOTE_CATEGORIES
   ).filter(cat => !cat.hidden);
+
+  const clientQuoteFeatures = (
+    siteConfig?.quoteFeatures && siteConfig.quoteFeatures.length > 0
+      ? siteConfig.quoteFeatures
+      : DEFAULT_QUOTE_FEATURES
+  ).filter(feat => !feat.hidden);
 
   const [activeTab, setActiveTab] = useState<'quotes' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
   
@@ -258,11 +241,11 @@ export const ClientPortal: React.FC = () => {
   };
 
   const projectTypeOptions = [
-    'Aplicativo Mobile iOS/Android + Painel Web',
+    'Aplicativo Mobile iOS + Painel Web',
     'Desenvolvimento de Site Institucional / Portal',
     'Sistema Web Empresarial (ERP / SaaS / CRM)',
     'Landing Page de Alta Conversão',
-    'Automações com Inteligência Artificial / Gemini',
+    'Inteligência Artificial & Agentes / Gemini',
     'APIs & Integrações de Sistemas / Pix',
     'Sistema Personalizado Sob Medida'
   ];
@@ -1026,11 +1009,12 @@ export const ClientPortal: React.FC = () => {
                 </p>
 
                 <div className="flex flex-wrap gap-1.5">
-                  {CLIENT_PREDEFINED_FEATURES.map(feat => {
+                  {clientQuoteFeatures.map(featObj => {
+                    const feat = featObj.label;
                     const isSelected = selectedFeatures.includes(feat);
                     return (
                       <button
-                        key={feat}
+                        key={featObj.id || feat}
                         type="button"
                         onClick={() => toggleFeature(feat)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1 transition-all cursor-pointer ${
@@ -1098,26 +1082,13 @@ export const ClientPortal: React.FC = () => {
                 )}
               </div>
 
-              {/* SECTION 3: Referências, Prazos e Investimento */}
+              {/* SECTION 3: Estimativas de Prazos e Investimento */}
               <div className="space-y-4 pt-2">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                   <span className="w-6 h-6 rounded-lg bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
                     3
                   </span>
-                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Referências & Estimativas</h4>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Referências e Links de Inspiração
-                  </label>
-                  <input
-                    type="text"
-                    value={references}
-                    onChange={e => setReferences(e.target.value)}
-                    placeholder="Cole links de sites ou concorrentes que você gosta (ex: https://site.com)"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Estimativas de Prazos e Investimento</h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

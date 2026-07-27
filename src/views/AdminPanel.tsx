@@ -71,8 +71,8 @@ import {
 import { useApp } from '../context/AppContext';
 import { ProposalGeneratorModal } from '../components/ProposalGeneratorModal';
 import { AdminQuoteManagementModal } from '../components/AdminQuoteManagementModal';
-import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem, QuoteCategoryOption } from '../types';
-import { DEFAULT_QUOTE_CATEGORIES } from '../data/initialData';
+import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem, QuoteCategoryOption, QuoteFeatureOption } from '../types';
+import { DEFAULT_QUOTE_CATEGORIES, DEFAULT_QUOTE_FEATURES } from '../data/initialData';
 
 export const AdminPanel: React.FC = () => {
   const { 
@@ -225,7 +225,7 @@ export const AdminPanel: React.FC = () => {
   const [editLogoUrl, setEditLogoUrl] = useState(siteConfig?.logoUrl || '');
   const [editHeroBadge, setEditHeroBadge] = useState(siteConfig?.heroBadge || 'Cadastre-se e solicite seu orçamento online');
   const [editHeroTitle, setEditHeroTitle] = useState(siteConfig?.heroTitle || 'Transformamos Ideias em Software de Alto Desempenho');
-  const [editHeroSubtitle, setEditHeroSubtitle] = useState(siteConfig?.heroSubtitle || 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis em Flutter, sistemas web empresariais, automações com IA e APIs na nuvem.');
+  const [editHeroSubtitle, setEditHeroSubtitle] = useState(siteConfig?.heroSubtitle || 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis em Flutter, sistemas web empresariais e APIs na nuvem.');
   const [editPhone, setEditPhone] = useState(siteConfig?.phone || '(11) 99887-6655');
   const [editWhatsapp, setEditWhatsapp] = useState(siteConfig?.whatsapp || '5511998876655');
   const [editEmail, setEditEmail] = useState(siteConfig?.email || 'contato@ncodestechnologies.com.br');
@@ -249,6 +249,15 @@ export const AdminPanel: React.FC = () => {
   );
   const [newCatLabel, setNewCatLabel] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
+
+  const [editQuoteFeatures, setEditQuoteFeatures] = useState<QuoteFeatureOption[]>(
+    siteConfig?.quoteFeatures && siteConfig.quoteFeatures.length > 0
+      ? siteConfig.quoteFeatures
+      : DEFAULT_QUOTE_FEATURES
+  );
+  const [newFeatureLabel, setNewFeatureLabel] = useState('');
+
+  const [quoteOptionTab, setQuoteOptionTab] = useState<'categories' | 'features'>('categories');
   const [showQuoteCategoriesModal, setShowQuoteCategoriesModal] = useState(false);
   const [quoteCatSaveSuccess, setQuoteCatSaveSuccess] = useState(false);
   const [isPublishingSite, setIsPublishingSite] = useState(false);
@@ -280,6 +289,11 @@ export const AdminPanel: React.FC = () => {
         setEditQuoteCategories(siteConfig.quoteCategories);
       } else {
         setEditQuoteCategories(DEFAULT_QUOTE_CATEGORIES);
+      }
+      if (siteConfig.quoteFeatures && siteConfig.quoteFeatures.length > 0) {
+        setEditQuoteFeatures(siteConfig.quoteFeatures);
+      } else {
+        setEditQuoteFeatures(DEFAULT_QUOTE_FEATURES);
       }
     }
   }, [siteConfig]);
@@ -314,6 +328,39 @@ export const AdminPanel: React.FC = () => {
       const newList = editQuoteCategories.filter(c => c.id !== id);
       setEditQuoteCategories(newList);
       await updateSiteConfig({ quoteCategories: newList });
+      setQuoteCatSaveSuccess(true);
+      setTimeout(() => setQuoteCatSaveSuccess(false), 2500);
+    }
+  };
+
+  const handleAddQuoteFeature = async () => {
+    if (!newFeatureLabel.trim()) return;
+    const newFeat: QuoteFeatureOption = {
+      id: 'feat-' + Date.now(),
+      label: newFeatureLabel.trim(),
+      hidden: false
+    };
+    const newList = [...editQuoteFeatures, newFeat];
+    setEditQuoteFeatures(newList);
+    setNewFeatureLabel('');
+    await updateSiteConfig({ quoteFeatures: newList });
+    setQuoteCatSaveSuccess(true);
+    setTimeout(() => setQuoteCatSaveSuccess(false), 2500);
+  };
+
+  const handleToggleHideQuoteFeature = async (id: string) => {
+    const newList = editQuoteFeatures.map(f => f.id === id ? { ...f, hidden: !f.hidden } : f);
+    setEditQuoteFeatures(newList);
+    await updateSiteConfig({ quoteFeatures: newList });
+    setQuoteCatSaveSuccess(true);
+    setTimeout(() => setQuoteCatSaveSuccess(false), 2500);
+  };
+
+  const handleDeleteQuoteFeature = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta funcionalidade padrão?')) {
+      const newList = editQuoteFeatures.filter(f => f.id !== id);
+      setEditQuoteFeatures(newList);
+      await updateSiteConfig({ quoteFeatures: newList });
       setQuoteCatSaveSuccess(true);
       setTimeout(() => setQuoteCatSaveSuccess(false), 2500);
     }
@@ -366,7 +413,8 @@ export const AdminPanel: React.FC = () => {
       announcementBanner: editAnnouncementBanner,
       isAnnouncementActive: editIsAnnouncementActive,
       maintenanceMode: editMaintenanceMode,
-      quoteCategories: editQuoteCategories
+      quoteCategories: editQuoteCategories,
+      quoteFeatures: editQuoteFeatures
     });
     setIsPublishingSite(false);
     setSitePublishSuccess(true);
@@ -2376,7 +2424,7 @@ export const AdminPanel: React.FC = () => {
                 onClick={() => {
                   setEditHeroBadge('Cadastre-se e solicite seu orçamento online');
                   setEditHeroTitle('Transformamos Ideias em Software de Alto Desempenho');
-                  setEditHeroSubtitle('Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis em Flutter, sistemas web empresariais e automações com IA.');
+                  setEditHeroSubtitle('Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis em Flutter, sistemas web empresariais e inteligência artificial.');
                   setEditAnnouncementBanner('🚀 Novo Portal do Cliente no ar: Cadastre-se e receba seu orçamento automatizado por IA em minutos!');
                   setEditIsAnnouncementActive(true);
                 }}
@@ -2389,8 +2437,8 @@ export const AdminPanel: React.FC = () => {
                 onClick={() => {
                   setEditHeroBadge('Inteligência Artificial Integrada ao seu Negócio');
                   setEditHeroTitle('Sistemas Web & Apps com IA Gemini Nativa');
-                  setEditHeroSubtitle('Crie soluções de software preparadas para o futuro com chatbots avançados, processamento de documentos e automação inteligente.');
-                  setEditAnnouncementBanner('✨ Agende uma demonstração gratuita de automação com Inteligência Artificial para sua empresa!');
+                  setEditHeroSubtitle('Crie soluções de software preparadas para o futuro com chatbots avançados, processamento de documentos e inteligência artificial.');
+                  setEditAnnouncementBanner('✨ Agende uma demonstração gratuita de Inteligência Artificial para sua empresa!');
                   setEditIsAnnouncementActive(true);
                 }}
                 className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold transition-all cursor-pointer"
@@ -4087,7 +4135,7 @@ export const AdminPanel: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Desenvolvimento de Apps Mobile iOS & Android"
+                  placeholder="Ex: Desenvolvimento de Apps Mobile iOS"
                   value={serviceTitle}
                   onChange={e => setServiceTitle(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
@@ -4142,7 +4190,7 @@ export const AdminPanel: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Código único para iOS & Android, Interface Material Design, Sincronização em Tempo Real"
+                  placeholder="Ex: Interface fluida para iOS, Sincronização em Tempo Real"
                   value={serviceBenefitsInput}
                   onChange={e => setServiceBenefitsInput(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
@@ -4343,7 +4391,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Quote Categories Settings Modal (Accessed via Gear Icon in Quotes Tab) */}
+      {/* Quote Categories & Features Settings Modal (Accessed via Gear Icon in Quotes Tab) */}
       {showQuoteCategoriesModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -4361,12 +4409,40 @@ export const AdminPanel: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Categorias de Orçamento (Formulários do Cliente)</span>
+                  <span>Opções de Formulário de Orçamento</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Adicione, oculte ou exclua as opções de tipo de projeto exibidas no formulário de orçamento.
+                  Gerencie as categorias de projeto e as funcionalidades desejadas padrões do formulário de orçamento.
                 </p>
               </div>
+            </div>
+
+            {/* Sub Tabs */}
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setQuoteOptionTab('categories')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                  quoteOptionTab === 'categories'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>Tipos de Projeto ({editQuoteCategories.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuoteOptionTab('features')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                  quoteOptionTab === 'features'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Funcionalidades Padrões ({editQuoteFeatures.length})</span>
+              </button>
             </div>
 
             {quoteCatSaveSuccess && (
@@ -4376,119 +4452,221 @@ export const AdminPanel: React.FC = () => {
               </div>
             )}
 
-            {/* List of Categories */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Opções Atuais Cadastradas ({editQuoteCategories.length})</span>
-                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-                  {editQuoteCategories.filter(c => !c.hidden).length} Visíveis
-                </span>
-              </div>
+            {/* TAB 1: Categories */}
+            {quoteOptionTab === 'categories' && (
+              <>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span>Categorias Cadastradas ({editQuoteCategories.length})</span>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                      {editQuoteCategories.filter(c => !c.hidden).length} Visíveis
+                    </span>
+                  </div>
 
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {editQuoteCategories.map((cat, idx) => (
-                  <div
-                    key={cat.id || idx}
-                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                      cat.hidden
-                        ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60'
-                        : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                          {cat.label}
-                        </span>
-                        {cat.hidden ? (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold">
-                            Oculto
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                            Visível
-                          </span>
-                        )}
-                      </div>
-                      {cat.desc && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                          {cat.desc}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleHideQuoteCategory(cat.id)}
-                        title={cat.hidden ? 'Exibir no formulário' : 'Ocultar do formulário'}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {editQuoteCategories.map((cat, idx) => (
+                      <div
+                        key={cat.id || idx}
+                        className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                           cat.hidden
-                            ? 'bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600/20 dark:bg-emerald-500/20 dark:text-emerald-400'
-                            : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                            ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60'
+                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700'
                         }`}
                       >
-                        {cat.hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                        <span>{cat.hidden ? 'Exibir' : 'Ocultar'}</span>
-                      </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                              {cat.label}
+                            </span>
+                            {cat.hidden ? (
+                              <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold">
+                                Oculto
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                                Visível
+                              </span>
+                            )}
+                          </div>
+                          {cat.desc && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                              {cat.desc}
+                            </p>
+                          )}
+                        </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteQuoteCategory(cat.id)}
-                        title="Excluir Categoria"
-                        className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleHideQuoteCategory(cat.id)}
+                            title={cat.hidden ? 'Exibir no formulário' : 'Ocultar do formulário'}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                              cat.hidden
+                                ? 'bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600/20 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                            }`}
+                          >
+                            {cat.hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            <span>{cat.hidden ? 'Exibir' : 'Ocultar'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuoteCategory(cat.id)}
+                            title="Excluir Categoria"
+                            className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Add New Category Form */}
+                <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 space-y-3">
+                  <span className="text-[11px] font-extrabold text-blue-800 dark:text-blue-300 uppercase tracking-wider block">
+                    + Adicionar Nova Categoria de Orçamento
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Nome da Categoria *
+                      </label>
+                      <input
+                        type="text"
+                        value={newCatLabel}
+                        onChange={(e) => setNewCatLabel(e.target.value)}
+                        placeholder="Ex: E-commerce e Lojas Virtuais"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Breve Descrição
+                      </label>
+                      <input
+                        type="text"
+                        value={newCatDesc}
+                        onChange={(e) => setNewCatDesc(e.target.value)}
+                        placeholder="Ex: Plataformas de vendas online e pagamentos"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAddQuoteCategory}
+                      disabled={!newCatLabel.trim()}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-40"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar Categoria</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
-            {/* Add New Category Form */}
-            <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 space-y-3">
-              <span className="text-[11px] font-extrabold text-blue-800 dark:text-blue-300 uppercase tracking-wider block">
-                + Adicionar Nova Categoria de Orçamento
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Nome da Categoria *
-                  </label>
-                  <input
-                    type="text"
-                    value={newCatLabel}
-                    onChange={(e) => setNewCatLabel(e.target.value)}
-                    placeholder="Ex: E-commerce e Lojas Virtuais"
-                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+            {/* TAB 2: Features */}
+            {quoteOptionTab === 'features' && (
+              <>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span>Funcionalidades Padrões ({editQuoteFeatures.length})</span>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                      {editQuoteFeatures.filter(f => !f.hidden).length} Visíveis no Formulário
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {editQuoteFeatures.map((feat, idx) => (
+                      <div
+                        key={feat.id || idx}
+                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                          feat.hidden
+                            ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60'
+                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                            {feat.label}
+                          </span>
+                          {feat.hidden ? (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold shrink-0">
+                              Oculto
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold shrink-0">
+                              Visível
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleHideQuoteFeature(feat.id)}
+                            title={feat.hidden ? 'Exibir no formulário' : 'Ocultar do formulário'}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                              feat.hidden
+                                ? 'bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600/20 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                            }`}
+                          >
+                            {feat.hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            <span>{feat.hidden ? 'Exibir' : 'Ocultar'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuoteFeature(feat.id)}
+                            title="Excluir Funcionalidade"
+                            className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Breve Descrição
-                  </label>
-                  <input
-                    type="text"
-                    value={newCatDesc}
-                    onChange={(e) => setNewCatDesc(e.target.value)}
-                    placeholder="Ex: Plataformas de vendas online e pagamentos"
-                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+
+                {/* Add New Feature Form */}
+                <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 space-y-3">
+                  <span className="text-[11px] font-extrabold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider block">
+                    + Adicionar Funcionalidade Padrão
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newFeatureLabel}
+                      onChange={(e) => setNewFeatureLabel(e.target.value)}
+                      placeholder="Ex: Integração com WhatsApp, Dashboard Financeiro..."
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddQuoteFeature();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddQuoteFeature}
+                      disabled={!newFeatureLabel.trim()}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-40 shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={handleAddQuoteCategory}
-                  disabled={!newCatLabel.trim()}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-40"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Adicionar Categoria</span>
-                </button>
-              </div>
-            </div>
+              </>
+            )}
 
             {/* Modal Footer */}
             <div className="pt-3 flex items-center justify-end border-t border-slate-100 dark:border-slate-800">

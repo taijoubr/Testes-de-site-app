@@ -117,22 +117,9 @@ export const MobileAppView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setMobileSimDevice('iphone')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              mobileSimDevice === 'iphone' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
-            }`}
-          >
+          <span className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm">
             iPhone (iOS)
-          </button>
-          <button
-            onClick={() => setMobileSimDevice('android')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              mobileSimDevice === 'android' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
-            }`}
-          >
-            Android (Material 3)
-          </button>
+          </span>
         </div>
       </div>
 

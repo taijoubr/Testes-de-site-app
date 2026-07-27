@@ -332,6 +332,12 @@ export interface QuoteCategoryOption {
   hidden?: boolean;
 }
 
+export interface QuoteFeatureOption {
+  id: string;
+  label: string;
+  hidden?: boolean;
+}
+
 export interface SiteConfig {
   id: string;
   companyName: string;
@@ -355,6 +361,7 @@ export interface SiteConfig {
   primaryColor: string;
   maintenanceMode: boolean;
   quoteCategories?: QuoteCategoryOption[];
+  quoteFeatures?: QuoteFeatureOption[];
   lastUpdated: string;
   updatedBy: string;
 }

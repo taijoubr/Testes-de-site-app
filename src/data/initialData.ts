@@ -14,7 +14,8 @@ import {
   ClientUser,
   ClientSubscription,
   SiteConfig,
-  QuoteCategoryOption
+  QuoteCategoryOption,
+  QuoteFeatureOption
 } from '../types';
 
 export const INITIAL_SERVICES: ServiceItem[] = [
@@ -32,12 +33,12 @@ export const INITIAL_SERVICES: ServiceItem[] = [
   },
   {
     id: 's2',
-    title: 'Aplicativos Mobile iOS & Android',
+    title: 'Aplicativos Mobile iOS',
     slug: 'apps',
     iconName: 'Smartphone',
-    shortDesc: 'Aplicativos nativos e multiplataforma sincronizados em tempo real.',
+    shortDesc: 'Aplicativos nativos e de alta performance sincronizados em tempo real.',
     description: 'Desenvolvimento completo de apps em Flutter/React Native com notificações push, autenticação biométrica e arquitetura offline-first.',
-    benefits: ['Código único para iOS & Android', 'Interface Material Design 3', 'Sincronização em Tempo Real', 'Publicação nas lojas Apple e Google'],
+    benefits: ['Interface fluida e responsiva para iOS', 'Design de Nível Internacional', 'Sincronização em Tempo Real', 'Publicação na App Store'],
     technologies: ['Flutter', 'Dart', 'Firebase', 'REST/GraphQL', 'SQLite'],
     avgTime: '4 a 8 semanas',
     startingPrice: 'Sob Orçamento'
@@ -47,7 +48,7 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     title: 'Sistemas Web Empresariais',
     slug: 'sistemas-web',
     iconName: 'Cpu',
-    shortDesc: 'Plataformas SaaS, ERPs, CRMs e painéis administrativos para automação de processos.',
+    shortDesc: 'Plataformas SaaS, ERPs, CRMs e painéis administrativos para otimização de processos.',
     description: 'Sistemas complexos sob medida construídos com segurança de nível bancário, relatórios em gráficos dinâmicos e controle refinado de permissões.',
     benefits: ['Controle Avançado de Acesso', 'Relatórios & BI Interativos', 'Exportação PDF/Excel', 'Arquitetura Escalável em Nuvem'],
     technologies: ['Node.js', 'TypeScript', 'PostgreSQL', 'Firestore', 'React'],
@@ -68,12 +69,12 @@ export const INITIAL_SERVICES: ServiceItem[] = [
   },
   {
     id: 's5',
-    title: 'Automações & Inteligência Artificial',
-    slug: 'automacoes',
+    title: 'Inteligência Artificial & Agentes',
+    slug: 'ia-agentes',
     iconName: 'Bot',
-    shortDesc: 'Automação de workflows, robôs de atendimento e modelos IA integrados.',
-    description: 'Elimine tarefas repetitivas integrando Gemini AI, OpenAI, WhatsApp API e fluxos operacionais automatizados.',
-    benefits: ['Atendimento 24/7 Automatizado', 'Redução de Custos Operacionais', 'Processamento de Documentos por IA', 'Disparo de Alertas em Tempo Real'],
+    shortDesc: 'Assistentes inteligentes, robôs de atendimento e modelos IA integrados.',
+    description: 'Elimine tarefas repetitivas integrando Gemini AI, OpenAI, WhatsApp API e fluxos operacionais inteligentes.',
+    benefits: ['Atendimento 24/7 Inteligente', 'Redução de Custos Operacionais', 'Processamento de Documentos por IA', 'Disparo de Alertas em Tempo Real'],
     technologies: ['Gemini API', 'Python', 'Node.js', 'n8n', 'WhatsApp Cloud API'],
     avgTime: '2 a 5 semanas',
     startingPrice: 'Sob Orçamento'
@@ -123,7 +124,7 @@ export const INITIAL_PORTFOLIO: PortfolioProject[] = [
     subtitle: 'Plataforma de Pagamentos Pix e Gestão de Carteiras Digitais',
     category: 'Mobile',
     image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80',
-    description: 'Aplicativo iOS/Android com autorização biométrica, transferências instantâneas Pix, extrato inteligente com categorias e emissão de cobranças.',
+    description: 'Aplicativo iOS com autorização biométrica, transferências instantâneas Pix, extrato inteligente com categorias e emissão de cobranças.',
     tags: ['Flutter', 'Firebase', 'Pix API', 'Clean Architecture', 'Node.js'],
     metrics: '+45.000 usuários ativos e R$ 12M+ transacionados',
     clientName: 'PayNext Brasil',
@@ -316,7 +317,7 @@ export const INITIAL_QUOTES: QuoteRequest[] = [
     whatsapp: '(11) 97777-6666',
     city: 'Campinas',
     state: 'SP',
-    projectType: 'Aplicativo Mobile iOS/Android + Painel Web',
+    projectType: 'Aplicativo Mobile iOS + Painel Web',
     projectTitle: 'Aplicativo Móvel de Pagamentos Pix & Carteira Digital',
     category: 'Aplicativos Mobile',
     description: 'Desenvolvimento de app Flutter com autenticação por biometria, geração de QR Code Pix copia-e-cola e painel de conciliação financeira.',
@@ -332,7 +333,7 @@ export const INITIAL_QUOTES: QuoteRequest[] = [
     offeredDeadline: '50 dias úteis',
     paymentTerms: '40% entrada + 3x de 20% conforme marcos de entrega',
     scopeItems: [
-      'Aplicativo iOS & Android em Flutter com biometria',
+      'Aplicativo iOS em Flutter com biometria',
       'Integração de APIs de Pagamento Pix (BACEN)',
       'Painel Web de Conciliação Financeira',
       'Notificações Push via Firebase Cloud Messaging'
@@ -490,10 +491,24 @@ export const INITIAL_CLIENT_USERS: ClientUser[] = [];
 export const DEFAULT_QUOTE_CATEGORIES: QuoteCategoryOption[] = [
   { id: 'cat-1', label: 'Site Institucional', desc: 'Landing page, site institucional e apresentação de serviços', hidden: false },
   { id: 'cat-2', label: 'Site com Sistema de Gestão', desc: 'Plataforma web completa com painel administrativo e dados', hidden: false },
-  { id: 'cat-3', label: 'Aplicativo Mobile iOS/Android', desc: 'App mobile híbrido ou nativo para App Store e Google Play', hidden: false },
+  { id: 'cat-3', label: 'Aplicativo Mobile iOS', desc: 'App mobile nativo ou híbrido para App Store', hidden: false },
   { id: 'cat-4', label: 'Sistema Web Empresarial (ERP/CRM/SaaS)', desc: 'Sistema para processos de alta complexidade', hidden: false },
-  { id: 'cat-5', label: 'Automações com Inteligência Artificial', desc: 'Chatbots inteligentes, leitores de documentos ou agentes', hidden: false },
+  { id: 'cat-5', label: 'Inteligência Artificial & Agentes', desc: 'Chatbots inteligentes, leitores de documentos ou assistentes IA', hidden: false },
   { id: 'cat-6', label: 'Outro / Sob Medida', desc: 'Projeto personalizado ou integração específica', hidden: false }
+];
+
+export const DEFAULT_QUOTE_FEATURES: QuoteFeatureOption[] = [
+  { id: 'feat-1', label: 'Área administrativa', hidden: false },
+  { id: 'feat-2', label: 'Cadastro de clientes', hidden: false },
+  { id: 'feat-3', label: 'Área do cliente', hidden: false },
+  { id: 'feat-4', label: 'Gestão financeira', hidden: false },
+  { id: 'feat-5', label: 'Agendamento', hidden: false },
+  { id: 'feat-6', label: 'Integração com APIs', hidden: false },
+  { id: 'feat-7', label: 'Relatórios', hidden: false },
+  { id: 'feat-8', label: 'Controle de estoque', hidden: false },
+  { id: 'feat-9', label: 'Notificações Push / E-mail', hidden: false },
+  { id: 'feat-10', label: 'Inteligência Artificial / Gemini', hidden: false },
+  { id: 'feat-11', label: 'Pagamentos Pix / Gateway', hidden: false }
 ];
 
 export const INITIAL_SITE_CONFIG: SiteConfig = {
@@ -502,7 +517,7 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   logoUrl: '',
   heroBadge: 'Cadastre-se e solicite seu orçamento online',
   heroTitle: 'Transformamos Ideias em Software de Alto Desempenho',
-  heroSubtitle: 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis, sistemas web empresariais, automações com IA e APIs na nuvem. Cadastre-se na nossa Área do Cliente para solicitar seu orçamento de forma rápida e segura.',
+  heroSubtitle: 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis iOS, sistemas web empresariais, inteligência artificial e APIs na nuvem. Cadastre-se na nossa Área do Cliente para solicitar seu orçamento de forma rápida e segura.',
   phone: '(11) 99887-6655',
   whatsapp: '5511998876655',
   email: 'contato@ncodestechnologies.com.br',
@@ -513,6 +528,7 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   primaryColor: '#2563eb',
   maintenanceMode: false,
   quoteCategories: DEFAULT_QUOTE_CATEGORIES,
+  quoteFeatures: DEFAULT_QUOTE_FEATURES,
   lastUpdated: '25/07/2026 12:00',
   updatedBy: 'Admin Master'
 };

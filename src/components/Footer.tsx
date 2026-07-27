@@ -3,7 +3,7 @@ import { Code2, Github, Instagram, Linkedin, Mail, Phone, MapPin, Heart } from '
 import { useApp } from '../context/AppContext';
 
 export const Footer: React.FC = () => {
-  const { setActiveView, siteConfig } = useApp();
+  const { setActiveView, siteConfig, services } = useApp();
 
   return (
     <footer className="bg-slate-950 text-slate-400 border-t border-slate-800 pt-16 pb-12">
@@ -36,7 +36,7 @@ export const Footer: React.FC = () => {
             </div>
 
             <p className="text-sm text-slate-400 leading-relaxed max-w-sm">
-              Transformamos ideias em soluções digitais de alta performance. Especialistas em sistemas web, aplicativos iOS/Android, APIs e automações empresariais.
+              Transformamos ideias em soluções digitais de alta performance. Especialistas em sistemas web
             </p>
 
             <div className="flex items-center gap-3 pt-2">
@@ -104,11 +104,29 @@ export const Footer: React.FC = () => {
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-white uppercase tracking-wider">Soluções</h4>
             <ul className="space-y-2 text-sm">
-              <li><span className="hover:text-blue-400 cursor-pointer" onClick={() => setActiveView('services')}>Apps iOS e Android</span></li>
-              <li><span className="hover:text-blue-400 cursor-pointer" onClick={() => setActiveView('services')}>Sistemas Web SaaS</span></li>
-              <li><span className="hover:text-blue-400 cursor-pointer" onClick={() => setActiveView('services')}>APIs & Automações IA</span></li>
-              <li><span className="hover:text-blue-400 cursor-pointer" onClick={() => setActiveView('services')}>Módulos Financeiros Pix</span></li>
-              <li><span className="hover:text-blue-400 cursor-pointer" onClick={() => setActiveView('services')}>Landing Pages e CRO</span></li>
+              {services && services.length > 0 ? (
+                services.map((service) => (
+                  <li key={service.id || service.title}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveView('services')}
+                      className="hover:text-blue-400 transition-colors text-left cursor-pointer"
+                    >
+                      {service.title}
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveView('services')}
+                    className="hover:text-blue-400 transition-colors cursor-pointer"
+                  >
+                    Serviços Digitais
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 

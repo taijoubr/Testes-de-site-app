@@ -20,18 +20,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { DEFAULT_QUOTE_CATEGORIES } from '../data/initialData';
-
-const PREDEFINED_FEATURES = [
-  'Área administrativa',
-  'Cadastro de clientes',
-  'Área do cliente',
-  'Gestão financeira',
-  'Agendamento',
-  'Integração com APIs',
-  'Relatórios',
-  'Controle de estoque'
-];
+import { DEFAULT_QUOTE_CATEGORIES, DEFAULT_QUOTE_FEATURES } from '../data/initialData';
 
 export const QuoteWizardModal: React.FC = () => {
   const { createQuoteRequest, currentClientUser, setActiveView, siteConfig } = useApp();
@@ -41,6 +30,12 @@ export const QuoteWizardModal: React.FC = () => {
       ? siteConfig.quoteCategories
       : DEFAULT_QUOTE_CATEGORIES
   ).filter(cat => !cat.hidden);
+
+  const wizardQuoteFeatures = (
+    siteConfig?.quoteFeatures && siteConfig.quoteFeatures.length > 0
+      ? siteConfig.quoteFeatures
+      : DEFAULT_QUOTE_FEATURES
+  ).filter(feat => !feat.hidden);
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -303,11 +298,12 @@ export const QuoteWizardModal: React.FC = () => {
 
                 {/* Predefined Features Grid */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {PREDEFINED_FEATURES.map((feat) => {
+                  {wizardQuoteFeatures.map((featObj) => {
+                    const feat = featObj.label;
                     const isSelected = selectedFeatures.includes(feat);
                     return (
                       <button
-                        key={feat}
+                        key={featObj.id || feat}
                         type="button"
                         onClick={() => toggleFeature(feat)}
                         className={`px-3.5 py-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -373,23 +369,6 @@ export const QuoteWizardModal: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Referências */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
-                  Referências
-                </label>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                  Anexe imagens, documentos ou links de sites e aplicativos que sirvam como referência para o projeto.
-                </p>
-                <textarea
-                  rows={2}
-                  value={references}
-                  onChange={e => setReferences(e.target.value)}
-                  placeholder="Cole aqui os links (ex: https://exemplo.com) ou descreva aplicativos/sites de referência..."
-                  className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
               </div>
 
               {/* Prazo Desejado e Faixa de Investimento */}

@@ -18,7 +18,7 @@ export const ProposalGeneratorModal: React.FC<ProposalGeneratorModalProps> = ({ 
   const [description, setDescription] = useState(`Desenvolvimento de software sob medida para a empresa ${quote.company || quote.clientName}. ${quote.description}`);
 
   const [scopeItems, setScopeItems] = useState<string[]>([
-    'Desenvolvimento do aplicativo em Flutter (iOS & Android)',
+    'Desenvolvimento do aplicativo em Flutter (iOS)',
     'Painel Web de Gestão Administrativa em React com gráficos',
     'Autenticação de Usuários com controle por nível de permissão',
     'Integração com Gateway de Pagamento Pix Copia e Cola',

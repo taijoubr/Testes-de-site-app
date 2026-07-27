@@ -51,7 +51,7 @@ export const InstitutionalHome: React.FC = () => {
           </h1>
 
           <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed max-w-2xl mx-auto">
-            {siteConfig.heroSubtitle || 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis, sistemas web empresariais, automações com IA e APIs na nuvem. Cadastre-se na nossa Área do Cliente para solicitar seu orçamento de forma rápida e segura.'}
+            {siteConfig.heroSubtitle || 'Desenvolvemos ecossistemas tecnológicos completos: aplicativos móveis iOS, sistemas web empresariais, inteligência artificial e APIs na nuvem. Cadastre-se na nossa Área do Cliente para solicitar seu orçamento de forma rápida e segura.'}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
