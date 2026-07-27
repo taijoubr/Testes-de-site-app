@@ -20,6 +20,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { DEFAULT_QUOTE_CATEGORIES } from '../data/initialData';
 
 const PREDEFINED_FEATURES = [
   'Área administrativa',
@@ -33,14 +34,20 @@ const PREDEFINED_FEATURES = [
 ];
 
 export const QuoteWizardModal: React.FC = () => {
-  const { createQuoteRequest, currentClientUser, setActiveView } = useApp();
+  const { createQuoteRequest, currentClientUser, setActiveView, siteConfig } = useApp();
+
+  const wizardQuoteCategories = (
+    siteConfig?.quoteCategories && siteConfig.quoteCategories.length > 0
+      ? siteConfig.quoteCategories
+      : DEFAULT_QUOTE_CATEGORIES
+  ).filter(cat => !cat.hidden);
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   // 1. Informações do Projeto
   const [projectTitle, setProjectTitle] = useState('');
-  const [category, setCategory] = useState<'Site Institucional' | 'Site com Sistema de Gestão' | 'Outro'>('Site Institucional');
+  const [category, setCategory] = useState<string>('Site Institucional');
   const [description, setDescription] = useState('');
   
   // 2. Funcionalidades Desejadas
@@ -238,17 +245,14 @@ export const QuoteWizardModal: React.FC = () => {
                   Categoria *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { id: 'Site Institucional', label: 'Site Institucional', desc: 'Landing page, institucional e apresentação de serviços' },
-                    { id: 'Site com Sistema de Gestão', label: 'Site com Sistema de Gestão', desc: 'Plataforma web completa com painel e dados' },
-                    { id: 'Outro', label: 'Outro', desc: 'Aplicativo mobile, API sob medida, IA ou automação' }
-                  ].map((cat) => {
-                    const active = category === cat.id;
+                  {wizardQuoteCategories.map((cat) => {
+                    const catVal = cat.label || cat.id;
+                    const active = category === catVal || category === cat.id;
                     return (
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => setCategory(cat.id as any)}
+                        onClick={() => setCategory(catVal)}
                         className={`p-4 rounded-2xl text-left border transition-all cursor-pointer ${
                           active 
                             ? 'bg-blue-600/10 border-blue-600 text-blue-700 dark:bg-blue-500/20 dark:border-blue-400 dark:text-blue-300 ring-2 ring-blue-500/20' 
@@ -259,9 +263,11 @@ export const QuoteWizardModal: React.FC = () => {
                           <span className="font-bold text-sm">{cat.label}</span>
                           {active && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">
-                          {cat.desc}
-                        </p>
+                        {cat.desc && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                            {cat.desc}
+                          </p>
+                        )}
                       </button>
                     );
                   })}

@@ -30,11 +30,37 @@ import {
   Repeat,
   Check,
   History,
-  AlertTriangle
+  AlertTriangle,
+  Plus,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { QuoteTrackerModal } from '../components/QuoteTrackerModal';
 import { QuoteRequest } from '../types';
+import { DEFAULT_QUOTE_CATEGORIES } from '../data/initialData';
+
+const CLIENT_PREDEFINED_FEATURES = [
+  'Área administrativa',
+  'Cadastro de clientes',
+  'Área do cliente',
+  'Gestão financeira',
+  'Agendamento',
+  'Integração com APIs',
+  'Relatórios',
+  'Controle de estoque',
+  'Notificações Push / E-mail',
+  'Automação com IA / Gemini',
+  'Pagamentos Pix / Gateway'
+];
+
+const CLIENT_QUOTE_CATEGORIES = [
+  { id: 'Site Institucional', label: 'Site Institucional', desc: 'Landing page, site institucional e apresentação de serviços' },
+  { id: 'Site com Sistema de Gestão', label: 'Site com Sistema de Gestão', desc: 'Plataforma web completa com painel administrativo e dados' },
+  { id: 'Aplicativo Mobile iOS/Android', label: 'Aplicativo Mobile', desc: 'App mobile híbrido ou nativo para App Store e Google Play' },
+  { id: 'Sistema Web Empresarial (ERP/CRM/SaaS)', label: 'Sistema Web Empresarial', desc: 'Sistema para processos de alta complexidade' },
+  { id: 'Automações com Inteligência Artificial', label: 'Automação com IA', desc: 'Chatbots inteligentes, leitores de documentos ou agentes' },
+  { id: 'Outro', label: 'Outro / Sob Medida', desc: 'Projeto personalizado ou integração específica' }
+];
 
 export const ClientPortal: React.FC = () => {
   const { 
@@ -51,20 +77,76 @@ export const ClientPortal: React.FC = () => {
     currentClientUser,
     logoutClient,
     setSelectedProposalIdForAcceptance,
-    setActiveView
+    setActiveView,
+    siteConfig
   } = useApp();
+
+  const clientQuoteCategories = (
+    siteConfig?.quoteCategories && siteConfig.quoteCategories.length > 0
+      ? siteConfig.quoteCategories
+      : DEFAULT_QUOTE_CATEGORIES
+  ).filter(cat => !cat.hidden);
 
   const [activeTab, setActiveTab] = useState<'quotes' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
   
   // Quote Tracker Modal State
   const [selectedQuoteForTracker, setSelectedQuoteForTracker] = useState<QuoteRequest | null>(null);
 
-  // Quote Modal State
+  // Comprehensive Quote Request State
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [projectTitle, setProjectTitle] = useState('');
+  const [category, setCategory] = useState('Site com Sistema de Gestão');
   const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState('45 dias');
-  const [budgetRange, setBudgetRange] = useState('R$ 15.000 a R$ 30.000');
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [customFeature, setCustomFeature] = useState('');
+  const [references, setReferences] = useState('');
+  const [deadline, setDeadline] = useState('Até 30 dias');
+  const [budgetRange, setBudgetRange] = useState('R$ 8.000 a R$ 15.000');
+  const [additionalNotes, setAdditionalNotes] = useState('');
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+
+  // Applicant contact details state
+  const [clientName, setClientName] = useState('');
+  const [company, setCompany] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+
+  const handleOpenQuoteModal = () => {
+    if (currentClientUser) {
+      setClientName(currentClientUser.name || '');
+      setCompany(currentClientUser.company || '');
+      setEmail(currentClientUser.email || '');
+      setPhone(currentClientUser.phone || '');
+      setWhatsapp(currentClientUser.phone || '');
+      setCity(currentClientUser.city || '');
+      setState(currentClientUser.state || '');
+    }
+    setShowQuoteModal(true);
+  };
+
+  const toggleFeature = (feat: string) => {
+    if (selectedFeatures.includes(feat)) {
+      setSelectedFeatures(prev => prev.filter(f => f !== feat));
+    } else {
+      setSelectedFeatures(prev => [...prev, feat]);
+    }
+  };
+
+  const addCustomFeature = () => {
+    if (!customFeature.trim()) return;
+    const feat = customFeature.trim();
+    if (!selectedFeatures.includes(feat)) {
+      setSelectedFeatures(prev => [...prev, feat]);
+    }
+    setCustomFeature('');
+  };
+
+  const removeFeature = (featToRemove: string) => {
+    setSelectedFeatures(prev => prev.filter(f => f !== featToRemove));
+  };
 
   // Chat input
   const [chatInput, setChatInput] = useState('');
@@ -80,9 +162,9 @@ export const ClientPortal: React.FC = () => {
 
   // Filter client's quotes if email matches, or display all client quotes
   const clientEmail = (currentClientUser?.email || '').trim().toLowerCase();
-  const clientName = (currentClientUser?.name || '').trim().toLowerCase();
+  const clientNameKey = (currentClientUser?.name || '').trim().toLowerCase();
   const clientCompany = (currentClientUser?.company || '').trim().toLowerCase();
-  const firstName = clientName.split(' ')[0] || '';
+  const firstName = clientNameKey.split(' ')[0] || '';
 
   const myQuotes = quotes.filter(q => {
     if (!currentClientUser) return true;
@@ -92,7 +174,7 @@ export const ClientPortal: React.FC = () => {
 
     return (
       (clientEmail && qEmail === clientEmail) ||
-      (clientName && qClientName && (qClientName.includes(clientName) || clientName.includes(qClientName))) ||
+      (clientNameKey && qClientName && (qClientName.includes(clientNameKey) || clientNameKey.includes(qClientName))) ||
       (firstName && qClientName && qClientName.includes(firstName)) ||
       (clientCompany && qCompany && qCompany.includes(clientCompany))
     );
@@ -101,7 +183,7 @@ export const ClientPortal: React.FC = () => {
   const myProjects = projects.filter(p => {
     if (!currentClientUser) return true;
     const pClient = (p.clientName || '').toLowerCase();
-    const firstName = clientName.split(' ')[0] || '';
+    const firstName = clientNameKey.split(' ')[0] || '';
     return (
       (firstName && pClient.includes(firstName)) ||
       (clientCompany && pClient.includes(clientCompany))
@@ -113,23 +195,43 @@ export const ClientPortal: React.FC = () => {
     e.preventDefault();
     setIsCreatingQuote(true);
 
+    const fullDescription = [
+      projectTitle ? `📌 Título do Projeto: ${projectTitle}` : '',
+      description ? `📝 Descrição Detalhada:\n${description}` : '',
+      selectedFeatures.length > 0 ? `⚡ Funcionalidades Desejadas:\n- ${selectedFeatures.join('\n- ')}` : '',
+      references ? `🔗 Referências e Links:\n${references}` : '',
+      additionalNotes ? `💬 Informações Adicionais:\n${additionalNotes}` : ''
+    ].filter(Boolean).join('\n\n');
+
     await createQuoteRequest({
-      clientName: currentClientUser?.name || 'Cliente NCodes',
-      company: currentClientUser?.company || 'Pessoa Física',
-      email: currentClientUser?.email || 'cliente@ncodes.com.br',
-      phone: currentClientUser?.phone || '(11) 99999-8888',
-      whatsapp: currentClientUser?.phone || '(11) 99999-8888',
-      city: currentClientUser?.city || 'São Paulo',
-      state: currentClientUser?.state || 'SP',
-      projectType: 'Projeto Sob Medida',
-      description,
+      clientName: clientName || currentClientUser?.name || 'Cliente NCodes',
+      company: company || currentClientUser?.company || 'Pessoa Física',
+      email: email || currentClientUser?.email || '',
+      phone: phone || whatsapp || currentClientUser?.phone || '(11) 99999-8888',
+      whatsapp: whatsapp || phone || currentClientUser?.phone || '(11) 99999-8888',
+      city: city || currentClientUser?.city || 'São Paulo',
+      state: state || currentClientUser?.state || 'SP',
+      projectType: category,
+      projectTitle: projectTitle || 'Novo Projeto Web/Sistema',
+      category: category,
+      selectedFeatures,
+      references,
+      additionalNotes,
+      description: fullDescription || description,
       deadline,
       budgetRange
     });
 
     setIsCreatingQuote(false);
     setShowQuoteModal(false);
+
+    // Reset Form
+    setProjectTitle('');
     setDescription('');
+    setSelectedFeatures([]);
+    setCustomFeature('');
+    setReferences('');
+    setAdditionalNotes('');
   };
 
   const handleSendChat = (e: React.FormEvent) => {
@@ -307,7 +409,7 @@ export const ClientPortal: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setShowQuoteModal(true)}
+                onClick={handleOpenQuoteModal}
                 className="py-3 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
               >
                 <PlusCircle className="w-4 h-4" />
@@ -326,8 +428,8 @@ export const ClientPortal: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => setShowQuoteModal(true)}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold inline-flex items-center gap-2"
+                  onClick={handleOpenQuoteModal}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold inline-flex items-center gap-2 cursor-pointer hover:bg-blue-500"
                 >
                   <PlusCircle className="w-4 h-4" />
                   <span>Criar Primeiro Orçamento</span>
@@ -818,83 +920,325 @@ export const ClientPortal: React.FC = () => {
       {/* NEW QUOTE REQUEST MODAL INSIDE CLIENT PORTAL */}
       {showQuoteModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             
-            <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10 pt-1">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-blue-500" />
-                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Nova Solicitação de Orçamento</h3>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Nova Solicitação de Orçamento</h3>
+                  <p className="text-xs text-slate-500">Especifique os requisitos e recursos para receber proposta e análise de IA</p>
+                </div>
               </div>
               <button 
                 onClick={() => setShowQuoteModal(false)}
-                className="text-slate-400 hover:text-slate-200 text-xs font-bold cursor-pointer"
+                className="text-slate-400 hover:text-slate-200 text-xs font-bold cursor-pointer p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
               >
                 ✕ Fechar
               </button>
             </div>
 
-            <form onSubmit={handleCreateQuote} className="space-y-4">
+            <form onSubmit={handleCreateQuote} className="space-y-6">
               
-              {/* Pre-filled Client Info */}
-              <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs space-y-1">
-                <p className="font-bold text-blue-800 dark:text-blue-300">
-                  Solicitante: {currentClientUser?.name} ({currentClientUser?.company || 'Pessoa Física'})
-                </p>
-                <p className="text-slate-600 dark:text-slate-400">
-                  E-mail: {currentClientUser?.email} | Telefone: {currentClientUser?.phone}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Descrição Detalhada do Seu Projeto *
-                </label>
-                <textarea
-                  required
-                  rows={4}
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="Descreva o objetivo do software, funcionalidades necessárias, público-alvo e integrações desejadas..."
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Prazo de Entrega Desejado
-                  </label>
-                  <select
-                    value={deadline}
-                    onChange={e => setDeadline(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                  >
-                    <option value="15 dias">15 dias (Urgente)</option>
-                    <option value="30 dias">30 dias</option>
-                    <option value="45 dias">45 dias</option>
-                    <option value="60 dias">60 dias</option>
-                    <option value="A combinar">A combinar</option>
-                  </select>
+              {/* SECTION 1: Informações do Projeto */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="w-6 h-6 rounded-lg bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                    1
+                  </span>
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Informações Principais do Projeto</h4>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Faixa de Investimento Prevista
+                    Título do Projeto *
                   </label>
-                  <select
-                    value={budgetRange}
-                    onChange={e => setBudgetRange(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                  >
-                    <option value="R$ 3.000 a R$ 8.000">R$ 3.000 a R$ 8.000</option>
-                    <option value="R$ 8.000 a R$ 15.000">R$ 8.000 a R$ 15.000</option>
-                    <option value="R$ 15.000 a R$ 30.000">R$ 15.000 a R$ 30.000</option>
-                    <option value="Acima de R$ 30.000">Acima de R$ 30.000</option>
-                  </select>
+                  <input
+                    type="text"
+                    required
+                    value={projectTitle}
+                    onChange={e => setProjectTitle(e.target.value)}
+                    placeholder="Ex: Plataforma E-commerce de Moda ou App de Agendamentos"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Categoria do Projeto *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {clientQuoteCategories.map(cat => {
+                      const catValue = cat.label || cat.id;
+                      const active = category === catValue || category === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategory(catValue)}
+                          className={`p-3 rounded-xl text-left border transition-all cursor-pointer ${
+                            active
+                              ? 'bg-blue-600/10 border-blue-600 text-blue-700 dark:bg-blue-500/20 dark:border-blue-400 dark:text-blue-300 ring-2 ring-blue-500/20'
+                              : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-bold text-xs">{cat.label}</span>
+                            {active && <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                          </div>
+                          {cat.desc && (
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                              {cat.desc}
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Descrição Detalhada do Projeto *
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder="Descreva o objetivo do software, público-alvo, regras de negócio e diferenciais esperados..."
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
                 </div>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-3">
+              {/* SECTION 2: Funcionalidades Desejadas */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="w-6 h-6 rounded-lg bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                    2
+                  </span>
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Funcionalidades Desejadas</h4>
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Selecione as funcionalidades que seu projeto precisará ter ou adicione recursos específicos:
+                </p>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {CLIENT_PREDEFINED_FEATURES.map(feat => {
+                    const isSelected = selectedFeatures.includes(feat);
+                    return (
+                      <button
+                        key={feat}
+                        type="button"
+                        onClick={() => toggleFeature(feat)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {isSelected ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5 opacity-60" />}
+                        <span>{feat}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom feature input */}
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={customFeature}
+                    onChange={e => setCustomFeature(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomFeature();
+                      }
+                    }}
+                    placeholder="Adicionar outra funcionalidade (ex: Login Social, Emissão de NFe...)"
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomFeature}
+                    className="px-4 py-2 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Adicionar</span>
+                  </button>
+                </div>
+
+                {/* Selected Features list */}
+                {selectedFeatures.length > 0 && (
+                  <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40">
+                    <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider block mb-1.5">
+                      Recursos Selecionados ({selectedFeatures.length}):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedFeatures.map(feat => (
+                        <span
+                          key={feat}
+                          className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-sm"
+                        >
+                          {feat}
+                          <button
+                            type="button"
+                            onClick={() => removeFeature(feat)}
+                            className="hover:bg-blue-700 p-0.5 rounded-md transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 3: Referências, Prazos e Investimento */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="w-6 h-6 rounded-lg bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                    3
+                  </span>
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Referências & Estimativas</h4>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Referências e Links de Inspiração
+                  </label>
+                  <input
+                    type="text"
+                    value={references}
+                    onChange={e => setReferences(e.target.value)}
+                    placeholder="Cole links de sites ou concorrentes que você gosta (ex: https://site.com)"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Prazo de Entrega Desejado *
+                    </label>
+                    <select
+                      value={deadline}
+                      onChange={e => setDeadline(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white cursor-pointer"
+                    >
+                      <option value="15 dias (Urgente)">15 dias (Urgente)</option>
+                      <option value="Até 30 dias">Até 30 dias</option>
+                      <option value="Até 45 dias">Até 45 dias</option>
+                      <option value="Até 60 dias">Até 60 dias</option>
+                      <option value="A combinar">A combinar</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Faixa de Investimento Prevista *
+                    </label>
+                    <select
+                      value={budgetRange}
+                      onChange={e => setBudgetRange(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white cursor-pointer"
+                    >
+                      <option value="Ainda não definida">Ainda não definida</option>
+                      <option value="R$ 3.000 a R$ 8.000">R$ 3.000 a R$ 8.000</option>
+                      <option value="R$ 8.000 a R$ 15.000">R$ 8.000 a R$ 15.000</option>
+                      <option value="R$ 15.000 a R$ 30.000">R$ 15.000 a R$ 30.000</option>
+                      <option value="Acima de R$ 30.000">Acima de R$ 30.000</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Observações Adicionais
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={additionalNotes}
+                    onChange={e => setAdditionalNotes(e.target.value)}
+                    placeholder="Alguma observação importante, dúvida ou condição comercial prévia?"
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* SECTION 4: Dados do Solicitante */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="w-6 h-6 rounded-lg bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                    4
+                  </span>
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Dados do Solicitante</h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      Seu Nome
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={clientName}
+                      onChange={e => setClientName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      Empresa
+                    </label>
+                    <input
+                      type="text"
+                      value={company}
+                      onChange={e => setCompany(e.target.value)}
+                      placeholder="Empresa ou Pessoa Física"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      E-mail
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      WhatsApp / Telefone
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={whatsapp}
+                      onChange={e => {
+                        setWhatsapp(e.target.value);
+                        setPhone(e.target.value);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowQuoteModal(false)}
@@ -909,7 +1253,7 @@ export const ClientPortal: React.FC = () => {
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
-                  <span>{isCreatingQuote ? 'Enviando e Analisando...' : 'Enviar Solicitação de Orçamento'}</span>
+                  <span>{isCreatingQuote ? 'Enviando e Processando Análise...' : 'Enviar Solicitação de Orçamento'}</span>
                 </button>
               </div>
 

@@ -20,6 +20,7 @@ import {
   Image
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { compressAndResizeImage } from '../utils/imageUtils';
 
 export const MobileAppView: React.FC = () => {
   const { 
@@ -57,16 +58,22 @@ export const MobileAppView: React.FC = () => {
     }
   }, [siteConfig]);
 
-  const handleMobileLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMobileLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setMLogoUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressAndResizeImage(file);
+        setMLogoUrl(compressedBase64);
+      } catch (err) {
+        console.error('Erro ao comprimir imagem:', err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setMLogoUrl(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 

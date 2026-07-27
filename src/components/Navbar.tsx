@@ -5,7 +5,8 @@ import {
   Menu, 
   X, 
   Lock,
-  Unlock
+  Unlock,
+  Sparkles
 } from 'lucide-react';
 import { useApp, ActiveView } from '../context/AppContext';
 
@@ -26,7 +27,14 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 dark:bg-slate-900/85 border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200">
+    <>
+      {siteConfig?.isAnnouncementActive && siteConfig?.announcementBanner && (
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white text-xs py-2 px-4 text-center font-semibold flex items-center justify-center gap-2 shadow-inner">
+          <Sparkles className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+          <span>{siteConfig.announcementBanner}</span>
+        </div>
+      )}
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 dark:bg-slate-900/85 border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
@@ -228,5 +236,6 @@ export const Navbar: React.FC = () => {
         </div>
       )}
     </header>
-  );
+  </>
+);
 };

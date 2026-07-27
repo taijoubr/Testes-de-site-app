@@ -660,10 +660,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteClientUser = async (id: string) => {
     try {
+      const clientToDelete = clientUsers.find(c => c.id === id);
+      const targetEmail = clientToDelete?.email?.trim().toLowerCase();
+
+      // 1. Delete document by ID from Firestore
       await deleteDoc(doc(db, 'clientUsers', id));
-      if (currentClientUser && currentClientUser.id === id) {
+
+      // 2. Search and delete any remaining document in Firestore matching the target email
+      if (targetEmail) {
+        try {
+          const qSnap = await getDocs(query(collection(db, 'clientUsers'), where('email', '==', targetEmail)));
+          for (const docSnap of qSnap.docs) {
+            await deleteDoc(doc(db, 'clientUsers', docSnap.id));
+          }
+        } catch (qErr) {
+          console.warn('Erro ao remover registros duplicados por e-mail no Firestore:', qErr);
+        }
+      }
+
+      // 3. Immediately update local clientUsers state
+      setClientUsers(prev => prev.filter(c => c.id !== id && (targetEmail ? c.email.trim().toLowerCase() !== targetEmail : true)));
+
+      // 4. Clear current client session if matches deleted user
+      if (currentClientUser && (currentClientUser.id === id || (targetEmail && currentClientUser.email.trim().toLowerCase() === targetEmail))) {
         logoutClient();
       }
+
       await addNotification('Cliente Removido do Servidor', `O cadastro do cliente foi removido permanentemente da base de dados.`, 'project');
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `clientUsers/${id}`);

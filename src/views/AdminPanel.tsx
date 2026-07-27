@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { sendEmailWithFallback } from '../utils/emailService';
+import { compressAndResizeImage } from '../utils/imageUtils';
 import { 
   BarChart, 
   Bar, 
@@ -61,13 +62,17 @@ import {
   RefreshCw,
   Settings,
   Layers,
-  Code
+  Code,
+  Eye,
+  EyeOff,
+  Tag
 } from 'lucide-react';
 
 import { useApp } from '../context/AppContext';
 import { ProposalGeneratorModal } from '../components/ProposalGeneratorModal';
 import { AdminQuoteManagementModal } from '../components/AdminQuoteManagementModal';
-import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem } from '../types';
+import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem, QuoteCategoryOption } from '../types';
+import { DEFAULT_QUOTE_CATEGORIES } from '../data/initialData';
 
 export const AdminPanel: React.FC = () => {
   const { 
@@ -237,6 +242,15 @@ export const AdminPanel: React.FC = () => {
   const [editAnnouncementBanner, setEditAnnouncementBanner] = useState(siteConfig?.announcementBanner || '');
   const [editIsAnnouncementActive, setEditIsAnnouncementActive] = useState(siteConfig?.isAnnouncementActive ?? false);
   const [editMaintenanceMode, setEditMaintenanceMode] = useState(siteConfig?.maintenanceMode ?? false);
+  const [editQuoteCategories, setEditQuoteCategories] = useState<QuoteCategoryOption[]>(
+    siteConfig?.quoteCategories && siteConfig.quoteCategories.length > 0
+      ? siteConfig.quoteCategories
+      : DEFAULT_QUOTE_CATEGORIES
+  );
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+  const [showQuoteCategoriesModal, setShowQuoteCategoriesModal] = useState(false);
+  const [quoteCatSaveSuccess, setQuoteCatSaveSuccess] = useState(false);
   const [isPublishingSite, setIsPublishingSite] = useState(false);
   const [sitePublishSuccess, setSitePublishSuccess] = useState(false);
 
@@ -262,23 +276,70 @@ export const AdminPanel: React.FC = () => {
       setEditAnnouncementBanner(siteConfig.announcementBanner || '');
       setEditIsAnnouncementActive(siteConfig.isAnnouncementActive ?? false);
       setEditMaintenanceMode(siteConfig.maintenanceMode ?? false);
+      if (siteConfig.quoteCategories && siteConfig.quoteCategories.length > 0) {
+        setEditQuoteCategories(siteConfig.quoteCategories);
+      } else {
+        setEditQuoteCategories(DEFAULT_QUOTE_CATEGORIES);
+      }
     }
   }, [siteConfig]);
 
-  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddQuoteCategory = async () => {
+    if (!newCatLabel.trim()) return;
+    const newCat: QuoteCategoryOption = {
+      id: 'cat-' + Date.now(),
+      label: newCatLabel.trim(),
+      desc: newCatDesc.trim() || 'Opção personalizada para solicitação de orçamento',
+      hidden: false
+    };
+    const newList = [...editQuoteCategories, newCat];
+    setEditQuoteCategories(newList);
+    setNewCatLabel('');
+    setNewCatDesc('');
+    await updateSiteConfig({ quoteCategories: newList });
+    setQuoteCatSaveSuccess(true);
+    setTimeout(() => setQuoteCatSaveSuccess(false), 2500);
+  };
+
+  const handleToggleHideQuoteCategory = async (id: string) => {
+    const newList = editQuoteCategories.map(c => c.id === id ? { ...c, hidden: !c.hidden } : c);
+    setEditQuoteCategories(newList);
+    await updateSiteConfig({ quoteCategories: newList });
+    setQuoteCatSaveSuccess(true);
+    setTimeout(() => setQuoteCatSaveSuccess(false), 2500);
+  };
+
+  const handleDeleteQuoteCategory = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta categoria de orçamento?')) {
+      const newList = editQuoteCategories.filter(c => c.id !== id);
+      setEditQuoteCategories(newList);
+      await updateSiteConfig({ quoteCategories: newList });
+      setQuoteCatSaveSuccess(true);
+      setTimeout(() => setQuoteCatSaveSuccess(false), 2500);
+    }
+  };
+
+  const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        alert('Selecione uma imagem com menos de 4MB.');
+      if (file.size > 8 * 1024 * 1024) {
+        alert('Selecione uma imagem com menos de 8MB.');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setEditLogoUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressAndResizeImage(file);
+        setEditLogoUrl(compressedBase64);
+      } catch (err) {
+        console.error('Erro ao processar imagem da logo:', err);
+        // Fallback to direct read if canvas fails
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setEditLogoUrl(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -304,7 +365,8 @@ export const AdminPanel: React.FC = () => {
       address: editAddress,
       announcementBanner: editAnnouncementBanner,
       isAnnouncementActive: editIsAnnouncementActive,
-      maintenanceMode: editMaintenanceMode
+      maintenanceMode: editMaintenanceMode,
+      quoteCategories: editQuoteCategories
     });
     setIsPublishingSite(false);
     setSitePublishSuccess(true);
@@ -904,18 +966,30 @@ export const AdminPanel: React.FC = () => {
       {/* TAB 2: QUOTES & PROPOSALS MANAGEMENT */}
       {activeTab === 'quotes' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Gestão de Orçamentos & Propostas Digitais</h2>
               <p className="text-xs text-slate-500">Acompanhe as solicitações dos clientes e envie os links de aceite digital de contrato.</p>
             </div>
-            <button
-              onClick={() => setActiveView('quote_wizard')}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Simular Novo Orçamento</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowQuoteCategoriesModal(true)}
+                className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-2 border border-slate-200 dark:border-slate-700 cursor-pointer transition-all shadow-sm"
+                title="Configurar Categorias e Opções do Formulário de Orçamento"
+              >
+                <Settings className="w-4 h-4 text-blue-500" />
+                <span>Configurar Opções de Orçamento</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('quote_wizard')}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Simular Novo Orçamento</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-6">
@@ -4265,6 +4339,167 @@ export const AdminPanel: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quote Categories Settings Modal (Accessed via Gear Icon in Quotes Tab) */}
+      {showQuoteCategoriesModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setShowQuoteCategoriesModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                <Tag className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Categorias de Orçamento (Formulários do Cliente)</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Adicione, oculte ou exclua as opções de tipo de projeto exibidas no formulário de orçamento.
+                </p>
+              </div>
+            </div>
+
+            {quoteCatSaveSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>Alterações salvas e sincronizadas em tempo real!</span>
+              </div>
+            )}
+
+            {/* List of Categories */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span>Opções Atuais Cadastradas ({editQuoteCategories.length})</span>
+                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                  {editQuoteCategories.filter(c => !c.hidden).length} Visíveis
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {editQuoteCategories.map((cat, idx) => (
+                  <div
+                    key={cat.id || idx}
+                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                      cat.hidden
+                        ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60'
+                        : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                          {cat.label}
+                        </span>
+                        {cat.hidden ? (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold">
+                            Oculto
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                            Visível
+                          </span>
+                        )}
+                      </div>
+                      {cat.desc && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          {cat.desc}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleHideQuoteCategory(cat.id)}
+                        title={cat.hidden ? 'Exibir no formulário' : 'Ocultar do formulário'}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                          cat.hidden
+                            ? 'bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600/20 dark:bg-emerald-500/20 dark:text-emerald-400'
+                            : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {cat.hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                        <span>{cat.hidden ? 'Exibir' : 'Ocultar'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteQuoteCategory(cat.id)}
+                        title="Excluir Categoria"
+                        className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Add New Category Form */}
+            <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 space-y-3">
+              <span className="text-[11px] font-extrabold text-blue-800 dark:text-blue-300 uppercase tracking-wider block">
+                + Adicionar Nova Categoria de Orçamento
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Nome da Categoria *
+                  </label>
+                  <input
+                    type="text"
+                    value={newCatLabel}
+                    onChange={(e) => setNewCatLabel(e.target.value)}
+                    placeholder="Ex: E-commerce e Lojas Virtuais"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Breve Descrição
+                  </label>
+                  <input
+                    type="text"
+                    value={newCatDesc}
+                    onChange={(e) => setNewCatDesc(e.target.value)}
+                    placeholder="Ex: Plataformas de vendas online e pagamentos"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleAddQuoteCategory}
+                  disabled={!newCatLabel.trim()}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-40"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Adicionar Categoria</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 flex items-center justify-end border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowQuoteCategoriesModal(false)}
+                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Concluir
+              </button>
+            </div>
           </div>
         </div>
       )}

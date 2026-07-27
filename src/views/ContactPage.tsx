@@ -13,7 +13,13 @@ import {
 import { useApp } from '../context/AppContext';
 
 export const ContactPage: React.FC = () => {
-  const { setActiveView } = useApp();
+  const { setActiveView, siteConfig } = useApp();
+
+  const currentPhone = siteConfig?.whatsapp || siteConfig?.phone || '(11) 98765-4321';
+  const currentPhoneClean = currentPhone.replace(/\D/g, '');
+  const currentEmail = siteConfig?.email || 'contato@ncodes.com.br';
+  const currentAddress = siteConfig?.address || 'Av. Paulista, 1000 - São Paulo, SP';
+  const companyName = siteConfig?.companyName || 'NCodes Technologies';
 
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-12">
@@ -28,7 +34,7 @@ export const ContactPage: React.FC = () => {
           Fale Conosco
         </h1>
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
-          Entre em contato com a equipe da NCodes Technologies através de nossos canais oficiais de atendimento.
+          Entre em contato com a equipe da {companyName} através de nossos canais oficiais de atendimento.
         </p>
       </div>
 
@@ -70,11 +76,11 @@ export const ContactPage: React.FC = () => {
               </p>
             </div>
             <p className="text-base font-extrabold text-slate-900 dark:text-white pt-2">
-              (11) 98765-4321
+              {currentPhone}
             </p>
           </div>
           <a 
-            href="https://wa.me/5511987654321" 
+            href={`https://wa.me/55${currentPhoneClean}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
@@ -97,11 +103,11 @@ export const ContactPage: React.FC = () => {
               </p>
             </div>
             <p className="text-base font-extrabold text-slate-900 dark:text-white pt-2">
-              contato@ncodes.com.br
+              {currentEmail}
             </p>
           </div>
           <a 
-            href="mailto:contato@ncodes.com.br" 
+            href={`mailto:${currentEmail}`} 
             className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors"
           >
             <span>Enviar E-mail</span>
@@ -122,7 +128,7 @@ export const ContactPage: React.FC = () => {
               </p>
             </div>
             <p className="text-sm font-bold text-slate-900 dark:text-white pt-2">
-              Av. Paulista, 1000 - São Paulo, SP
+              {currentAddress}
             </p>
           </div>
           <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-medium text-center">

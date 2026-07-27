@@ -325,6 +325,13 @@ export interface NotificationItem {
   link?: string;
 }
 
+export interface QuoteCategoryOption {
+  id: string;
+  label: string;
+  desc?: string;
+  hidden?: boolean;
+}
+
 export interface SiteConfig {
   id: string;
   companyName: string;
@@ -347,6 +354,7 @@ export interface SiteConfig {
   isAnnouncementActive: boolean;
   primaryColor: string;
   maintenanceMode: boolean;
+  quoteCategories?: QuoteCategoryOption[];
   lastUpdated: string;
   updatedBy: string;
 }

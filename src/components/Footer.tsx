@@ -3,7 +3,7 @@ import { Code2, Github, Instagram, Linkedin, Mail, Phone, MapPin, Heart } from '
 import { useApp } from '../context/AppContext';
 
 export const Footer: React.FC = () => {
-  const { setActiveView } = useApp();
+  const { setActiveView, siteConfig } = useApp();
 
   return (
     <footer className="bg-slate-950 text-slate-400 border-t border-slate-800 pt-16 pb-12">
@@ -13,14 +13,24 @@ export const Footer: React.FC = () => {
           {/* Brand & Bio */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 p-0.5">
-                <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                  <Code2 className="w-5 h-5 text-blue-400" />
+              {siteConfig?.logoUrl ? (
+                <div className="h-10 max-w-[170px] flex items-center justify-center p-1 rounded-xl bg-slate-900 border border-slate-800">
+                  <img 
+                    src={siteConfig.logoUrl} 
+                    alt={siteConfig.companyName || 'Logo'} 
+                    className="max-h-8 max-w-[150px] object-contain rounded"
+                  />
                 </div>
-              </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 p-0.5">
+                  <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                    <Code2 className="w-5 h-5 text-blue-400" />
+                  </div>
+                </div>
+              )}
               <div>
                 <span className="font-extrabold text-xl tracking-tight text-white">
-                  NCodes <span className="text-blue-400 font-light">Technologies</span>
+                  {siteConfig?.companyName || 'NCodes Technologies'}
                 </span>
               </div>
             </div>
@@ -108,15 +118,15 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-sm">
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>(11) 98765-4321</span>
+                <span>{siteConfig?.whatsapp || siteConfig?.phone || '(11) 98765-4321'}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>contato@ncodes.com.br</span>
+                <span>{siteConfig?.email || 'contato@ncodes.com.br'}</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                <span>Av. Paulista, 1000 - São Paulo, SP</span>
+                <span>{siteConfig?.address || 'Av. Paulista, 1000 - São Paulo, SP'}</span>
               </li>
             </ul>
           </div>

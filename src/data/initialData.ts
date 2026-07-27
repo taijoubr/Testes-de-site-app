@@ -13,7 +13,8 @@ import {
   AdminUser,
   ClientUser,
   ClientSubscription,
-  SiteConfig
+  SiteConfig,
+  QuoteCategoryOption
 } from '../types';
 
 export const INITIAL_SERVICES: ServiceItem[] = [
@@ -486,6 +487,15 @@ export const INITIAL_ADMIN_USERS: AdminUser[] = [
 
 export const INITIAL_CLIENT_USERS: ClientUser[] = [];
 
+export const DEFAULT_QUOTE_CATEGORIES: QuoteCategoryOption[] = [
+  { id: 'cat-1', label: 'Site Institucional', desc: 'Landing page, site institucional e apresentação de serviços', hidden: false },
+  { id: 'cat-2', label: 'Site com Sistema de Gestão', desc: 'Plataforma web completa com painel administrativo e dados', hidden: false },
+  { id: 'cat-3', label: 'Aplicativo Mobile iOS/Android', desc: 'App mobile híbrido ou nativo para App Store e Google Play', hidden: false },
+  { id: 'cat-4', label: 'Sistema Web Empresarial (ERP/CRM/SaaS)', desc: 'Sistema para processos de alta complexidade', hidden: false },
+  { id: 'cat-5', label: 'Automações com Inteligência Artificial', desc: 'Chatbots inteligentes, leitores de documentos ou agentes', hidden: false },
+  { id: 'cat-6', label: 'Outro / Sob Medida', desc: 'Projeto personalizado ou integração específica', hidden: false }
+];
+
 export const INITIAL_SITE_CONFIG: SiteConfig = {
   id: 'main',
   companyName: 'NCodes Technologies',
@@ -502,6 +512,7 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   isAnnouncementActive: false,
   primaryColor: '#2563eb',
   maintenanceMode: false,
+  quoteCategories: DEFAULT_QUOTE_CATEGORIES,
   lastUpdated: '25/07/2026 12:00',
   updatedBy: 'Admin Master'
 };
