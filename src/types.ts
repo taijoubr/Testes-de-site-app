@@ -277,6 +277,12 @@ export interface SiteConfig {
   whatsapp: string;
   email: string;
   notificationEmail?: string;
+  resendApiKey?: string;
+  smtpHost?: string;
+  smtpPort?: string;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpFrom?: string;
   address: string;
   announcementBanner: string;
   isAnnouncementActive: boolean;

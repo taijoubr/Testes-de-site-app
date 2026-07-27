@@ -220,6 +220,14 @@ export const AdminPanel: React.FC = () => {
   const [editWhatsapp, setEditWhatsapp] = useState(siteConfig?.whatsapp || '5511998876655');
   const [editEmail, setEditEmail] = useState(siteConfig?.email || 'contato@ncodestechnologies.com.br');
   const [editNotificationEmail, setEditNotificationEmail] = useState(siteConfig?.notificationEmail || siteConfig?.email || 'contato@ncodestechnologies.com.br');
+  const [editResendApiKey, setEditResendApiKey] = useState(siteConfig?.resendApiKey || '');
+  const [editSmtpHost, setEditSmtpHost] = useState(siteConfig?.smtpHost || '');
+  const [editSmtpPort, setEditSmtpPort] = useState(siteConfig?.smtpPort || '587');
+  const [editSmtpUser, setEditSmtpUser] = useState(siteConfig?.smtpUser || '');
+  const [editSmtpPass, setEditSmtpPass] = useState(siteConfig?.smtpPass || '');
+  const [editSmtpFrom, setEditSmtpFrom] = useState(siteConfig?.smtpFrom || '');
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
   const [editAddress, setEditAddress] = useState(siteConfig?.address || 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP');
   const [editAnnouncementBanner, setEditAnnouncementBanner] = useState(siteConfig?.announcementBanner || '');
   const [editIsAnnouncementActive, setEditIsAnnouncementActive] = useState(siteConfig?.isAnnouncementActive ?? false);
@@ -239,6 +247,12 @@ export const AdminPanel: React.FC = () => {
       setEditWhatsapp(siteConfig.whatsapp || '');
       setEditEmail(siteConfig.email || '');
       setEditNotificationEmail(siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br');
+      setEditResendApiKey(siteConfig.resendApiKey || '');
+      setEditSmtpHost(siteConfig.smtpHost || '');
+      setEditSmtpPort(siteConfig.smtpPort || '587');
+      setEditSmtpUser(siteConfig.smtpUser || '');
+      setEditSmtpPass(siteConfig.smtpPass || '');
+      setEditSmtpFrom(siteConfig.smtpFrom || '');
       setEditAddress(siteConfig.address || '');
       setEditAnnouncementBanner(siteConfig.announcementBanner || '');
       setEditIsAnnouncementActive(siteConfig.isAnnouncementActive ?? false);
@@ -276,6 +290,12 @@ export const AdminPanel: React.FC = () => {
       whatsapp: editWhatsapp,
       email: editEmail,
       notificationEmail: editNotificationEmail,
+      resendApiKey: editResendApiKey,
+      smtpHost: editSmtpHost,
+      smtpPort: editSmtpPort,
+      smtpUser: editSmtpUser,
+      smtpPass: editSmtpPass,
+      smtpFrom: editSmtpFrom,
       address: editAddress,
       announcementBanner: editAnnouncementBanner,
       isAnnouncementActive: editIsAnnouncementActive,
@@ -2289,57 +2309,238 @@ export const AdminPanel: React.FC = () => {
           </div>
 
           {/* Email Notification Alerts Config Box */}
-          <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 text-white space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 text-white space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                    Notificações por E-mail do Sistema
+                    Notificações por E-mail do Sistema & Servidor Transacional
                   </h4>
                   <p className="text-[11px] text-slate-400">
-                    E-mail cadastrado para alertas automáticos de novos cadastros e orçamentos
+                    Configure seu e-mail de destino e o serviço de envio para entrega direta na caixa de entrada
                   </p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[11px] font-bold flex items-center gap-1.5 self-start sm:self-auto">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span>Alertas Ativos</span>
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[11px] font-bold flex items-center gap-1.5 self-start sm:self-auto">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>Alertas Ativos</span>
+                </span>
+              </div>
             </div>
 
-            <div className="pt-2 text-xs space-y-3">
+            <div className="text-xs space-y-4">
+              {/* Destination Email */}
               <div className="p-4 rounded-2xl bg-slate-800/90 border border-slate-700/80 space-y-2">
-                <label className="text-[11px] font-bold text-slate-300 block">
-                  Seu E-mail para Receber Alertas Automáticos (Notificações do Sistema):
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-200 block">
+                    1. Seu E-mail Principal para Receber Alertas Automáticos:
+                  </label>
+                  <span className="text-[10px] text-blue-400 font-semibold">Alertas de Cadastro + Orçamento</span>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="email"
                     value={editNotificationEmail}
                     onChange={e => setEditNotificationEmail(e.target.value)}
-                    placeholder="ex: seuemail@dominio.com.br"
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="ex: p.nikolas3@gmail.com"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                   <button
                     type="button"
                     onClick={async () => {
-                      await updateSiteConfig({ notificationEmail: editNotificationEmail });
+                      await updateSiteConfig({
+                        notificationEmail: editNotificationEmail,
+                        resendApiKey: editResendApiKey,
+                        smtpHost: editSmtpHost,
+                        smtpPort: editSmtpPort,
+                        smtpUser: editSmtpUser,
+                        smtpPass: editSmtpPass,
+                        smtpFrom: editSmtpFrom
+                      });
                       setSitePublishSuccess(true);
                       setTimeout(() => setSitePublishSuccess(false), 3000);
                     }}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shrink-0 cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Salvar E-mail de Alerta</span>
+                    <span>Salvar Configurações</span>
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  Todas as notificações de novos cadastros e solicitações de orçamento serão enviadas instantaneamente para este endereço.
+                  Cadastros de novos clientes e solicitações de orçamento serão direcionados para este e-mail.
                 </p>
               </div>
+
+              {/* Real Email Server Options (Resend API Key & SMTP) */}
+              <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-3">
+                <div>
+                  <h5 className="text-[11px] font-bold text-slate-200 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-blue-400" />
+                    <span>2. Servidor de Entrega de E-mail Real na Caixa de Entrada (Gratuito / Opcional):</span>
+                  </h5>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Para garantir que os e-mails cheguem no Gmail/Outlook (sem ir para spam), você pode colar uma <strong>Chave API do Resend (Gratuito)</strong> ou seu <strong>Servidor SMTP</strong>.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {/* Resend API Key Option */}
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                        Opção A: Resend API (Recomendado - Grátis)
+                      </span>
+                      <a
+                        href="https://resend.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] text-blue-400 underline hover:text-blue-300"
+                      >
+                        Criar conta no Resend.com
+                      </a>
+                    </div>
+                    <input
+                      type="password"
+                      value={editResendApiKey}
+                      onChange={e => setEditResendApiKey(e.target.value)}
+                      placeholder="Chave API Resend (ex: re_1234567...)"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                    <p className="text-[9px] text-slate-400">
+                      O Resend oferece 3.000 e-mails grátis/mês com entrega imediata.
+                    </p>
+                  </div>
+
+                  {/* SMTP Credentials Option */}
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/80 space-y-2">
+                    <span className="text-[11px] font-bold text-blue-400 block">
+                      Opção B: Seu Servidor SMTP Personalizado
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={editSmtpHost}
+                        onChange={e => setEditSmtpHost(e.target.value)}
+                        placeholder="Host SMTP (ex: smtp.gmail.com)"
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-[11px] outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={editSmtpPort}
+                        onChange={e => setEditSmtpPort(e.target.value)}
+                        placeholder="Porta (ex: 587)"
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-[11px] outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={editSmtpUser}
+                        onChange={e => setEditSmtpUser(e.target.value)}
+                        placeholder="Usuário / E-mail SMTP"
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-[11px] outline-none"
+                      />
+                      <input
+                        type="password"
+                        value={editSmtpPass}
+                        onChange={e => setEditSmtpPass(e.target.value)}
+                        placeholder="Senha do SMTP"
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-[11px] outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Test Real Email Dispatch Button */}
+              <div className="p-3.5 rounded-2xl bg-blue-950/40 border border-blue-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div>
+                  <span className="font-bold text-blue-300 block text-xs">
+                    Testar Conexão e Disparo de E-mail Agora
+                  </span>
+                  <p className="text-[10px] text-slate-400">
+                    Envia um e-mail de teste imediato para <strong className="text-white font-mono">{editNotificationEmail}</strong>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={isTestingEmail}
+                  onClick={async () => {
+                    setIsTestingEmail(true);
+                    setTestEmailResult(null);
+                    try {
+                      const res = await fetch('/api/test-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          recipientEmail: editNotificationEmail,
+                          emailConfig: {
+                            resendApiKey: editResendApiKey,
+                            smtpHost: editSmtpHost,
+                            smtpPort: editSmtpPort,
+                            smtpUser: editSmtpUser,
+                            smtpPass: editSmtpPass,
+                            smtpFrom: editSmtpFrom
+                          }
+                        })
+                      });
+                      const data = await res.json();
+                      if (data.success && data.result?.delivered) {
+                        setTestEmailResult({
+                          success: true,
+                          message: `✅ E-mail de teste ENTREGUE com sucesso para ${editNotificationEmail} via ${data.result.provider.toUpperCase()}!`
+                        });
+                      } else if (data.success) {
+                        setTestEmailResult({
+                          success: false,
+                          message: `⚠️ E-mail processado no servidor. Para que o e-mail chegue diretamente à sua caixa de entrada no Gmail/Outlook, cole a Chave API do Resend (ou SMTP) no campo acima e clique em 'Salvar Configurações'.`
+                        });
+                      } else {
+                        setTestEmailResult({
+                          success: false,
+                          message: `❌ Erro no teste: ${data.error || 'Verifique as credenciais.'}`
+                        });
+                      }
+                    } catch (err) {
+                      setTestEmailResult({
+                        success: false,
+                        message: `❌ Falha ao conectar ao servidor de e-mail: ${err}`
+                      });
+                    } finally {
+                      setIsTestingEmail(false);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 shrink-0 cursor-pointer disabled:opacity-50"
+                >
+                  {isTestingEmail ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Testando Envio...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Enviar E-mail de Teste</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {testEmailResult && (
+                <div
+                  className={`p-3.5 rounded-xl border text-xs font-semibold ${
+                    testEmailResult.success
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                      : 'bg-amber-500/20 border-amber-500/40 text-amber-200'
+                  }`}
+                >
+                  {testEmailResult.message}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">

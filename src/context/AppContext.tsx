@@ -514,6 +514,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           body: JSON.stringify({
             type: 'new_client',
             recipientEmail: adminAlertEmail,
+            emailConfig: {
+              resendApiKey: siteConfig.resendApiKey,
+              smtpHost: siteConfig.smtpHost,
+              smtpPort: siteConfig.smtpPort,
+              smtpUser: siteConfig.smtpUser,
+              smtpPass: siteConfig.smtpPass,
+              smtpFrom: siteConfig.smtpFrom
+            },
             data: {
               name: data.name,
               email: data.email,
@@ -644,6 +652,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify({
           type: 'new_quote',
           recipientEmail: adminAlertEmail,
+          emailConfig: {
+            resendApiKey: siteConfig.resendApiKey,
+            smtpHost: siteConfig.smtpHost,
+            smtpPort: siteConfig.smtpPort,
+            smtpUser: siteConfig.smtpUser,
+            smtpPass: siteConfig.smtpPass,
+            smtpFrom: siteConfig.smtpFrom
+          },
           data: {
             quoteId: newId,
             clientName: data.clientName,
@@ -722,6 +738,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             body: JSON.stringify({
               type: 'proposal_issued',
               recipientEmail: quoteToUpdate.email,
+              emailConfig: {
+                resendApiKey: siteConfig.resendApiKey,
+                smtpHost: siteConfig.smtpHost,
+                smtpPort: siteConfig.smtpPort,
+                smtpUser: siteConfig.smtpUser,
+                smtpPass: siteConfig.smtpPass,
+                smtpFrom: siteConfig.smtpFrom
+              },
               data: {
                 proposalId: newPropId,
                 quoteId: quoteToUpdate.id,
@@ -909,6 +933,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             body: JSON.stringify({
               type: 'quote_status_update',
               recipientEmail: q.email,
+              emailConfig: {
+                resendApiKey: siteConfig.resendApiKey,
+                smtpHost: siteConfig.smtpHost,
+                smtpPort: siteConfig.smtpPort,
+                smtpUser: siteConfig.smtpUser,
+                smtpPass: siteConfig.smtpPass,
+                smtpFrom: siteConfig.smtpFrom
+              },
               data: {
                 quoteId,
                 clientName: q.clientName,

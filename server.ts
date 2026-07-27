@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 dotenv.config();
 
@@ -27,15 +29,133 @@ function getGeminiClient(): GoogleGenAI {
   return aiClient;
 }
 
+// Real Email Dispatcher Helper (Resend or SMTP Nodemailer)
+async function dispatchRealEmail({
+  to,
+  subject,
+  bodyText,
+  emailConfig
+}: {
+  to: string;
+  subject: string;
+  bodyText: string;
+  emailConfig?: {
+    resendApiKey?: string;
+    smtpHost?: string;
+    smtpPort?: string;
+    smtpUser?: string;
+    smtpPass?: string;
+    smtpFrom?: string;
+  };
+}) {
+  const resendKey = emailConfig?.resendApiKey?.trim() || process.env.RESEND_API_KEY?.trim();
+  const smtpHost = emailConfig?.smtpHost?.trim() || process.env.SMTP_HOST?.trim();
+
+  // Mode 1: Resend API (Free & Fast for real email delivery to Gmail/Outlook)
+  if (resendKey) {
+    const resend = new Resend(resendKey);
+    const fromAddress = emailConfig?.smtpFrom?.trim() || process.env.SMTP_FROM?.trim() || 'NCodes Tech <onboarding@resend.dev>';
+    
+    const result = await resend.emails.send({
+      from: fromAddress,
+      to,
+      subject,
+      text: bodyText
+    });
+
+    if (result.error) {
+      throw new Error(`Erro no Resend: ${result.error.message}`);
+    }
+
+    console.log(`\n✅ [REAL EMAIL DISPATCHED via RESEND] To: ${to} | ID: ${result.data?.id}`);
+    return { provider: 'resend', id: result.data?.id, delivered: true };
+  }
+
+  // Mode 2: Standard SMTP (Hostgator, Locaweb, Gmail, SendGrid, Amazon SES)
+  if (smtpHost) {
+    const port = Number(emailConfig?.smtpPort || process.env.SMTP_PORT || 587);
+    const user = emailConfig?.smtpUser?.trim() || process.env.SMTP_USER?.trim();
+    const pass = emailConfig?.smtpPass?.trim() || process.env.SMTP_PASS?.trim();
+    const from = emailConfig?.smtpFrom?.trim() || process.env.SMTP_FROM?.trim() || user || 'contato@ncodestechnologies.com.br';
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port,
+      secure: port === 465,
+      auth: user && pass ? { user, pass } : undefined
+    });
+
+    const info = await transporter.sendMail({
+      from: `NCodes Technologies <${from}>`,
+      to,
+      subject,
+      text: bodyText
+    });
+
+    console.log(`\n✅ [REAL EMAIL DISPATCHED via SMTP] To: ${to} | MessageID: ${info.messageId}`);
+    return { provider: 'smtp', messageId: info.messageId, delivered: true };
+  }
+
+  // Mode 3: Log only (no key provided yet)
+  console.log(`\n⚠️ [EMAIL LOGGED - NO API KEY SET] To: ${to}\nSubject: ${subject}\n${bodyText}`);
+  return {
+    provider: 'simulation',
+    delivered: false,
+    message: 'E-mail registrado no log do servidor. Para entrega real na sua caixa de entrada (Gmail/Outlook), adicione a Chave API do Resend (grátis) ou dados SMTP em Configurações > Notificações por E-mail.'
+  };
+}
+
 // Health Check API
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'NCodes Technologies API', timestamp: new Date().toISOString() });
 });
 
+// Test Email Dispatch Endpoint
+app.post('/api/test-email', async (req, res) => {
+  try {
+    const { recipientEmail, emailConfig } = req.body;
+    const targetEmail = recipientEmail || 'p.nikolas3@gmail.com';
+
+    const subject = '[NCodes Tech] 🧪 Teste de Conexão de E-mail do Sistema';
+    const bodyText = `
+==================================================
+NCODES TECHNOLOGIES - TESTE DE ENVIO DE E-MAIL
+==================================================
+Data/Hora: ${new Date().toLocaleString('pt-BR')}
+E-mail de Destino: ${targetEmail}
+
+Este é um e-mail de teste para confirmar que as notificações automáticas do sistema estão configuradas e entregando mensagens na sua caixa de entrada com sucesso!
+
+Notificações ativas:
+1. Alertas de Novos Clientes Cadastrados
+2. Alertas de Novas Solicitações de Orçamento
+3. E-mails de Posicionamento e Atualização de Orçamento enviados aos Clientes
+==================================================
+`;
+
+    const dispatchResult = await dispatchRealEmail({
+      to: targetEmail,
+      subject,
+      bodyText,
+      emailConfig
+    });
+
+    return res.json({
+      success: true,
+      result: dispatchResult,
+      recipient: targetEmail
+    });
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : 'Erro ao enviar e-mail de teste';
+    console.error('Erro no envio de e-mail de teste:', errMessage);
+    return res.status(500).json({ success: false, error: errMessage });
+  }
+});
+
 // Email Notification API (New Client, New Quote & Client Status Updates)
 app.post('/api/send-email-notification', async (req, res) => {
   try {
-    const { type, recipientEmail, data } = req.body;
+    const { type, recipientEmail, data, emailConfig } = req.body;
     const targetEmail = recipientEmail || 'contato@ncodestechnologies.com.br';
 
     let subject = '';
@@ -48,7 +168,7 @@ app.post('/api/send-email-notification', async (req, res) => {
 NCODES TECHNOLOGIES - ALERTA DE NOVO CLIENTE CADASTRADO
 ==================================================
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
-E-mail de Notificação do Sistema: ${targetEmail}
+E-mail do Destinatário: ${targetEmail}
 
 DETALHES DO CLIENTE:
 - Nome: ${data?.name || 'Não informado'}
@@ -67,7 +187,7 @@ Acesse o Painel Web Admin para iniciar o atendimento.
 NCODES TECHNOLOGIES - ALERTA DE NOVO ORÇAMENTO
 ==================================================
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
-E-mail de Notificação do Sistema: ${targetEmail}
+E-mail do Destinatário: ${targetEmail}
 
 DETALHES DA SOLICITAÇÃO:
 - ID do Orçamento: ${data?.quoteId || 'NOVO'}
@@ -129,11 +249,17 @@ Equipe NCodes Technologies
       return res.status(400).json({ error: 'Tipo de notificação inválido.' });
     }
 
-    console.log(`\n📧 [EMAIL DISPATCH SUCCESS] To: ${targetEmail}\nSubject: ${subject}\n${bodyText}`);
+    const dispatchResult = await dispatchRealEmail({
+      to: targetEmail,
+      subject,
+      bodyText,
+      emailConfig
+    });
 
     return res.json({
       success: true,
-      message: 'E-mail enviado com sucesso.',
+      message: dispatchResult.delivered ? 'E-mail entregue com sucesso.' : 'E-mail processado no sistema.',
+      dispatchResult,
       recipient: targetEmail,
       subject,
       timestamp: new Date().toISOString()
