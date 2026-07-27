@@ -57,7 +57,13 @@ export async function sendEmailWithFallback({
     let emailText = bodyText || `Notificação enviada para ${recipientEmail}`;
 
     if (!subject || !bodyText) {
-      if (type === 'new_client') {
+      if (type === 'client_registration_confirmation') {
+        emailSubject = `[NCodes Tech] 🎉 Confirmação de Cadastro - Portal do Cliente`;
+        emailText = `Olá, ${data?.name || 'Cliente'}!\n\nSeja muito bem-vindo(a) à NCodes Technologies!\nSeu cadastro no Portal do Cliente foi concluído com sucesso.\n\nE-mail de Acesso: ${recipientEmail}\nEmpresa: ${data?.company || 'Pessoa Física'}\n\nAcesse o portal: https://ncodestechnologies.com.br`;
+      } else if (type === 'quote_confirmation_client') {
+        emailSubject = `[NCodes Tech] 📋 Solicitação de Orçamento Recebida - #${data?.quoteId || ''}`;
+        emailText = `Olá, ${data?.clientName || 'Cliente'}!\n\nConfirmamos o recebimento da sua solicitação de orçamento #${data?.quoteId || ''}!\nProjeto: ${data?.projectTitle || 'Não informado'}\nCategoria: ${data?.category || 'Sistema Web'}\n\nNossa equipe técnica e Inteligência Artificial estão analisando seu projeto. Acompanhe em https://ncodestechnologies.com.br`;
+      } else if (type === 'new_client') {
         emailSubject = `[NCodes Tech] 👤 Novo Cliente Cadastrado: ${data?.name || 'Cliente'}`;
         emailText = `Novo cliente cadastrado no sistema:\nNome: ${data?.name}\nE-mail: ${data?.email}\nEmpresa: ${data?.company}\nTelefone: ${data?.phone}`;
       } else if (type === 'new_quote') {

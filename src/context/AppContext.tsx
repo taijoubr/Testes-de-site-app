@@ -551,8 +551,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
       });
       await addNotification('Novo Cliente Cadastrado', `${data.name} (${data.company || 'Pessoa Física'}) criou uma conta no Portal do Cliente.`, 'project');
-      
-      // Send email alert to configured admin email
+
+      // 1. Send automatic registration confirmation email directly to the CLIENT
+      try {
+        await sendEmailWithFallback({
+          endpoint: '/api/send-email-notification',
+          recipientEmail: cleanEmail,
+          type: 'client_registration_confirmation',
+          emailConfig: {
+            resendApiKey: siteConfig.resendApiKey,
+            smtpHost: siteConfig.smtpHost,
+            smtpPort: siteConfig.smtpPort,
+            smtpUser: siteConfig.smtpUser,
+            smtpPass: siteConfig.smtpPass,
+            smtpFrom: siteConfig.smtpFrom
+          },
+          data: {
+            name: data.name,
+            email: cleanEmail,
+            company: data.company,
+            phone: data.phone
+          }
+        });
+      } catch (cErr) {
+        console.warn('E-mail dispatch error to client (registration confirmation):', cErr);
+      }
+
+      // 2. Send email alert to configured admin email
       try {
         const adminAlertEmail = siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br';
         await sendEmailWithFallback({
@@ -577,7 +602,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         });
       } catch (eErr) {
-        console.warn('E-mail dispatch error (new client):', eErr);
+        console.warn('E-mail dispatch error (new client admin alert):', eErr);
+      }
+
+      // 3. Create initial welcome chat message in Firestore
+      try {
+        const welcomeChatMsg: ChatMessage = {
+          id: `chat-welcome-${Date.now()}`,
+          senderId: 'sys-ncodes',
+          senderName: 'NCodes Tech',
+          senderRole: 'admin',
+          senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80',
+          text: `Olá ${data.name}! Seja muito bem-vindo(a) à NCodes Technologies! Seu cadastro foi realizado com sucesso. Através do nosso portal você pode solicitar orçamentos, acompanhar projetos e visualizar propostas comerciais. Como podemos ajudar?`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        await saveDoc('chatMessages', welcomeChatMsg.id, welcomeChatMsg);
+      } catch (chatErr) {
+        console.warn('Welcome chat message save error:', chatErr);
       }
 
       return { success: true };
@@ -686,9 +727,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       handleFirestoreError(err, OperationType.WRITE, `quotes/${newId}`);
     }
 
-    await addNotification('Novo Orçamento Recebido!', `${data.clientName} (${data.company}) enviou uma nova solicitação de orçamento.`, 'quote');
+    await addNotification('Novo Orçamento Recebido!', `${data.clientName} (${data.company}) enviou uma nova solicitação de orçamento (${newId}).`, 'quote');
 
-    // Send email alert to configured admin email
+    // 1. Send automatic quote request confirmation email directly to the CLIENT
+    if (data.email) {
+      try {
+        await sendEmailWithFallback({
+          endpoint: '/api/send-email-notification',
+          recipientEmail: data.email,
+          type: 'quote_confirmation_client',
+          emailConfig: {
+            resendApiKey: siteConfig.resendApiKey,
+            smtpHost: siteConfig.smtpHost,
+            smtpPort: siteConfig.smtpPort,
+            smtpUser: siteConfig.smtpUser,
+            smtpPass: siteConfig.smtpPass,
+            smtpFrom: siteConfig.smtpFrom
+          },
+          data: {
+            quoteId: newId,
+            clientName: data.clientName,
+            projectTitle: data.projectTitle || data.projectType,
+            category: data.category || data.projectType,
+            selectedFeatures: data.selectedFeatures || [],
+            deadline: data.deadline,
+            budgetRange: data.budgetRange,
+            description: data.description
+          }
+        });
+      } catch (cErr) {
+        console.warn('E-mail dispatch error to client (quote confirmation):', cErr);
+      }
+    }
+
+    // 2. Send email alert to configured admin email
     try {
       const adminAlertEmail = siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br';
       await sendEmailWithFallback({
@@ -715,7 +787,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
     } catch (eErr) {
-      console.warn('E-mail dispatch error (new quote):', eErr);
+      console.warn('E-mail dispatch error (new quote admin alert):', eErr);
+    }
+
+    // 3. Create initial automated chat message confirming quote receipt
+    try {
+      const quoteChatMsg: ChatMessage = {
+        id: `chat-quote-${Date.now()}`,
+        senderId: 'sys-ncodes',
+        senderName: 'Engenharia NCodes',
+        senderRole: 'admin',
+        senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80',
+        text: `Confirmamos o recebimento da sua solicitação de orçamento #${newId} ("${data.projectTitle || data.projectType}"). Nossa equipe técnica e Inteligência Artificial iniciaram a análise de viabilidade técnica. Você receberá atualizações no seu e-mail e nesta conversa!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      await saveDoc('chatMessages', quoteChatMsg.id, quoteChatMsg);
+    } catch (chatErr) {
+      console.warn('Quote chat message save error:', chatErr);
     }
 
     // Trigger server-side AI quote analysis
@@ -996,6 +1084,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `Status do orçamento #${quoteId} (${q.clientName}) alterado para ${statusLabels[status] || status}. E-mail enviado ao cliente.`,
         'quote'
       );
+
+      // Create automated chat message update for the quote
+      try {
+        const updateChatMsg: ChatMessage = {
+          id: `chat-status-${Date.now()}`,
+          senderId: 'sys-ncodes',
+          senderName: 'NCodes Tech',
+          senderRole: 'admin',
+          senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80',
+          text: `🔔 Atualização do Orçamento #${quoteId}: O status do seu projeto foi alterado para "${statusLabels[status] || status}". ${customMessage ? `\n\nObservação da equipe: "${customMessage}"` : ''}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        await saveDoc('chatMessages', updateChatMsg.id, updateChatMsg);
+      } catch (chatErr) {
+        console.warn('Status update chat message save error:', chatErr);
+      }
     }
   };
 

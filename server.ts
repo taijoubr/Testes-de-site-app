@@ -209,7 +209,68 @@ app.post('/api/send-email-notification', async (req, res) => {
     let subject = '';
     let bodyText = '';
 
-    if (type === 'new_client') {
+    if (type === 'client_registration_confirmation') {
+      subject = `[NCodes Tech] 🎉 Confirmação de Cadastro - Portal do Cliente`;
+      bodyText = `
+==================================================
+NCODES TECHNOLOGIES - CONFIRMAÇÃO DE CADASTRO
+==================================================
+Olá, ${data?.name || 'Cliente'}!
+
+Seja muito bem-vindo(a) à NCodes Technologies!
+Seu cadastro no nosso Portal do Cliente foi concluído com sucesso.
+
+SEUS DADOS REGISTRADOS:
+- Nome: ${data?.name || 'Não informado'}
+- E-mail de Acesso: ${targetEmail}
+- Empresa: ${data?.company || 'Pessoa Física'}
+- Telefone/WhatsApp: ${data?.phone || 'Não informado'}
+
+NO PORTAL DO CLIENTE VOCÊ PODE:
+1. Solicitar novos orçamentos com formulário detalhado e análise de IA.
+2. Acompanhar em tempo real o status de aprovação de seus projetos.
+3. Visualizar e aceitar propostas comerciais com assinatura digital.
+4. Interagir diretamente com nossa equipe via chat e suporte.
+
+Acesse o portal a qualquer momento:
+https://ncodestechnologies.com.br
+
+Atenciosamente,
+Equipe NCodes Technologies
+==================================================
+`;
+    } else if (type === 'quote_confirmation_client') {
+      subject = `[NCodes Tech] 📋 Solicitação de Orçamento Recebida - #${data?.quoteId || ''}`;
+      bodyText = `
+==================================================
+NCODES TECHNOLOGIES - CONFIRMAÇÃO DE SOLICITAÇÃO DE ORÇAMENTO
+==================================================
+Olá, ${data?.clientName || 'Cliente'}!
+
+Confirmamos o recebimento da sua solicitação de orçamento com sucesso!
+Sua proposta já deu entrada no nosso sistema e recebeu o código #${data?.quoteId || 'NOVO'}.
+
+RESUMO DA SUA SOLICITAÇÃO:
+- Código do Orçamento: ${data?.quoteId || 'N/A'}
+- Título do Projeto: ${data?.projectTitle || 'Não informado'}
+- Categoria: ${data?.category || 'Sistema Web'}
+- Funcionalidades Selecionadas: ${Array.isArray(data?.selectedFeatures) && data.selectedFeatures.length > 0 ? data.selectedFeatures.join(', ') : 'Conforme descrição'}
+- Prazo Desejado: ${data?.deadline || 'A combinar'}
+- Faixa de Investimento: ${data?.budgetRange || 'A combinar'}
+
+PRÓXIMOS PASSOS:
+1. Nossa Inteligência Artificial e equipe de Engenharia de Software estão realizando a pré-análise técnica do escopo.
+2. Você receberá atualizações sobre o status do orçamento no seu e-mail e na aba 'Meus Orçamentos' do Portal do Cliente.
+3. Assim que a análise for concluída, emitiremos sua Proposta Comercial Digital para visualização.
+
+Acompanhe sua solicitação no Portal do Cliente:
+https://ncodestechnologies.com.br
+
+Atenciosamente,
+Equipe NCodes Technologies
+==================================================
+`;
+    } else if (type === 'new_client') {
       subject = `[NCodes Tech] 👤 Novo Cliente Cadastrado: ${data?.name || 'Cliente'}`;
       bodyText = `
 ==================================================
