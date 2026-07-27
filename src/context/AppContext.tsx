@@ -129,7 +129,7 @@ interface AppContextType {
   createQuoteRequest: (data: Omit<QuoteRequest, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => Promise<QuoteRequest>;
   createProposal: (data: Omit<Proposal, 'id' | 'createdAt' | 'status'>) => Proposal;
   acceptProposal: (proposalId: string, signatureName: string) => Promise<void>;
-  updateQuoteStatus: (quoteId: string, status: QuoteStatus) => void;
+  updateQuoteStatus: (quoteId: string, status: QuoteStatus, customMessage?: string) => Promise<void>;
   deleteQuote: (quoteId: string) => Promise<void>;
   
   toggleProjectTask: (projectId: string, taskId: string) => void;
@@ -505,14 +505,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       await addNotification('Novo Cliente Cadastrado', `${data.name} (${data.company || 'Pessoa Física'}) criou uma conta no Portal do Cliente.`, 'project');
       
-      // Send email alert to admin
+      // Send email alert to configured admin email
       try {
+        const adminAlertEmail = siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br';
         await fetch('/api/send-email-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'new_client',
-            recipientEmail: 'p.nikolas3@gmail.com',
+            recipientEmail: adminAlertEmail,
             data: {
               name: data.name,
               email: data.email,
@@ -634,14 +635,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     await addNotification('Novo Orçamento Recebido!', `${data.clientName} (${data.company}) enviou uma nova solicitação de orçamento.`, 'quote');
 
-    // Send email alert to admin
+    // Send email alert to configured admin email
     try {
+      const adminAlertEmail = siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br';
       await fetch('/api/send-email-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'new_quote',
-          recipientEmail: 'p.nikolas3@gmail.com',
+          recipientEmail: adminAlertEmail,
           data: {
             quoteId: newId,
             clientName: data.clientName,
@@ -711,6 +713,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           proposalId: newPropId,
           updatedAt: new Date().toISOString()
         });
+
+        // Send proposal notification email directly to client
+        if (quoteToUpdate.email) {
+          fetch('/api/send-email-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'proposal_issued',
+              recipientEmail: quoteToUpdate.email,
+              data: {
+                proposalId: newPropId,
+                quoteId: quoteToUpdate.id,
+                clientName: data.clientName,
+                title: data.title,
+                totalValue: data.totalValue,
+                paymentTerms: data.paymentTerms
+              }
+            })
+          }).catch(err => console.warn('Erro ao enviar e-mail de proposta ao cliente:', err));
+        }
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `proposals/${newPropId}`);
@@ -852,15 +874,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateQuoteStatus = async (quoteId: string, status: QuoteStatus) => {
+  const updateQuoteStatus = async (quoteId: string, status: QuoteStatus, customMessage?: string) => {
     const q = quotes.find(item => item.id === quoteId);
     if (q) {
-      const updated = { ...q, status, updatedAt: new Date().toISOString() };
+      const updated = { 
+        ...q, 
+        status, 
+        adminNotes: customMessage || q.adminNotes,
+        updatedAt: new Date().toISOString() 
+      };
       try {
         await setDoc(doc(db, 'quotes', quoteId), updated);
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
       }
+
+      const statusLabels: Record<QuoteStatus, string> = {
+        solicitado: 'Solicitado',
+        em_analise: 'Em Análise Técnica',
+        em_elaboracao: 'Em Elaboração de Proposta',
+        proposta_enviada: 'Proposta Emitida',
+        em_negociacao: 'Em Negociação',
+        aprovado: 'Aprovado / Em Execução',
+        rejeitado: 'Recusado',
+        cancelado: 'Cancelado'
+      };
+
+      // Notify Client via Email
+      if (q.email) {
+        try {
+          await fetch('/api/send-email-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'quote_status_update',
+              recipientEmail: q.email,
+              data: {
+                quoteId,
+                clientName: q.clientName,
+                status,
+                statusLabel: statusLabels[status] || status,
+                message: customMessage || ''
+              }
+            })
+          });
+        } catch (eErr) {
+          console.warn('Erro ao enviar e-mail de posicionamento ao cliente:', eErr);
+        }
+      }
+
+      await addNotification(
+        'Posicionamento de Orçamento Atualizado',
+        `Status do orçamento #${quoteId} (${q.clientName}) alterado para ${statusLabels[status] || status}. E-mail enviado ao cliente.`,
+        'quote'
+      );
     }
   };
 

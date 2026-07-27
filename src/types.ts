@@ -69,6 +69,7 @@ export interface QuoteRequest {
   status: QuoteStatus;
   createdAt: string;
   updatedAt: string;
+  adminNotes?: string;
   aiAnalysis?: {
     recommendedTech: string[];
     estimatedHours: number;
@@ -275,6 +276,7 @@ export interface SiteConfig {
   phone: string;
   whatsapp: string;
   email: string;
+  notificationEmail?: string;
   address: string;
   announcementBanner: string;
   isAnnouncementActive: boolean;

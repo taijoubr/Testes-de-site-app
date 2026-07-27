@@ -32,11 +32,11 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'NCodes Technologies API', timestamp: new Date().toISOString() });
 });
 
-// Email Notification API (New Client & New Quote Alerts)
+// Email Notification API (New Client, New Quote & Client Status Updates)
 app.post('/api/send-email-notification', async (req, res) => {
   try {
     const { type, recipientEmail, data } = req.body;
-    const targetEmail = recipientEmail || 'p.nikolas3@gmail.com';
+    const targetEmail = recipientEmail || 'contato@ncodestechnologies.com.br';
 
     let subject = '';
     let bodyText = '';
@@ -45,54 +45,95 @@ app.post('/api/send-email-notification', async (req, res) => {
       subject = `[NCodes Tech] 👤 Novo Cliente Cadastrado: ${data?.name || 'Cliente'}`;
       bodyText = `
 ==================================================
-NCODES TECHNOLOGIES - NOTIFICAÇÃO DE NOVO CLIENTE
+NCODES TECHNOLOGIES - ALERTA DE NOVO CLIENTE CADASTRADO
 ==================================================
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
-Destinatário: ${targetEmail}
+E-mail de Notificação do Sistema: ${targetEmail}
 
-DETALHES DO CLIENTE CADASTRADO:
+DETALHES DO CLIENTE:
 - Nome: ${data?.name || 'Não informado'}
 - E-mail: ${data?.email || 'Não informado'}
 - Empresa: ${data?.company || 'Pessoa Física'}
 - Telefone / WhatsApp: ${data?.phone || 'Não informado'}
 - Localização: ${data?.city || 'São Paulo'} / ${data?.state || 'SP'}
 
-Acesse o Painel Web Admin para iniciar o contato ou gerar uma nova proposta.
+Acesse o Painel Web Admin para iniciar o atendimento.
 ==================================================
 `;
     } else if (type === 'new_quote') {
       subject = `[NCodes Tech] 🚀 Nova Solicitação de Orçamento: ${data?.quoteId || ''}`;
       bodyText = `
 ==================================================
-NCODES TECHNOLOGIES - NOTIFICAÇÃO DE NOVO ORÇAMENTO
+NCODES TECHNOLOGIES - ALERTA DE NOVO ORÇAMENTO
 ==================================================
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
-Destinatário: ${targetEmail}
+E-mail de Notificação do Sistema: ${targetEmail}
 
-DETALHES DA SOLICITAÇÃO DE ORÇAMENTO:
+DETALHES DA SOLICITAÇÃO:
 - ID do Orçamento: ${data?.quoteId || 'NOVO'}
-- Nome do Solicitante: ${data?.clientName || 'Não informado'}
+- Solicitante: ${data?.clientName || 'Não informado'}
 - Empresa: ${data?.company || 'Pessoa Física'}
 - E-mail de Contato: ${data?.email || 'Não informado'}
 - WhatsApp: ${data?.whatsapp || 'Não informado'}
 - Prazo Desejado: ${data?.deadline || 'A combinar'}
 - Faixa Estimada: ${data?.budgetRange || 'A combinar'}
 
-DESCRIÇÃO DO PROJETO:
+REQUISITOS DO PROJETO:
 "${data?.description || 'Sem descrição'}"
 
-Acesse o Painel Web Admin para visualizar o orçamento e emitir a proposta.
+Acesse o Painel Web Admin para analisar o orçamento e emitir a proposta.
+==================================================
+`;
+    } else if (type === 'quote_status_update') {
+      subject = `[NCodes Tech] 📋 Posicionamento do seu Orçamento #${data?.quoteId || ''}`;
+      bodyText = `
+==================================================
+NCODES TECHNOLOGIES - ATUALIZAÇÃO DE ORÇAMENTO
+==================================================
+Prezado(a) ${data?.clientName || 'Cliente'},
+
+Informamos que o status do seu orçamento #${data?.quoteId || ''} foi atualizado para:
+>>> STATUS: ${data?.statusLabel || data?.status || 'Em Análise'} <<<
+
+${data?.message ? `MENSAGEM / POSICIONAMENTO DA NOSSA EQUIPE:\n"${data.message}"\n` : ''}
+
+Acesse o Portal do Cliente para acompanhar os detalhes e visualizar propostas emitidas.
+Website: https://ncodestechnologies.com.br
+
+Atenciosamente,
+Equipe NCodes Technologies
+==================================================
+`;
+    } else if (type === 'proposal_issued') {
+      subject = `[NCodes Tech] 📄 Proposta Comercial #${data?.proposalId || ''} Disponível para Aceite Digital`;
+      bodyText = `
+==================================================
+NCODES TECHNOLOGIES - PROPOSTA COMERCIAL EMITIDA
+==================================================
+Prezado(a) ${data?.clientName || 'Cliente'},
+
+Sua Proposta Comercial #${data?.proposalId || ''} referente ao orçamento #${data?.quoteId || ''} foi gerada e está pronta para sua validação!
+
+DETALHES DA PROPOSTA:
+- Título: ${data?.title || 'Proposta Técnica'}
+- Valor Total: R$ ${data?.totalValue ? Number(data.totalValue).toLocaleString('pt-BR') : '0,00'}
+- Condições: ${data?.paymentTerms || 'A combinar'}
+
+Acesse o Portal do Cliente para visualizar os itens do escopo e assinar digitalmente o contrato.
+
+Atenciosamente,
+Equipe NCodes Technologies
 ==================================================
 `;
     } else {
       return res.status(400).json({ error: 'Tipo de notificação inválido.' });
     }
 
-    console.log(`\n📧 [EMAIL NOTIFICATION SENT] To: ${targetEmail}\nSubject: ${subject}\n${bodyText}`);
+    console.log(`\n📧 [EMAIL DISPATCH SUCCESS] To: ${targetEmail}\nSubject: ${subject}\n${bodyText}`);
 
     return res.json({
       success: true,
-      message: 'Notificação de e-mail enviada com sucesso.',
+      message: 'E-mail enviado com sucesso.',
       recipient: targetEmail,
       subject,
       timestamp: new Date().toISOString()

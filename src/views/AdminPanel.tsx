@@ -53,6 +53,7 @@ import {
   PauseCircle,
   PlayCircle,
   XCircle,
+  X,
   Copy,
   Check,
   QrCode,
@@ -218,6 +219,7 @@ export const AdminPanel: React.FC = () => {
   const [editPhone, setEditPhone] = useState(siteConfig?.phone || '(11) 99887-6655');
   const [editWhatsapp, setEditWhatsapp] = useState(siteConfig?.whatsapp || '5511998876655');
   const [editEmail, setEditEmail] = useState(siteConfig?.email || 'contato@ncodestechnologies.com.br');
+  const [editNotificationEmail, setEditNotificationEmail] = useState(siteConfig?.notificationEmail || siteConfig?.email || 'contato@ncodestechnologies.com.br');
   const [editAddress, setEditAddress] = useState(siteConfig?.address || 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP');
   const [editAnnouncementBanner, setEditAnnouncementBanner] = useState(siteConfig?.announcementBanner || '');
   const [editIsAnnouncementActive, setEditIsAnnouncementActive] = useState(siteConfig?.isAnnouncementActive ?? false);
@@ -236,6 +238,7 @@ export const AdminPanel: React.FC = () => {
       setEditPhone(siteConfig.phone || '');
       setEditWhatsapp(siteConfig.whatsapp || '');
       setEditEmail(siteConfig.email || '');
+      setEditNotificationEmail(siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br');
       setEditAddress(siteConfig.address || '');
       setEditAnnouncementBanner(siteConfig.announcementBanner || '');
       setEditIsAnnouncementActive(siteConfig.isAnnouncementActive ?? false);
@@ -272,6 +275,7 @@ export const AdminPanel: React.FC = () => {
       phone: editPhone,
       whatsapp: editWhatsapp,
       email: editEmail,
+      notificationEmail: editNotificationEmail,
       address: editAddress,
       announcementBanner: editAnnouncementBanner,
       isAnnouncementActive: editIsAnnouncementActive,
@@ -291,6 +295,13 @@ export const AdminPanel: React.FC = () => {
 
   // Proposal modal trigger
   const [selectedQuoteForProp, setSelectedQuoteForProp] = useState<QuoteRequest | null>(null);
+
+  // Quote Client Positioning Modal State
+  const [positioningQuote, setPositioningQuote] = useState<QuoteRequest | null>(null);
+  const [positionStatus, setPositionStatus] = useState<QuoteStatus>('em_analise');
+  const [positionMessage, setPositionMessage] = useState('');
+  const [isSendingPosition, setIsSendingPosition] = useState(false);
+  const [positionSuccessMsg, setPositionSuccessMsg] = useState<string | null>(null);
 
   // New Transaction Form state
   const [showFinModal, setShowFinModal] = useState(false);
@@ -889,7 +900,7 @@ export const AdminPanel: React.FC = () => {
                     <p className="text-xs text-slate-500">{q.whatsapp} | {q.email} | {q.city}-{q.state}</p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <select
                       value={q.status}
                       onChange={e => updateQuoteStatus(q.id, e.target.value as QuoteStatus)}
@@ -904,8 +915,21 @@ export const AdminPanel: React.FC = () => {
                     </select>
 
                     <button
+                      onClick={() => {
+                        setPositioningQuote(q);
+                        setPositionStatus(q.status);
+                        setPositionMessage(q.adminNotes || '');
+                      }}
+                      title="Enviar e-mail de posicionamento/atualização ao cliente"
+                      className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center gap-1.5 border border-blue-500/30 transition-colors cursor-pointer"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Posicionamento por E-mail</span>
+                    </button>
+
+                    <button
                       onClick={() => setSelectedQuoteForProp(q)}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
+                      className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
                     >
                       <FileSignature className="w-3.5 h-3.5" />
                       <span>Gerar Proposta</span>
@@ -914,7 +938,7 @@ export const AdminPanel: React.FC = () => {
                     <button
                       onClick={() => deleteQuote(q.id)}
                       title="Excluir Orçamento"
-                      className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 border border-slate-200 dark:border-slate-800 transition-colors"
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 border border-slate-200 dark:border-slate-800 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -947,6 +971,18 @@ export const AdminPanel: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {q.adminNotes && (
+                  <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
+                    <Mail className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-blue-600 dark:text-blue-400 block text-[11px] uppercase tracking-wider">
+                        Último Posicionamento Enviado por E-mail ao Cliente:
+                      </span>
+                      <p className="mt-1 text-slate-700 dark:text-slate-300 font-medium italic">"{q.adminNotes}"</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Proposals associated */}
                 {q.proposalId && (
@@ -2274,22 +2310,50 @@ export const AdminPanel: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-              <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">E-mail Principal</span>
-                <strong className="text-blue-400 font-mono">p.nikolas3@gmail.com</strong>
+            <div className="pt-2 text-xs space-y-3">
+              <div className="p-4 rounded-2xl bg-slate-800/90 border border-slate-700/80 space-y-2">
+                <label className="text-[11px] font-bold text-slate-300 block">
+                  Seu E-mail para Receber Alertas Automáticos (Notificações do Sistema):
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="email"
+                    value={editNotificationEmail}
+                    onChange={e => setEditNotificationEmail(e.target.value)}
+                    placeholder="ex: seuemail@dominio.com.br"
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await updateSiteConfig({ notificationEmail: editNotificationEmail });
+                      setSitePublishSuccess(true);
+                      setTimeout(() => setSitePublishSuccess(false), 3000);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Salvar E-mail de Alerta</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Todas as notificações de novos cadastros e solicitações de orçamento serão enviadas instantaneamente para este endereço.
+                </p>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Novo Cliente Cadastrado</span>
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> E-mail imediato
-                </span>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Nova Solicitação de Orçamento</span>
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> E-mail imediato
-                </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-300">Novo Cliente Cadastrado</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> E-mail imediato
+                  </span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-300">Nova Solicitação de Orçamento</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> E-mail imediato
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -3846,6 +3910,132 @@ export const AdminPanel: React.FC = () => {
                 Confirmar Exclusão
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Client Quote Positioning Modal */}
+      {positioningQuote && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 space-y-5 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setPositioningQuote(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-xl"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                <Mail className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Enviar Posicionamento ao Cliente
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Orçamento <strong className="text-blue-600 font-mono">#{positioningQuote.id}</strong> • {positioningQuote.clientName} ({positioningQuote.company})
+                </p>
+              </div>
+            </div>
+
+            {positionSuccessMsg && (
+              <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>{positionSuccessMsg}</span>
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIsSendingPosition(true);
+                await updateQuoteStatus(positioningQuote.id, positionStatus, positionMessage.trim());
+                setIsSendingPosition(false);
+                setPositionSuccessMsg(`Posicionamento e e-mail enviados com sucesso para ${positioningQuote.email}!`);
+                setTimeout(() => {
+                  setPositionSuccessMsg(null);
+                  setPositioningQuote(null);
+                }, 2200);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  E-mail do Cliente (Destinatário):
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={positioningQuote.email}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono text-xs cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Novo Status do Orçamento:
+                </label>
+                <select
+                  value={positionStatus}
+                  onChange={e => setPositionStatus(e.target.value as QuoteStatus)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none"
+                >
+                  <option value="solicitado">Solicitado</option>
+                  <option value="em_analise">Em Análise Técnica</option>
+                  <option value="em_elaboracao">Em Elaboração de Proposta</option>
+                  <option value="proposta_enviada">Proposta Emitida / Enviada</option>
+                  <option value="em_negociacao">Em Negociação</option>
+                  <option value="aprovado">Aprovado / Em Execução</option>
+                  <option value="rejeitado">Recusado</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Mensagem / Parecer Técnico para o Cliente:
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Ex: Prezado cliente, analisamos seu projeto. Nossa equipe técnica deu início à elaboração da arquitetura e em breve enviaremos a proposta..."
+                  value={positionMessage}
+                  onChange={e => setPositionMessage(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Sua mensagem será enviada por e-mail com a confirmação e o posicionamento oficial da empresa.
+                </p>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setPositioningQuote(null)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingPosition}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isSendingPosition ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Enviando E-mail...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Enviar E-mail ao Cliente</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

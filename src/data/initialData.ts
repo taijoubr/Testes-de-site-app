@@ -268,6 +268,7 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   phone: '(11) 99887-6655',
   whatsapp: '5511998876655',
   email: 'contato@ncodestechnologies.com.br',
+  notificationEmail: 'contato@ncodestechnologies.com.br',
   address: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
   announcementBanner: '',
   isAnnouncementActive: false,
