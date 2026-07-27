@@ -2410,8 +2410,8 @@ export const AdminPanel: React.FC = () => {
                       placeholder="Chave API Resend (ex: re_1234567...)"
                       className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
-                    <p className="text-[9px] text-slate-400">
-                      O Resend oferece 3.000 e-mails grátis/mês com entrega imediata.
+                    <p className="text-[9.5px] text-slate-300 leading-tight">
+                      <strong>Dica de Uso no Resend:</strong> No plano de testes gratuito (onboarding), o Resend exige que o e-mail em <em>"1. Seu E-mail Principal"</em> acima seja <u>o mesmo e-mail</u> com o qual você se cadastrou no site do Resend.com. Para enviar para qualquer e-mail de destino, basta cadastrar e validar seu domínio no painel do Resend.
                     </p>
                   </div>
 

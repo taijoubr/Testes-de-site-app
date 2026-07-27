@@ -29,7 +29,7 @@ function getGeminiClient(): GoogleGenAI {
   return aiClient;
 }
 
-// Real Email Dispatcher Helper (Resend or SMTP Nodemailer)
+// Real Email Dispatcher Helper (Resend REST API or SMTP Nodemailer)
 async function dispatchRealEmail({
   to,
   subject,
@@ -48,41 +48,89 @@ async function dispatchRealEmail({
     smtpFrom?: string;
   };
 }) {
-  const resendKey = emailConfig?.resendApiKey?.trim() || process.env.RESEND_API_KEY?.trim();
-  const smtpHost = emailConfig?.smtpHost?.trim() || process.env.SMTP_HOST?.trim();
+  const cleanResendKey = (emailConfig?.resendApiKey || process.env.RESEND_API_KEY || '').trim().replace(/^["'\s]+|["'\s]+$/g, '');
+  const cleanSmtpHost = (emailConfig?.smtpHost || process.env.SMTP_HOST || '').trim();
 
-  // Mode 1: Resend API (Free & Fast for real email delivery to Gmail/Outlook)
-  if (resendKey) {
-    const resend = new Resend(resendKey);
-    const fromAddress = emailConfig?.smtpFrom?.trim() || process.env.SMTP_FROM?.trim() || 'NCodes Tech <onboarding@resend.dev>';
-    
-    const result = await resend.emails.send({
-      from: fromAddress,
-      to,
-      subject,
-      text: bodyText
+  // Mode 1: Resend REST API (Direct HTTP fetch to https://api.resend.com/emails)
+  if (cleanResendKey) {
+    let fromAddress = emailConfig?.smtpFrom?.trim() || process.env.SMTP_FROM?.trim() || 'NCodes Tech <onboarding@resend.dev>';
+
+    // Attempt 1: Send via Resend REST API
+    let response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cleanResendKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: fromAddress,
+        to: [to],
+        subject,
+        text: bodyText
+      })
     });
 
-    if (result.error) {
-      throw new Error(`Erro no Resend: ${result.error.message}`);
+    let resendData: any = await response.json().catch(() => ({}));
+
+    // If custom domain 'from' failed (unverified in Resend), automatically retry with default 'onboarding@resend.dev'
+    if (!response.ok && fromAddress !== 'NCodes Tech <onboarding@resend.dev>') {
+      const errTxt = (resendData?.message || resendData?.error?.message || '').toLowerCase();
+      if (errTxt.includes('domain') || errTxt.includes('from') || errTxt.includes('verify') || response.status === 422) {
+        console.warn('⚠️ Custom from domain not verified in Resend. Retrying with default onboarding@resend.dev...');
+        fromAddress = 'NCodes Tech <onboarding@resend.dev>';
+        response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cleanResendKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: fromAddress,
+            to: [to],
+            subject,
+            text: bodyText
+          })
+        });
+        resendData = await response.json().catch(() => ({}));
+      }
     }
 
-    console.log(`\n✅ [REAL EMAIL DISPATCHED via RESEND] To: ${to} | ID: ${result.data?.id}`);
-    return { provider: 'resend', id: result.data?.id, delivered: true };
+    if (response.ok && (resendData.id || resendData.data?.id)) {
+      const emailId = resendData.id || resendData.data?.id;
+      console.log(`\n✅ [REAL EMAIL DISPATCHED via RESEND] To: ${to} | ID: ${emailId}`);
+      return { provider: 'resend', id: emailId, delivered: true };
+    }
+
+    // Translate Resend errors into clear Portuguese guidance for the user
+    const rawError = resendData?.message || resendData?.error?.message || JSON.stringify(resendData);
+    let friendlyError = `Erro no Resend (${response.status}): ${rawError}`;
+
+    if (response.status === 401 || rawError.toLowerCase().includes('api key') || rawError.toLowerCase().includes('unauthorized') || rawError.toLowerCase().includes('restricted')) {
+      friendlyError = 'Chave API do Resend inválida. Verifique se copiou a chave completa (iniciando com "re_") em resend.com/api-keys.';
+    } else if (rawError.toLowerCase().includes('only send to your own email address') || rawError.toLowerCase().includes('onboarding mode') || rawError.toLowerCase().includes('testing')) {
+      friendlyError = `No plano de testes do Resend (gratuito), você só pode enviar e-mails para o mesmo endereço de e-mail cadastrado na sua conta do Resend.com. Por favor, coloque esse e-mail no campo "1. Seu E-mail Principal" ou cadastre seu próprio domínio em resend.com/domains. (Detalhes: ${rawError})`;
+    } else if (rawError.toLowerCase().includes('validation') || rawError.toLowerCase().includes('from')) {
+      friendlyError = `O remetente informado precisa ser verificado em resend.com/domains. Deixe o campo de remetente em branco para usar onboarding@resend.dev. (Erro: ${rawError})`;
+    }
+
+    throw new Error(friendlyError);
   }
 
-  // Mode 2: Standard SMTP (Hostgator, Locaweb, Gmail, SendGrid, Amazon SES)
-  if (smtpHost) {
+  // Mode 2: Standard SMTP (Nodemailer)
+  if (cleanSmtpHost) {
     const port = Number(emailConfig?.smtpPort || process.env.SMTP_PORT || 587);
     const user = emailConfig?.smtpUser?.trim() || process.env.SMTP_USER?.trim();
     const pass = emailConfig?.smtpPass?.trim() || process.env.SMTP_PASS?.trim();
     const from = emailConfig?.smtpFrom?.trim() || process.env.SMTP_FROM?.trim() || user || 'contato@ncodestechnologies.com.br';
 
     const transporter = nodemailer.createTransport({
-      host: smtpHost,
+      host: cleanSmtpHost,
       port,
       secure: port === 465,
-      auth: user && pass ? { user, pass } : undefined
+      auth: user && pass ? { user, pass } : undefined,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000
     });
 
     const info = await transporter.sendMail({
@@ -96,12 +144,12 @@ async function dispatchRealEmail({
     return { provider: 'smtp', messageId: info.messageId, delivered: true };
   }
 
-  // Mode 3: Log only (no key provided yet)
+  // Mode 3: Simulation / Server Log
   console.log(`\n⚠️ [EMAIL LOGGED - NO API KEY SET] To: ${to}\nSubject: ${subject}\n${bodyText}`);
   return {
     provider: 'simulation',
     delivered: false,
-    message: 'E-mail registrado no log do servidor. Para entrega real na sua caixa de entrada (Gmail/Outlook), adicione a Chave API do Resend (grátis) ou dados SMTP em Configurações > Notificações por E-mail.'
+    message: 'E-mail registrado no log do servidor. Adicione uma Chave API do Resend (grátis) para envio direto para caixas de entrada.'
   };
 }
 
@@ -148,7 +196,7 @@ Notificações ativas:
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : 'Erro ao enviar e-mail de teste';
     console.error('Erro no envio de e-mail de teste:', errMessage);
-    return res.status(500).json({ success: false, error: errMessage });
+    return res.status(200).json({ success: false, error: errMessage });
   }
 });
 
@@ -267,7 +315,7 @@ Equipe NCodes Technologies
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : 'Erro ao enviar notificação por e-mail';
     console.error('Erro no envio de e-mail:', errMessage);
-    return res.status(500).json({ error: errMessage });
+    return res.status(200).json({ success: false, error: errMessage });
   }
 });
 
