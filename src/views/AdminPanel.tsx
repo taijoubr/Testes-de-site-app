@@ -2240,12 +2240,12 @@ export const AdminPanel: React.FC = () => {
                                 </button>
                                 <button
                                   onClick={() => {
-                                    if (confirm(`Tem certeza que deseja excluir o cliente ${client.name}?`)) {
+                                    if (confirm(`Tem certeza que deseja excluir permanentemente o cliente "${client.name}" do servidor?\n\nO cadastro será totalmente removido do banco de dados. Caso o cliente deseje utilizar o portal novamente, precisará se cadastrar do zero.`)) {
                                       deleteClientUser(client.id);
                                     }
                                   }}
                                   className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 cursor-pointer"
-                                  title="Excluir Cliente"
+                                  title="Excluir Cliente do Servidor"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -3889,7 +3889,20 @@ export const AdminPanel: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Tem certeza que deseja excluir permanentemente o cliente "${viewingClient.name}" do servidor?\n\nO cadastro será totalmente removido da base de dados. Caso o cliente queira utilizar o portal novamente, precisará se cadastrar do zero.`)) {
+                    deleteClientUser(viewingClient.id);
+                    setViewingClient(null);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Excluir do Servidor</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setViewingClient(null)}

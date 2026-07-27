@@ -661,7 +661,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteClientUser = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'clientUsers', id));
-      await addNotification('Cliente Removido', `O cadastro do cliente foi removido.`, 'project');
+      if (currentClientUser && currentClientUser.id === id) {
+        logoutClient();
+      }
+      await addNotification('Cliente Removido do Servidor', `O cadastro do cliente foi removido permanentemente da base de dados.`, 'project');
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `clientUsers/${id}`);
     }
