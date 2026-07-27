@@ -6,44 +6,33 @@ import {
   Phone, 
   Mail, 
   MapPin, 
-  Building2, 
   User, 
   MessageSquare,
-  Clock,
-  DollarSign
+  ArrowRight,
+  FileText
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const ContactPage: React.FC = () => {
-  const { createQuoteRequest, setActiveView } = useApp();
+  const { setActiveView, createNotification } = useApp();
   const [submitted, setSubmitted] = useState(false);
 
   const [name, setName] = useState('');
-  const [company, setCompany] = useState('');
-  const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState('45 dias');
-  const [budgetRange, setBudgetRange] = useState('R$ 15.000 a R$ 30.000');
+  const [phone, setPhone] = useState('');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createQuoteRequest({
-      clientName: name,
-      company: company || 'Empresa',
-      email,
-      phone,
-      whatsapp: whatsapp || phone,
-      city,
-      state,
-      projectType: 'Projeto Sob Medida',
-      description,
-      deadline,
-      budgetRange
+    
+    // Create a notification for admin
+    await createNotification({
+      title: `Nova Mensagem de Contato: ${subject || 'Geral'}`,
+      message: `De: ${name} (${email}, Tel: ${phone})\n\nMensagem:\n${message}`,
+      type: 'info'
     });
+
     setSubmitted(true);
   };
 
@@ -54,14 +43,36 @@ export const ContactPage: React.FC = () => {
       <div className="text-center max-w-3xl mx-auto space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-xs font-bold uppercase tracking-wider">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Atendimento Direto & Orçamentos</span>
+          <span>Atendimento Direto & Suporte</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Fale com a NCodes Technologies
+          Fale Conosco
         </h1>
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
-          Preencha o formulário abaixo para enviar sua solicitação diretamente ao nosso Firestore e receber retorno prioritário.
+          Entre em contato com a equipe da NCodes Technologies para tirar dúvidas, solicitar informações ou agendar uma reunião.
         </p>
+      </div>
+
+      {/* Quote Banner */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-xl border border-blue-800/60 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="space-y-1 text-center sm:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-cyan-300 text-xs font-bold uppercase tracking-wider mb-1">
+            <FileText className="w-3.5 h-3.5" />
+            <span>Solicitação de Projeto</span>
+          </div>
+          <h2 className="text-xl font-bold text-white">Deseja solicitar um orçamento detalhado para seu projeto?</h2>
+          <p className="text-xs sm:text-sm text-slate-300">
+            Acesse nosso formulário dedicado de Solicitação de Orçamento com especificações de funcionalidades, prazos e investimentos.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveView('quote_wizard')}
+          className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 shrink-0 transition-all cursor-pointer"
+        >
+          <span>Ir para Solicitação de Orçamento</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
@@ -72,7 +83,7 @@ export const ContactPage: React.FC = () => {
           <div className="p-8 rounded-3xl bg-slate-900 text-white space-y-6 border border-slate-800 shadow-xl">
             <h2 className="text-2xl font-bold text-white">Canais Oficiais</h2>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Estamos prontos para atender você e transformar o desafio tecnológico da sua empresa em uma solução rentável.
+              Estamos prontos para atender você e responder a qualquer dúvida sobre nossos serviços e tecnologias.
             </p>
 
             <div className="space-y-4 pt-2">
@@ -109,9 +120,9 @@ export const ContactPage: React.FC = () => {
           </div>
 
           <div className="p-6 rounded-3xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 space-y-2 text-xs">
-            <h3 className="font-bold text-blue-900 dark:text-blue-300 text-sm">Acompanhamento Sincronizado</h3>
+            <h3 className="font-bold text-blue-900 dark:text-blue-300 text-sm">Horário de Atendimento</h3>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Após o envio do formulário, sua solicitação será sincronizada no painel administrativo e você poderá acompanhar cada etapa diretamente pelo aplicativo ou portal.
+              Nossa equipe técnica atende de segunda a sexta-feira, das 09h às 18h. Mensagens enviadas fora do horário comercial serão respondidas no próximo dia útil.
             </p>
           </div>
 
@@ -126,133 +137,98 @@ export const ContactPage: React.FC = () => {
               </div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Mensagem Enviada com Sucesso!</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                Sua solicitação foi gravada com sucesso. Nossa equipe entrará em contato em menos de 2 horas úteis.
+                Agradecemos seu contato. Nossa equipe analisará sua mensagem e retornará o mais breve possível.
               </p>
               <button
-                onClick={() => setSubmitted(false)}
-                className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-xs"
+                type="button"
+                onClick={() => {
+                  setSubmitted(false);
+                  setName('');
+                  setEmail('');
+                  setPhone('');
+                  setSubject('');
+                  setMessage('');
+                }}
+                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all cursor-pointer"
               >
                 Enviar Outra Mensagem
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Formulário Completo de Orçamento</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Envie uma Mensagem</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+                Preencha os campos abaixo para conversar diretamente com nosso atendimento.
+              </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nome Completo *</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="Seu nome"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Empresa</label>
-                  <input
-                    type="text"
-                    value={company}
-                    onChange={e => setCompany(e.target.value)}
-                    placeholder="Nome da sua empresa"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telefone / Celular *</label>
-                  <input
-                    type="text"
-                    required
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="(11) 98765-4321"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">WhatsApp *</label>
-                  <input
-                    type="text"
-                    required
-                    value={whatsapp}
-                    onChange={e => setWhatsapp(e.target.value)}
-                    placeholder="(11) 98765-4321"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                  />
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">E-mail *</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                  />
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cidade / UF</label>
-                  <div className="flex gap-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telefone / WhatsApp *</label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     <input
                       type="text"
-                      value={city}
-                      onChange={e => setCity(e.target.value)}
-                      placeholder="Cidade"
-                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                    />
-                    <input
-                      type="text"
-                      maxLength={2}
-                      value={state}
-                      onChange={e => setState(e.target.value.toUpperCase())}
-                      placeholder="UF"
-                      className="w-16 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm uppercase text-center"
+                      required
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="(11) 98765-4321"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assunto</label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={e => setSubject(e.target.value)}
+                    placeholder="Ex: Dúvida sobre serviços, Parcerias, etc."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Descrição Detalhada do Projeto *</label>
-                <textarea
-                  required
-                  rows={4}
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="Conte-nos sobre o seu projeto..."
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Prazo Desejado</label>
-                  <input
-                    type="text"
-                    value={deadline}
-                    onChange={e => setDeadline(e.target.value)}
-                    placeholder="Ex: 30 dias"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Faixa de Investimento</label>
-                  <input
-                    type="text"
-                    value={budgetRange}
-                    onChange={e => setBudgetRange(e.target.value)}
-                    placeholder="Ex: R$ 15.000 a R$ 30.000"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Sua Mensagem *</label>
+                <div className="relative">
+                  <textarea
+                    required
+                    rows={5}
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    placeholder="Escreva sua mensagem aqui..."
+                    className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -260,10 +236,10 @@ export const ContactPage: React.FC = () => {
               <div className="pt-4">
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25"
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Enviar Solicitação de Orçamento</span>
+                  <span>Enviar Mensagem</span>
                 </button>
               </div>
             </form>
@@ -275,3 +251,4 @@ export const ContactPage: React.FC = () => {
     </div>
   );
 };
+

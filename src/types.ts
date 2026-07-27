@@ -70,6 +70,11 @@ export interface QuoteRequest {
   createdAt: string;
   updatedAt: string;
   adminNotes?: string;
+  projectTitle?: string;
+  category?: string;
+  selectedFeatures?: string[];
+  references?: string;
+  additionalNotes?: string;
   aiAnalysis?: {
     recommendedTech: string[];
     estimatedHours: number;

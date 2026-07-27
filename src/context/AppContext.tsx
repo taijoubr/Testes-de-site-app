@@ -170,14 +170,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [mobileSimDevice, setMobileSimDevice] = useState<'iphone' | 'android'>('iphone');
 
   // Admin Auth State
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
-  const [currentAdminUser, setCurrentAdminUser] = useState<AdminUser | null>(null);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('ncodes_admin_user');
+  });
+  const [currentAdminUser, setCurrentAdminUser] = useState<AdminUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('ncodes_admin_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
 
   // Client Auth State
-  const [isClientAuthenticated, setIsClientAuthenticated] = useState<boolean>(false);
-  const [currentClientUser, setCurrentClientUser] = useState<ClientUser | null>(null);
+  const [isClientAuthenticated, setIsClientAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('ncodes_client_user');
+  });
+  const [currentClientUser, setCurrentClientUser] = useState<ClientUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('ncodes_client_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [clientUsers, setClientUsers] = useState<ClientUser[]>(INITIAL_CLIENT_USERS);
+
+  // Sync session state changes to localStorage
+  useEffect(() => {
+    if (currentClientUser) {
+      localStorage.setItem('ncodes_client_user', JSON.stringify(currentClientUser));
+      setIsClientAuthenticated(true);
+    } else {
+      localStorage.removeItem('ncodes_client_user');
+      setIsClientAuthenticated(false);
+    }
+  }, [currentClientUser]);
+
+  useEffect(() => {
+    if (currentAdminUser) {
+      localStorage.setItem('ncodes_admin_user', JSON.stringify(currentAdminUser));
+      setIsAdminAuthenticated(true);
+    } else {
+      localStorage.removeItem('ncodes_admin_user');
+      setIsAdminAuthenticated(false);
+    }
+  }, [currentAdminUser]);
 
   // Site Configuration State
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(INITIAL_SITE_CONFIG);
@@ -403,6 +442,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logoutAdmin = () => {
+    localStorage.removeItem('ncodes_admin_user');
     setIsAdminAuthenticated(false);
     setCurrentAdminUser(null);
     setActiveView('home');
@@ -576,6 +616,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logoutClient = () => {
+    localStorage.removeItem('ncodes_client_user');
     setIsClientAuthenticated(false);
     setCurrentClientUser(null);
     setActiveView('home');

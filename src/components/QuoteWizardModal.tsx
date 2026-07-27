@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Send, 
@@ -11,20 +11,55 @@ import {
   Clock, 
   DollarSign, 
   Loader2, 
-  Code,
-  ArrowRight,
+  Plus,
+  X,
+  FileText,
+  HelpCircle,
+  FolderGit2,
+  Check,
   ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
-export const QuoteWizardModal: React.FC = () => {
-  const { createQuoteRequest, setActiveView } = useApp();
+const PREDEFINED_FEATURES = [
+  'Área administrativa',
+  'Cadastro de clientes',
+  'Área do cliente',
+  'Gestão financeira',
+  'Agendamento',
+  'Integração com APIs',
+  'Relatórios',
+  'Controle de estoque'
+];
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+export const QuoteWizardModal: React.FC = () => {
+  const { createQuoteRequest, currentClientUser, setActiveView } = useApp();
+
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Form State
+  // 1. Informações do Projeto
+  const [projectTitle, setProjectTitle] = useState('');
+  const [category, setCategory] = useState<'Site Institucional' | 'Site com Sistema de Gestão' | 'Outro'>('Site Institucional');
+  const [description, setDescription] = useState('');
+  
+  // 2. Funcionalidades Desejadas
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [customFeature, setCustomFeature] = useState('');
+
+  // 3. Referências
+  const [references, setReferences] = useState('');
+
+  // 4. Prazo Desejado
+  const [deadline, setDeadline] = useState('Até 30 dias');
+
+  // 5. Faixa de Investimento
+  const [budgetRange, setBudgetRange] = useState('Ainda não definida');
+
+  // 6. Informações Adicionais
+  const [additionalNotes, setAdditionalNotes] = useState('');
+
+  // 7. Informações do Solicitante
   const [clientName, setClientName] = useState('');
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
@@ -33,25 +68,68 @@ export const QuoteWizardModal: React.FC = () => {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
 
-  const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState('45 dias');
-  const [budgetRange, setBudgetRange] = useState('R$ 15.000 a R$ 30.000');
+  // Auto-fill logged in client user data
+  useEffect(() => {
+    if (currentClientUser) {
+      if (!clientName) setClientName(currentClientUser.name || '');
+      if (!email) setEmail(currentClientUser.email || '');
+      if (!phone) setPhone(currentClientUser.phone || '');
+      if (!whatsapp) setWhatsapp(currentClientUser.phone || '');
+      if (!company) setCompany(currentClientUser.company || '');
+      if (!city) setCity(currentClientUser.city || '');
+      if (!state) setState(currentClientUser.state || '');
+    }
+  }, [currentClientUser]);
+
+  const toggleFeature = (feature: string) => {
+    if (selectedFeatures.includes(feature)) {
+      setSelectedFeatures(prev => prev.filter(f => f !== feature));
+    } else {
+      setSelectedFeatures(prev => [...prev, feature]);
+    }
+  };
+
+  const addCustomFeature = () => {
+    if (!customFeature.trim()) return;
+    const feat = customFeature.trim();
+    if (!selectedFeatures.includes(feat)) {
+      setSelectedFeatures(prev => [...prev, feat]);
+    }
+    setCustomFeature('');
+  };
+
+  const removeFeature = (featureToRemove: string) => {
+    setSelectedFeatures(prev => prev.filter(f => f !== featureToRemove));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      const fullDescription = [
+        projectTitle ? `📌 Título: ${projectTitle}` : '',
+        description ? `📝 Descrição:\n${description}` : '',
+        selectedFeatures.length > 0 ? `⚡ Funcionalidades Desejadas:\n- ${selectedFeatures.join('\n- ')}` : '',
+        references ? `🔗 Referências:\n${references}` : '',
+        additionalNotes ? `💬 Informações Adicionais:\n${additionalNotes}` : ''
+      ].filter(Boolean).join('\n\n');
+
       await createQuoteRequest({
-        clientName: clientName || 'Cliente Visitante',
-        company: company || 'Empresa',
-        email: email || 'contato@cliente.com',
-        phone: phone || '(11) 99999-8888',
+        clientName: clientName || (currentClientUser?.name) || 'Cliente Visitante',
+        company: company || (currentClientUser?.company) || 'Pessoa Física',
+        email: email || (currentClientUser?.email) || 'contato@cliente.com',
+        phone: phone || whatsapp || '(11) 99999-8888',
         whatsapp: whatsapp || phone || '(11) 99999-8888',
         city: city || 'São Paulo',
         state: state || 'SP',
-        projectType: 'Projeto Sob Medida',
-        description: description || 'Solicitação de orçamento com análise técnica.',
+        projectType: category,
+        projectTitle: projectTitle || 'Novo Projeto Web/Sistema',
+        category,
+        selectedFeatures,
+        references,
+        additionalNotes,
+        description: fullDescription || 'Solicitação de orçamento enviada pelo portal.',
         deadline,
         budgetRange
       });
@@ -65,353 +143,472 @@ export const QuoteWizardModal: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-950 transition-colors">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="max-w-4xl mx-auto">
         
         {/* Header Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-3">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Fluxo Inteligente de Orçamento</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-3">
+            <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>NCodes Tech • Engenharia de Software</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Solicitar Orçamento de Projeto
+            Solicitação de Orçamento
           </h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Preencha os detalhes para receber uma análise técnica preliminar por Inteligência Artificial da NCodes.
+          <p className="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            Preencha as informações do seu projeto para receber uma análise técnica detalhada e uma proposta comercial sob medida.
           </p>
         </div>
 
-        {/* Wizard Stepper Bar */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl">
-          
-          <div className="flex items-center justify-between mb-8 relative">
-            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2 z-0" />
-            
-            <div className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all ${
-              step >= 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
-            }`}>
-              1
+        {submitted ? (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-12 border border-slate-200 dark:border-slate-800 shadow-2xl text-center space-y-6">
+            <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/80 rounded-3xl flex items-center justify-center mx-auto text-emerald-500 dark:text-emerald-400 shadow-xl shadow-emerald-500/10">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Solicitação Enviada com Sucesso!
+              </h2>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed">
+                Agradecemos pelo envio! Sua solicitação já deu entrada no nosso sistema. Nossa Inteligência Artificial gerou uma pré-análise técnica preliminar e nossa equipe entrará em contato em breve.
+              </p>
             </div>
 
-            <div className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all ${
-              step >= 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
-            }`}>
-              2
-            </div>
-
-            <div className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all ${
-              step >= 3 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
-            }`}>
-              3
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveView('client_portal')}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+              >
+                Acompanhar no Portal do Cliente
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmitted(false);
+                  setProjectTitle('');
+                  setDescription('');
+                  setSelectedFeatures([]);
+                  setReferences('');
+                  setAdditionalNotes('');
+                }}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+              >
+                Nova Solicitação
+              </button>
             </div>
           </div>
-
-          {submitted ? (
-            <div className="text-center py-8 space-y-6">
-              <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/80 rounded-full flex items-center justify-center mx-auto text-emerald-500 dark:text-emerald-400 shadow-lg">
-                <CheckCircle2 className="w-10 h-10" />
+        ) : (
+          <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200 dark:border-slate-800 shadow-xl space-y-8">
+            
+            {/* SECTION 1: Informações do Projeto */}
+            <div className="space-y-6">
+              <div className="border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                  1
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    Informações do Projeto
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Defina o título, categoria e escopo geral da sua aplicação.
+                  </p>
+                </div>
               </div>
+
+              {/* Título do Projeto */}
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Orçamento Solicitado com Sucesso!</h2>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
-                  Sua solicitação foi registrada no Firestore e nossa Inteligência Artificial já gerou a pré-análise técnica. Em breve nossa equipe enviará a proposta no seu WhatsApp e e-mail.
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                  Título do Projeto *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={projectTitle}
+                  onChange={e => setProjectTitle(e.target.value)}
+                  placeholder="Ex: Plataforma E-commerce de Calçados ou App de Gestão de Vendas"
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+
+              {/* Categoria */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+                  Categoria *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'Site Institucional', label: 'Site Institucional', desc: 'Landing page, institucional e apresentação de serviços' },
+                    { id: 'Site com Sistema de Gestão', label: 'Site com Sistema de Gestão', desc: 'Plataforma web completa com painel e dados' },
+                    { id: 'Outro', label: 'Outro', desc: 'Aplicativo mobile, API sob medida, IA ou automação' }
+                  ].map((cat) => {
+                    const active = category === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setCategory(cat.id as any)}
+                        className={`p-4 rounded-2xl text-left border transition-all cursor-pointer ${
+                          active 
+                            ? 'bg-blue-600/10 border-blue-600 text-blue-700 dark:bg-blue-500/20 dark:border-blue-400 dark:text-blue-300 ring-2 ring-blue-500/20' 
+                            : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-sm">{cat.label}</span>
+                          {active && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                          {cat.desc}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Descrição do Projeto */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+                  Descrição do Projeto *
+                </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Descreva detalhadamente o que deseja desenvolver, os objetivos do projeto e as principais funcionalidades esperadas.
                 </p>
+                <textarea
+                  required
+                  rows={4}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Ex: Queremos criar um sistema onde o cliente possa se cadastrar, agendar horários, efetuar pagamentos via Pix e acompanhar o histórico de pedidos no painel..."
+                  className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all leading-relaxed"
+                />
               </div>
 
-              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  onClick={() => setActiveView('admin_panel')}
-                  className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-md"
-                >
-                  Ver no Painel Administrativo
-                </button>
-                <button
-                  onClick={() => setActiveView('home')}
-                  className="px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  Voltar ao Site
-                </button>
+              {/* Funcionalidades Desejadas */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+                  Funcionalidades Desejadas <span className="normal-case text-slate-500 font-normal">(serão adicionadas uma a uma)</span>
+                </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                  Clique nas opções pré-definidas abaixo ou digite uma funcionalidade personalizada para adicionar ao seu escopo:
+                </p>
+
+                {/* Predefined Features Grid */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {PREDEFINED_FEATURES.map((feat) => {
+                    const isSelected = selectedFeatures.includes(feat);
+                    return (
+                      <button
+                        key={feat}
+                        type="button"
+                        onClick={() => toggleFeature(feat)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {isSelected ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5 opacity-60" />}
+                        <span>{feat}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Feature Input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customFeature}
+                    onChange={e => setCustomFeature(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomFeature();
+                      }
+                    }}
+                    placeholder="Digite outra funcionalidade (ex: Login Social com Google, Notificação Push, etc.)"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomFeature}
+                    className="px-4 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Adicionar</span>
+                  </button>
+                </div>
+
+                {/* Selected Features Chips */}
+                {selectedFeatures.length > 0 && (
+                  <div className="mt-3 p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40">
+                    <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider block mb-2">
+                      Funcionalidades Selecionadas ({selectedFeatures.length}):
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedFeatures.map((feat) => (
+                        <span
+                          key={feat}
+                          className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+                        >
+                          {feat}
+                          <button
+                            type="button"
+                            onClick={() => removeFeature(feat)}
+                            className="hover:bg-blue-700 p-0.5 rounded-md transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Referências */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+                  Referências
+                </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Anexe imagens, documentos ou links de sites e aplicativos que sirvam como referência para o projeto.
+                </p>
+                <textarea
+                  rows={2}
+                  value={references}
+                  onChange={e => setReferences(e.target.value)}
+                  placeholder="Cole aqui os links (ex: https://exemplo.com) ou descreva aplicativos/sites de referência..."
+                  className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+
+              {/* Prazo Desejado e Faixa de Investimento */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Prazo Desejado */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Prazo Desejado *
+                  </label>
+                  <div className="relative">
+                    <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <select
+                      value={deadline}
+                      onChange={e => setDeadline(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+                    >
+                      <option value="O quanto antes">O quanto antes</option>
+                      <option value="Até 30 dias">Até 30 dias</option>
+                      <option value="Até 60 dias">Até 60 dias</option>
+                      <option value="Sem prazo definido">Sem prazo definido</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Faixa de Investimento */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Faixa de Investimento *
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <select
+                      value={budgetRange}
+                      onChange={e => setBudgetRange(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+                    >
+                      <option value="Ainda não definida">Ainda não definida</option>
+                      <option value="Até R$ 2.000">Até R$ 2.000</option>
+                      <option value="R$ 2.000 a R$ 5.000">R$ 2.000 a R$ 5.000</option>
+                      <option value="R$ 5.000 a R$ 10.000">R$ 5.000 a R$ 10.000</option>
+                      <option value="Acima de R$ 10.000">Acima de R$ 10.000</option>
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Informações Adicionais */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+                  Informações Adicionais
+                </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Campo livre para observações, requisitos específicos ou qualquer informação importante para a elaboração do orçamento.
+                </p>
+                <textarea
+                  rows={3}
+                  value={additionalNotes}
+                  onChange={e => setAdditionalNotes(e.target.value)}
+                  placeholder="Digite aqui observações adicionais ou detalhes relevantes..."
+                  className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+
             </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              
-              {/* Step 1: Identification */}
-              {step === 1 && (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 border-b pb-2 border-slate-100 dark:border-slate-800">
-                    Etapa 1: Dados de Contato e Empresa
-                  </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Seu Nome Completo *
-                      </label>
-                      <div className="relative">
-                        <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <input
-                          type="text"
-                          required
-                          value={clientName}
-                          onChange={e => setClientName(e.target.value)}
-                          placeholder="Ex: Carlos Silva"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Empresa / Organização
-                      </label>
-                      <div className="relative">
-                        <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <input
-                          type="text"
-                          value={company}
-                          onChange={e => setCompany(e.target.value)}
-                          placeholder="Ex: Tech Corp"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        E-mail *
-                      </label>
-                      <div className="relative">
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <input
-                          type="email"
-                          required
-                          value={email}
-                          onChange={e => setEmail(e.target.value)}
-                          placeholder="seu@email.com"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        WhatsApp / Telefone *
-                      </label>
-                      <div className="relative">
-                        <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <input
-                          type="text"
-                          required
-                          value={whatsapp}
-                          onChange={e => {
-                            setWhatsapp(e.target.value);
-                            setPhone(e.target.value);
-                          }}
-                          placeholder="(11) 99999-8888"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Cidade
-                      </label>
-                      <div className="relative">
-                        <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <input
-                          type="text"
-                          value={city}
-                          onChange={e => setCity(e.target.value)}
-                          placeholder="Ex: São Paulo"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Estado (UF)
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={2}
-                        value={state}
-                        onChange={e => setState(e.target.value.toUpperCase())}
-                        placeholder="SP"
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
-                      />
-                    </div>
+            {/* SECTION 2: Informações do Solicitante */}
+            <div className="space-y-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                    2
                   </div>
-
-                  <div className="pt-4 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setStep(2)}
-                      className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm flex items-center gap-2 shadow-md"
-                    >
-                      <span>Avançar para Detalhes</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Project Specifications */}
-              {step === 2 && (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 border-b pb-2 border-slate-100 dark:border-slate-800">
-                    Etapa 2: Especificações do Projeto
-                  </h3>
-
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Descrição Detalhada dos Requisitos *
-                    </label>
-                    <textarea
-                      required
-                      rows={4}
-                      value={description}
-                      onChange={e => setDescription(e.target.value)}
-                      placeholder="Descreva as funcionalidades principais, fluxo de uso, integrações necessárias (Pix, WhatsApp, etc.)..."
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Prazo Desejado
-                      </label>
-                      <div className="relative">
-                        <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <select
-                          value={deadline}
-                          onChange={e => setDeadline(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                        >
-                          <option value="15 dias">15 dias (Urgente)</option>
-                          <option value="30 dias">30 dias</option>
-                          <option value="45 dias">45 dias</option>
-                          <option value="60 dias">60 dias</option>
-                          <option value="A combinar">A combinar</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Faixa de Investimento Prevista
-                      </label>
-                      <div className="relative">
-                        <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <select
-                          value={budgetRange}
-                          onChange={e => setBudgetRange(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                        >
-                          <option value="R$ 3.000 a R$ 8.000">R$ 3.000 a R$ 8.000</option>
-                          <option value="R$ 8.000 a R$ 15.000">R$ 8.000 a R$ 15.000</option>
-                          <option value="R$ 15.000 a R$ 30.000">R$ 15.000 a R$ 30.000</option>
-                          <option value="Acima de R$ 30.000">Acima de R$ 30.000</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center gap-1.5"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span>Voltar</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setStep(3)}
-                      className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm flex items-center gap-2 shadow-md"
-                    >
-                      <span>Revisar e Analisar</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: AI Analysis Preview & Confirm */}
-              {step === 3 && (
-                <div className="space-y-5 animate-in fade-in duration-200">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 border-b pb-2 border-slate-100 dark:border-slate-800">
-                    Etapa 3: Resumo e Pré-Análise do Projeto
-                  </h3>
-
-                  <div className="bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-4 text-xs space-y-2 border border-slate-200 dark:border-slate-700">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Cliente:</span>
-                      <strong className="text-slate-900 dark:text-white">{clientName} ({company || 'Pessoa Física'})</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Contato:</span>
-                      <strong className="text-slate-900 dark:text-white">{whatsapp} | {email}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Prazo / Faixa:</span>
-                      <strong className="text-slate-900 dark:text-white">{deadline} | {budgetRange}</strong>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900/10 via-indigo-900/10 to-purple-900/10 border border-blue-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-4 h-4 text-blue-500" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                        Análise de Engenharia por Gemini AI
-                      </h4>
-                    </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Ao enviar este formulário, nosso motor de Inteligência Artificial processará a descrição técnica, mapeará as dependências da arquitetura e sugerirá a melhor stack de desenvolvimento.
+                    <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                      Informações do Solicitante
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Seus dados de contato para envio da proposta e notificações.
                     </p>
                   </div>
+                </div>
+                {currentClientUser && (
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                    ✓ Usuário Autenticado
+                  </span>
+                )}
+              </div>
 
-                  <div className="pt-2 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setStep(2)}
-                      className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center gap-1.5"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span>Voltar</span>
-                    </button>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Processando Análise...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          <span>Enviar Solicitação de Orçamento</span>
-                        </>
-                      )}
-                    </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Seu Nome Completo *
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      required
+                      value={clientName}
+                      onChange={e => setClientName(e.target.value)}
+                      placeholder="Ex: Nikolas Silva"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                 </div>
-              )}
 
-            </form>
-          )}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Empresa / Organização
+                  </label>
+                  <div className="relative">
+                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      value={company}
+                      onChange={e => setCompany(e.target.value)}
+                      placeholder="Ex: NCodes Tech ou Pessoa Física"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
 
-        </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    E-mail Principal *
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="seuemail@exemplo.com"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    WhatsApp / Telefone *
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      required
+                      value={whatsapp}
+                      onChange={e => {
+                        setWhatsapp(e.target.value);
+                        setPhone(e.target.value);
+                      }}
+                      placeholder="(11) 99999-8888"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Cidade
+                  </label>
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={e => setCity(e.target.value)}
+                      placeholder="Ex: São Paulo"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Estado (UF)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    value={state}
+                    onChange={e => setState(e.target.value.toUpperCase())}
+                    placeholder="SP"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Action Bar */}
+            <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => setActiveView('home')}
+                className="w-full sm:w-auto px-5 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Cancelar e Voltar</span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-sm flex items-center justify-center gap-3 shadow-xl shadow-blue-500/25 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Enviando e Processando Análise...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    <span>Enviar Solicitação</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </form>
+        )}
 
       </div>
     </div>
