@@ -33,20 +33,9 @@ export const QuoteWizardModal: React.FC = () => {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
 
-  const [projectType, setProjectType] = useState('Aplicativo Mobile iOS/Android + Painel Web');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('45 dias');
   const [budgetRange, setBudgetRange] = useState('R$ 15.000 a R$ 30.000');
-
-  const projectTypeOptions = [
-    'Aplicativo Mobile iOS/Android + Painel Web',
-    'Desenvolvimento de Site Institucional / Portal',
-    'Sistema Web Empresarial (ERP / SaaS / CRM)',
-    'Landing Page de Alta Conversão',
-    'Automações com Inteligência Artificial / Gemini',
-    'APIs & Integrações de Sistemas / Pix',
-    'Sistema Personalizado Sob Medida'
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +50,7 @@ export const QuoteWizardModal: React.FC = () => {
         whatsapp: whatsapp || phone || '(11) 99999-8888',
         city: city || 'São Paulo',
         state: state || 'SP',
-        projectType,
+        projectType: 'Projeto Sob Medida',
         description: description || 'Solicitação de orçamento com análise técnica.',
         deadline,
         budgetRange
@@ -279,21 +268,6 @@ export const QuoteWizardModal: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Tipo de Projeto Desejado
-                    </label>
-                    <select
-                      value={projectType}
-                      onChange={e => setProjectType(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {projectTypeOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Descrição Detalhada dos Requisitos *
                     </label>
                     <textarea
@@ -384,10 +358,6 @@ export const QuoteWizardModal: React.FC = () => {
                     <div className="flex justify-between">
                       <span className="text-slate-500">Contato:</span>
                       <strong className="text-slate-900 dark:text-white">{whatsapp} | {email}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Tipo:</span>
-                      <strong className="text-blue-600 dark:text-blue-400">{projectType}</strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Prazo / Faixa:</span>

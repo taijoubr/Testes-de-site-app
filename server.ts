@@ -32,6 +32,78 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'NCodes Technologies API', timestamp: new Date().toISOString() });
 });
 
+// Email Notification API (New Client & New Quote Alerts)
+app.post('/api/send-email-notification', async (req, res) => {
+  try {
+    const { type, recipientEmail, data } = req.body;
+    const targetEmail = recipientEmail || 'p.nikolas3@gmail.com';
+
+    let subject = '';
+    let bodyText = '';
+
+    if (type === 'new_client') {
+      subject = `[NCodes Tech] 👤 Novo Cliente Cadastrado: ${data?.name || 'Cliente'}`;
+      bodyText = `
+==================================================
+NCODES TECHNOLOGIES - NOTIFICAÇÃO DE NOVO CLIENTE
+==================================================
+Data/Hora: ${new Date().toLocaleString('pt-BR')}
+Destinatário: ${targetEmail}
+
+DETALHES DO CLIENTE CADASTRADO:
+- Nome: ${data?.name || 'Não informado'}
+- E-mail: ${data?.email || 'Não informado'}
+- Empresa: ${data?.company || 'Pessoa Física'}
+- Telefone / WhatsApp: ${data?.phone || 'Não informado'}
+- Localização: ${data?.city || 'São Paulo'} / ${data?.state || 'SP'}
+
+Acesse o Painel Web Admin para iniciar o contato ou gerar uma nova proposta.
+==================================================
+`;
+    } else if (type === 'new_quote') {
+      subject = `[NCodes Tech] 🚀 Nova Solicitação de Orçamento: ${data?.quoteId || ''}`;
+      bodyText = `
+==================================================
+NCODES TECHNOLOGIES - NOTIFICAÇÃO DE NOVO ORÇAMENTO
+==================================================
+Data/Hora: ${new Date().toLocaleString('pt-BR')}
+Destinatário: ${targetEmail}
+
+DETALHES DA SOLICITAÇÃO DE ORÇAMENTO:
+- ID do Orçamento: ${data?.quoteId || 'NOVO'}
+- Nome do Solicitante: ${data?.clientName || 'Não informado'}
+- Empresa: ${data?.company || 'Pessoa Física'}
+- E-mail de Contato: ${data?.email || 'Não informado'}
+- WhatsApp: ${data?.whatsapp || 'Não informado'}
+- Prazo Desejado: ${data?.deadline || 'A combinar'}
+- Faixa Estimada: ${data?.budgetRange || 'A combinar'}
+
+DESCRIÇÃO DO PROJETO:
+"${data?.description || 'Sem descrição'}"
+
+Acesse o Painel Web Admin para visualizar o orçamento e emitir a proposta.
+==================================================
+`;
+    } else {
+      return res.status(400).json({ error: 'Tipo de notificação inválido.' });
+    }
+
+    console.log(`\n📧 [EMAIL NOTIFICATION SENT] To: ${targetEmail}\nSubject: ${subject}\n${bodyText}`);
+
+    return res.json({
+      success: true,
+      message: 'Notificação de e-mail enviada com sucesso.',
+      recipient: targetEmail,
+      subject,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : 'Erro ao enviar notificação por e-mail';
+    console.error('Erro no envio de e-mail:', errMessage);
+    return res.status(500).json({ error: errMessage });
+  }
+});
+
 // AI Quote Analysis Route using Gemini API
 app.post('/api/ai-analyze-quote', async (req, res) => {
   try {

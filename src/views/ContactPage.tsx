@@ -25,7 +25,6 @@ export const ContactPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
-  const [projectType, setProjectType] = useState('Aplicativo Mobile iOS/Android');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('45 dias');
   const [budgetRange, setBudgetRange] = useState('R$ 15.000 a R$ 30.000');
@@ -40,7 +39,7 @@ export const ContactPage: React.FC = () => {
       whatsapp: whatsapp || phone,
       city,
       state,
-      projectType,
+      projectType: 'Projeto Sob Medida',
       description,
       deadline,
       budgetRange
@@ -220,22 +219,6 @@ export const ContactPage: React.FC = () => {
                     />
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tipo do Projeto</label>
-                <select
-                  value={projectType}
-                  onChange={e => setProjectType(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                >
-                  <option value="Aplicativo Mobile iOS/Android">Aplicativo Mobile iOS/Android</option>
-                  <option value="Desenvolvimento de Site Institucional">Desenvolvimento de Site Institucional</option>
-                  <option value="Sistema Web Empresarial (SaaS/ERP)">Sistema Web Empresarial (SaaS/ERP)</option>
-                  <option value="Landing Page de Alta Conversão">Landing Page de Alta Conversão</option>
-                  <option value="Automações com IA / Gemini">Automações com IA / Gemini</option>
-                  <option value="APIs & Integrações / Pix">APIs & Integrações / Pix</option>
-                </select>
               </div>
 
               <div>

@@ -54,7 +54,6 @@ export const ClientPortal: React.FC = () => {
   
   // Quote Modal State
   const [showQuoteModal, setShowQuoteModal] = useState(false);
-  const [projectType, setProjectType] = useState('Aplicativo Mobile iOS/Android + Painel Web');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('45 dias');
   const [budgetRange, setBudgetRange] = useState('R$ 15.000 a R$ 30.000');
@@ -110,7 +109,7 @@ export const ClientPortal: React.FC = () => {
       whatsapp: currentClientUser?.phone || '(11) 99999-8888',
       city: currentClientUser?.city || 'São Paulo',
       state: currentClientUser?.state || 'SP',
-      projectType,
+      projectType: 'Projeto Sob Medida',
       description,
       deadline,
       budgetRange
@@ -338,7 +337,9 @@ export const ClientPortal: React.FC = () => {
                             <span className="text-slate-300">•</span>
                             <span className="text-xs font-semibold text-slate-500">{new Date(quote.createdAt).toLocaleDateString('pt-BR')}</span>
                           </div>
-                          <h4 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">{quote.projectType}</h4>
+                          <h4 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
+                            Solicitação de Orçamento #{quote.id}
+                          </h4>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -784,21 +785,6 @@ export const ClientPortal: React.FC = () => {
                 <p className="text-slate-600 dark:text-slate-400">
                   E-mail: {currentClientUser?.email} | Telefone: {currentClientUser?.phone}
                 </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo de Projeto Desejado *
-                </label>
-                <select
-                  value={projectType}
-                  onChange={e => setProjectType(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {projectTypeOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
               </div>
 
               <div>

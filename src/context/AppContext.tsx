@@ -504,6 +504,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
       });
       await addNotification('Novo Cliente Cadastrado', `${data.name} (${data.company || 'Pessoa Física'}) criou uma conta no Portal do Cliente.`, 'project');
+      
+      // Send email alert to admin
+      try {
+        await fetch('/api/send-email-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'new_client',
+            recipientEmail: 'p.nikolas3@gmail.com',
+            data: {
+              name: data.name,
+              email: data.email,
+              company: data.company,
+              phone: data.phone,
+              city: data.city,
+              state: data.state
+            }
+          })
+        });
+      } catch (eErr) {
+        console.warn('E-mail dispatch error (new client):', eErr);
+      }
+
       return true;
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `clientUsers/${newId}`);
@@ -609,7 +632,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       handleFirestoreError(err, OperationType.WRITE, `quotes/${newId}`);
     }
 
-    await addNotification('Novo Orçamento Recebido!', `${data.clientName} (${data.company}) enviou uma solicitação para ${data.projectType}.`, 'quote');
+    await addNotification('Novo Orçamento Recebido!', `${data.clientName} (${data.company}) enviou uma nova solicitação de orçamento.`, 'quote');
+
+    // Send email alert to admin
+    try {
+      await fetch('/api/send-email-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'new_quote',
+          recipientEmail: 'p.nikolas3@gmail.com',
+          data: {
+            quoteId: newId,
+            clientName: data.clientName,
+            company: data.company,
+            email: data.email,
+            whatsapp: data.whatsapp,
+            description: data.description,
+            deadline: data.deadline,
+            budgetRange: data.budgetRange
+          }
+        })
+      });
+    } catch (eErr) {
+      console.warn('E-mail dispatch error (new quote):', eErr);
+    }
 
     // Trigger server-side AI quote analysis
     try {

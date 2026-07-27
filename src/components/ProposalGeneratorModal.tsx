@@ -11,11 +11,11 @@ interface ProposalGeneratorModalProps {
 export const ProposalGeneratorModal: React.FC<ProposalGeneratorModalProps> = ({ quote, onClose }) => {
   const { createProposal } = useApp();
 
-  const [title, setTitle] = useState(`Proposta Técnica e Comercial - ${quote.projectType}`);
+  const [title, setTitle] = useState(`Proposta Técnica e Comercial - ${quote.company || quote.clientName}`);
   const [totalValue, setTotalValue] = useState(quote.aiAnalysis?.suggestedBudget || 18500);
   const [recurringMonthlyValue, setRecurringMonthlyValue] = useState(1200);
   const [paymentTerms, setPaymentTerms] = useState('30% de entrada no aceite digital + parcelas mensais via Pix.');
-  const [description, setDescription] = useState(`Desenvolvimento da solução ${quote.projectType} para a empresa ${quote.company || quote.clientName}.`);
+  const [description, setDescription] = useState(`Desenvolvimento de software sob medida para a empresa ${quote.company || quote.clientName}. ${quote.description}`);
 
   const [scopeItems, setScopeItems] = useState<string[]>([
     'Desenvolvimento do aplicativo em Flutter (iOS & Android)',
