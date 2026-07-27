@@ -8,7 +8,9 @@ import {
   setDoc, 
   updateDoc, 
   deleteDoc,
-  getDocs 
+  getDocs,
+  query,
+  where
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
@@ -99,8 +101,9 @@ interface AppContextType {
   currentClientUser: ClientUser | null;
   clientUsers: ClientUser[];
   loginClient: (email: string, pass: string) => boolean;
-  registerClient: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<boolean>;
-  addClientUser: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<boolean>;
+  checkEmailExists: (email: string) => boolean;
+  registerClient: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<{ success: boolean; error?: string }>;
+  addClientUser: (data: Omit<ClientUser, 'id' | 'createdAt'>) => Promise<{ success: boolean; error?: string }>;
   updateClientUser: (id: string, data: Partial<ClientUser>) => Promise<void>;
   deleteClientUser: (id: string) => Promise<void>;
   logoutClient: () => void;
@@ -193,25 +196,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Firestore Realtime Sync Effect
   useEffect(() => {
-    // Purge test documents and subscribe
     const seedAndSubscribe = async () => {
-      // Clean up legacy test data from Firestore if present
-      const testCollectionsToClean = [
-        'quotes', 'proposals', 'projects', 'financials', 'clientSubscriptions', 
-        'chatMessages', 'tickets', 'leads', 'notifications', 'clientUsers'
-      ];
-
-      for (const colName of testCollectionsToClean) {
-        try {
-          const snap = await getDocs(collection(db, colName));
-          for (const d of snap.docs) {
-            await deleteDoc(doc(db, colName, d.id));
-          }
-        } catch (err) {
-          console.warn(`Purge ${colName} warning:`, err);
-        }
-      }
-
       // 1. Quotes
       const unsubQuotes = onSnapshot(collection(db, 'quotes'), (snap) => {
         const list = snap.docs.map(d => d.data() as QuoteRequest);
@@ -257,12 +242,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // 9. Admin Users
       try {
         const admSnap = await getDocs(collection(db, 'adminUsers'));
-        for (const d of admSnap.docs) {
-          if (d.id !== 'adm-1') {
-            await deleteDoc(doc(db, 'adminUsers', d.id));
-          }
+        if (admSnap.empty) {
+          await setDoc(doc(db, 'adminUsers', INITIAL_ADMIN_USERS[0].id), INITIAL_ADMIN_USERS[0]);
         }
-        await setDoc(doc(db, 'adminUsers', INITIAL_ADMIN_USERS[0].id), INITIAL_ADMIN_USERS[0]);
       } catch (err) {
         console.warn('AdminUsers setup warning:', err);
       }
@@ -476,17 +458,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
-  const registerClient = async (data: Omit<ClientUser, 'id' | 'createdAt'>): Promise<boolean> => {
+  const checkEmailExists = (email: string): boolean => {
+    if (!email || !email.trim()) return false;
+    const cleanEmail = email.trim().toLowerCase();
+    return clientUsers.some(u => u.email.trim().toLowerCase() === cleanEmail);
+  };
+
+  const registerClient = async (data: Omit<ClientUser, 'id' | 'createdAt'>): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = data.email.trim().toLowerCase();
-    const existing = clientUsers.find(u => u.email.trim().toLowerCase() === cleanEmail);
-    if (existing) {
-      alert('Este e-mail já está cadastrado. Por favor, faça login.');
-      return false;
+    
+    // 1. Check local state
+    const existingLocal = clientUsers.find(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (existingLocal) {
+      return {
+        success: false,
+        error: `O e-mail "${data.email.trim()}" já está cadastrado no sistema. Por favor, faça login com sua conta.`
+      };
+    }
+
+    // 2. Double-check directly in Firestore collection
+    try {
+      const qSnap = await getDocs(query(collection(db, 'clientUsers'), where('email', '==', cleanEmail)));
+      if (!qSnap.empty) {
+        return {
+          success: false,
+          error: `O e-mail "${data.email.trim()}" já possui um cadastro ativo no sistema.`
+        };
+      }
+    } catch (dbErr) {
+      console.warn('Verificação de e-mail no Firestore:', dbErr);
     }
 
     const newId = `cli-user-${Date.now()}`;
     const newClient: ClientUser = {
       ...data,
+      email: cleanEmail,
       id: newId,
       createdAt: new Date().toISOString()
     };
@@ -498,7 +504,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUser({
         id: newId,
         name: data.name,
-        email: data.email,
+        email: cleanEmail,
         company: data.company,
         phone: data.phone,
         role: 'client',
@@ -523,7 +529,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           },
           data: {
             name: data.name,
-            email: data.email,
+            email: cleanEmail,
             company: data.company,
             phone: data.phone,
             city: data.city,
@@ -534,14 +540,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('E-mail dispatch error (new client):', eErr);
       }
 
-      return true;
+      return { success: true };
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `clientUsers/${newId}`);
-      return false;
+      return { success: false, error: 'Ocorreu um erro ao salvar o cadastro. Tente novamente.' };
     }
   };
 
-  const addClientUser = async (data: Omit<ClientUser, 'id' | 'createdAt'>): Promise<boolean> => {
+  const addClientUser = async (data: Omit<ClientUser, 'id' | 'createdAt'>): Promise<{ success: boolean; error?: string }> => {
     return registerClient(data);
   };
 
@@ -1268,6 +1274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentClientUser,
       clientUsers,
       loginClient,
+      checkEmailExists,
       registerClient,
       addClientUser,
       updateClientUser,

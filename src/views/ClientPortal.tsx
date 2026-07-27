@@ -72,17 +72,22 @@ export const ClientPortal: React.FC = () => {
   const [pixCopied, setPixCopied] = useState(false);
 
   // Filter client's quotes if email matches, or display all client quotes
-  const clientEmail = (currentClientUser?.email || '').toLowerCase();
-  const clientName = (currentClientUser?.name || '').toLowerCase();
-  const clientCompany = (currentClientUser?.company || '').toLowerCase();
+  const clientEmail = (currentClientUser?.email || '').trim().toLowerCase();
+  const clientName = (currentClientUser?.name || '').trim().toLowerCase();
+  const clientCompany = (currentClientUser?.company || '').trim().toLowerCase();
+  const firstName = clientName.split(' ')[0] || '';
 
   const myQuotes = quotes.filter(q => {
     if (!currentClientUser) return true;
-    const qEmail = (q.email || '').toLowerCase();
-    const qClientName = (q.clientName || '').toLowerCase();
+    const qEmail = (q.email || '').trim().toLowerCase();
+    const qClientName = (q.clientName || '').trim().toLowerCase();
+    const qCompany = (q.company || '').trim().toLowerCase();
+
     return (
       (clientEmail && qEmail === clientEmail) ||
-      (clientName && qClientName.includes(clientName))
+      (clientName && qClientName && (qClientName.includes(clientName) || clientName.includes(qClientName))) ||
+      (firstName && qClientName && qClientName.includes(firstName)) ||
+      (clientCompany && qCompany && qCompany.includes(clientCompany))
     );
   });
 

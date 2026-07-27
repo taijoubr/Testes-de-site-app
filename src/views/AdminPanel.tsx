@@ -442,7 +442,7 @@ export const AdminPanel: React.FC = () => {
         ...(clientFormPassword.trim() ? { passwordHash: clientFormPassword.trim() } : {})
       });
     } else {
-      await addClientUser({
+      const res = await addClientUser({
         name: clientFormName.trim(),
         email: clientFormEmail.trim(),
         company: clientFormCompany.trim(),
@@ -451,6 +451,10 @@ export const AdminPanel: React.FC = () => {
         state: clientFormState.trim(),
         passwordHash: clientFormPassword.trim() || '123456'
       });
+      if (!res.success) {
+        alert(res.error || 'Não foi possível cadastrar o cliente. Verifique se o e-mail já existe.');
+        return;
+      }
     }
 
     setShowAddClientModal(false);

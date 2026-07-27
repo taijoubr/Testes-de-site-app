@@ -12,7 +12,8 @@ import {
   FileText, 
   LogIn, 
   UserPlus, 
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -20,6 +21,7 @@ export const ClientAuthPage: React.FC = () => {
   const { 
     loginClient, 
     registerClient, 
+    checkEmailExists,
     setActiveView 
   } = useApp();
 
@@ -38,6 +40,7 @@ export const ClientAuthPage: React.FC = () => {
   const [regCity, setRegCity] = useState('');
   const [regState, setRegState] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regError, setRegError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -53,9 +56,16 @@ export const ClientAuthPage: React.FC = () => {
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRegError('');
+
+    if (checkEmailExists(regEmail)) {
+      setRegError(`O e-mail "${regEmail.trim()}" já possui cadastro no portal.`);
+      return;
+    }
+
     setIsSubmitting(true);
     
-    const success = await registerClient({
+    const result = await registerClient({
       name: regName,
       email: regEmail,
       phone: regPhone,
@@ -67,8 +77,10 @@ export const ClientAuthPage: React.FC = () => {
 
     setIsSubmitting(false);
 
-    if (success) {
+    if (result.success) {
       setActiveView('client_portal');
+    } else {
+      setRegError(result.error || 'Erro ao realizar o cadastro.');
     }
   };
 
@@ -237,6 +249,34 @@ export const ClientAuthPage: React.FC = () => {
                 <h3 className="text-lg font-extrabold text-white">Criar Conta de Cliente</h3>
                 <p className="text-xs text-slate-400 mt-1">Preencha o cadastro completo para solicitar orçamentos e gerenciar seus projetos.</p>
               </div>
+
+              {(regError || (regEmail.trim() && checkEmailExists(regEmail))) && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium space-y-2 animate-in fade-in">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-amber-200">
+                        {regError || `O e-mail "${regEmail.trim()}" já possui cadastro no portal.`}
+                      </p>
+                      <p className="text-[11px] text-amber-300/80 mt-0.5 leading-relaxed">
+                        Se você já se cadastrou anteriormente, clique no botão abaixo para ir direto para a tela de login.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail(regEmail);
+                      setMode('login');
+                      setRegError('');
+                    }}
+                    className="w-full py-2 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Fazer Login com este E-mail</span>
+                  </button>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
