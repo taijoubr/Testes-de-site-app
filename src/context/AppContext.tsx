@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { sendEmailWithFallback } from '../utils/emailService';
 import confetti from 'canvas-confetti';
 import { 
   collection, 
@@ -508,29 +509,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Send email alert to configured admin email
       try {
         const adminAlertEmail = siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br';
-        await fetch('/api/send-email-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'new_client',
-            recipientEmail: adminAlertEmail,
-            emailConfig: {
-              resendApiKey: siteConfig.resendApiKey,
-              smtpHost: siteConfig.smtpHost,
-              smtpPort: siteConfig.smtpPort,
-              smtpUser: siteConfig.smtpUser,
-              smtpPass: siteConfig.smtpPass,
-              smtpFrom: siteConfig.smtpFrom
-            },
-            data: {
-              name: data.name,
-              email: data.email,
-              company: data.company,
-              phone: data.phone,
-              city: data.city,
-              state: data.state
-            }
-          })
+        await sendEmailWithFallback({
+          endpoint: '/api/send-email-notification',
+          recipientEmail: adminAlertEmail,
+          type: 'new_client',
+          emailConfig: {
+            resendApiKey: siteConfig.resendApiKey,
+            smtpHost: siteConfig.smtpHost,
+            smtpPort: siteConfig.smtpPort,
+            smtpUser: siteConfig.smtpUser,
+            smtpPass: siteConfig.smtpPass,
+            smtpFrom: siteConfig.smtpFrom
+          },
+          data: {
+            name: data.name,
+            email: data.email,
+            company: data.company,
+            phone: data.phone,
+            city: data.city,
+            state: data.state
+          }
         });
       } catch (eErr) {
         console.warn('E-mail dispatch error (new client):', eErr);
@@ -646,31 +644,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Send email alert to configured admin email
     try {
       const adminAlertEmail = siteConfig.notificationEmail || siteConfig.email || 'contato@ncodestechnologies.com.br';
-      await fetch('/api/send-email-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'new_quote',
-          recipientEmail: adminAlertEmail,
-          emailConfig: {
-            resendApiKey: siteConfig.resendApiKey,
-            smtpHost: siteConfig.smtpHost,
-            smtpPort: siteConfig.smtpPort,
-            smtpUser: siteConfig.smtpUser,
-            smtpPass: siteConfig.smtpPass,
-            smtpFrom: siteConfig.smtpFrom
-          },
-          data: {
-            quoteId: newId,
-            clientName: data.clientName,
-            company: data.company,
-            email: data.email,
-            whatsapp: data.whatsapp,
-            description: data.description,
-            deadline: data.deadline,
-            budgetRange: data.budgetRange
-          }
-        })
+      await sendEmailWithFallback({
+        endpoint: '/api/send-email-notification',
+        recipientEmail: adminAlertEmail,
+        type: 'new_quote',
+        emailConfig: {
+          resendApiKey: siteConfig.resendApiKey,
+          smtpHost: siteConfig.smtpHost,
+          smtpPort: siteConfig.smtpPort,
+          smtpUser: siteConfig.smtpUser,
+          smtpPass: siteConfig.smtpPass,
+          smtpFrom: siteConfig.smtpFrom
+        },
+        data: {
+          quoteId: newId,
+          clientName: data.clientName,
+          company: data.company,
+          email: data.email,
+          whatsapp: data.whatsapp,
+          description: data.description,
+          deadline: data.deadline,
+          budgetRange: data.budgetRange
+        }
       });
     } catch (eErr) {
       console.warn('E-mail dispatch error (new quote):', eErr);
@@ -732,29 +727,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Send proposal notification email directly to client
         if (quoteToUpdate.email) {
-          fetch('/api/send-email-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'proposal_issued',
-              recipientEmail: quoteToUpdate.email,
-              emailConfig: {
-                resendApiKey: siteConfig.resendApiKey,
-                smtpHost: siteConfig.smtpHost,
-                smtpPort: siteConfig.smtpPort,
-                smtpUser: siteConfig.smtpUser,
-                smtpPass: siteConfig.smtpPass,
-                smtpFrom: siteConfig.smtpFrom
-              },
-              data: {
-                proposalId: newPropId,
-                quoteId: quoteToUpdate.id,
-                clientName: data.clientName,
-                title: data.title,
-                totalValue: data.totalValue,
-                paymentTerms: data.paymentTerms
-              }
-            })
+          sendEmailWithFallback({
+            endpoint: '/api/send-email-notification',
+            recipientEmail: quoteToUpdate.email,
+            type: 'proposal_issued',
+            emailConfig: {
+              resendApiKey: siteConfig.resendApiKey,
+              smtpHost: siteConfig.smtpHost,
+              smtpPort: siteConfig.smtpPort,
+              smtpUser: siteConfig.smtpUser,
+              smtpPass: siteConfig.smtpPass,
+              smtpFrom: siteConfig.smtpFrom
+            },
+            data: {
+              proposalId: newPropId,
+              quoteId: quoteToUpdate.id,
+              clientName: data.clientName,
+              title: data.title,
+              totalValue: data.totalValue,
+              paymentTerms: data.paymentTerms
+            }
           }).catch(err => console.warn('Erro ao enviar e-mail de proposta ao cliente:', err));
         }
       }
@@ -927,28 +919,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Notify Client via Email
       if (q.email) {
         try {
-          await fetch('/api/send-email-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'quote_status_update',
-              recipientEmail: q.email,
-              emailConfig: {
-                resendApiKey: siteConfig.resendApiKey,
-                smtpHost: siteConfig.smtpHost,
-                smtpPort: siteConfig.smtpPort,
-                smtpUser: siteConfig.smtpUser,
-                smtpPass: siteConfig.smtpPass,
-                smtpFrom: siteConfig.smtpFrom
-              },
-              data: {
-                quoteId,
-                clientName: q.clientName,
-                status,
-                statusLabel: statusLabels[status] || status,
-                message: customMessage || ''
-              }
-            })
+          await sendEmailWithFallback({
+            endpoint: '/api/send-email-notification',
+            recipientEmail: q.email,
+            type: 'quote_status_update',
+            emailConfig: {
+              resendApiKey: siteConfig.resendApiKey,
+              smtpHost: siteConfig.smtpHost,
+              smtpPort: siteConfig.smtpPort,
+              smtpUser: siteConfig.smtpUser,
+              smtpPass: siteConfig.smtpPass,
+              smtpFrom: siteConfig.smtpFrom
+            },
+            data: {
+              quoteId,
+              clientName: q.clientName,
+              status,
+              statusLabel: statusLabels[status] || status,
+              adminNotes: customMessage || ''
+            }
           });
         } catch (eErr) {
           console.warn('Erro ao enviar e-mail de posicionamento ao cliente:', eErr);

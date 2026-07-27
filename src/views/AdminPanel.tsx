@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sendEmailWithFallback } from '../utils/emailService';
 import { 
   BarChart, 
   Bar, 
@@ -2473,22 +2474,19 @@ export const AdminPanel: React.FC = () => {
                     setIsTestingEmail(true);
                     setTestEmailResult(null);
                     try {
-                      const res = await fetch('/api/test-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          recipientEmail: editNotificationEmail,
-                          emailConfig: {
-                            resendApiKey: editResendApiKey,
-                            smtpHost: editSmtpHost,
-                            smtpPort: editSmtpPort,
-                            smtpUser: editSmtpUser,
-                            smtpPass: editSmtpPass,
-                            smtpFrom: editSmtpFrom
-                          }
-                        })
+                      const data = await sendEmailWithFallback({
+                        endpoint: '/api/test-email',
+                        recipientEmail: editNotificationEmail,
+                        emailConfig: {
+                          resendApiKey: editResendApiKey,
+                          smtpHost: editSmtpHost,
+                          smtpPort: editSmtpPort,
+                          smtpUser: editSmtpUser,
+                          smtpPass: editSmtpPass,
+                          smtpFrom: editSmtpFrom
+                        }
                       });
-                      const data = await res.json();
+
                       if (data.success && data.result?.delivered) {
                         setTestEmailResult({
                           success: true,
@@ -2497,7 +2495,7 @@ export const AdminPanel: React.FC = () => {
                       } else if (data.success) {
                         setTestEmailResult({
                           success: false,
-                          message: `⚠️ E-mail processado no servidor. Para que o e-mail chegue diretamente à sua caixa de entrada no Gmail/Outlook, cole a Chave API do Resend (ou SMTP) no campo acima e clique em 'Salvar Configurações'.`
+                          message: `⚠️ E-mail processado no servidor. Cole a Chave API do Resend no campo acima e clique em 'Salvar Configurações' para envio direto.`
                         });
                       } else {
                         setTestEmailResult({
@@ -2505,10 +2503,10 @@ export const AdminPanel: React.FC = () => {
                           message: `❌ Erro no teste: ${data.error || 'Verifique as credenciais.'}`
                         });
                       }
-                    } catch (err) {
+                    } catch (err: any) {
                       setTestEmailResult({
                         success: false,
-                        message: `❌ Falha ao conectar ao servidor de e-mail: ${err}`
+                        message: `❌ Falha ao conectar ao servidor de e-mail: ${err.message || err}`
                       });
                     } finally {
                       setIsTestingEmail(false);
