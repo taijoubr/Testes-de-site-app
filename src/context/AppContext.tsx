@@ -259,16 +259,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // State collections
   const [services, setServices] = useState<ServiceItem[]>(INITIAL_SERVICES);
   const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>(INITIAL_PORTFOLIO);
-  const [quotes, setQuotes] = useState<QuoteRequest[]>(INITIAL_QUOTES);
-  const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
-  const [contracts, setContracts] = useState<ServiceContract[]>(INITIAL_CONTRACTS);
-  const [financials, setFinancials] = useState<FinancialTransaction[]>(INITIAL_FINANCIALS);
-  const [subscriptions, setSubscriptions] = useState<ClientSubscription[]>(INITIAL_SUBSCRIPTIONS);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
-  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS);
-  const [leads, setLeads] = useState<LeadCRM[]>(INITIAL_LEADS);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [contracts, setContracts] = useState<ServiceContract[]>([]);
+  const [financials, setFinancials] = useState<FinancialTransaction[]>([]);
+  const [subscriptions, setSubscriptions] = useState<ClientSubscription[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [leads, setLeads] = useState<LeadCRM[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Firestore Realtime Sync Effect
   useEffect(() => {
@@ -396,9 +396,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, (err) => handleFirestoreError(err, OperationType.GET, 'portfolio'));
 
       const unsubContracts = onSnapshot(collection(db, 'contracts'), (snap) => {
-        if (!snap.empty) {
-          setContracts(snap.docs.map(d => d.data() as ServiceContract));
-        }
+        setContracts(snap.docs.map(d => d.data() as ServiceContract));
       }, (err) => handleFirestoreError(err, OperationType.GET, 'contracts'));
 
       return () => {
@@ -2604,9 +2602,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setFinancials([]);
 
+      // 7. Delete test tickets
+      const tSnap = await getDocs(collection(db, 'tickets'));
+      for (const d of tSnap.docs) {
+        await deleteDoc(doc(db, 'tickets', d.id));
+      }
+      setTickets([]);
+
+      // 8. Delete test chat messages
+      const chatSnap = await getDocs(collection(db, 'chatMessages'));
+      for (const d of chatSnap.docs) {
+        await deleteDoc(doc(db, 'chatMessages', d.id));
+      }
+      setChatMessages([]);
+
+      // 9. Delete test CRM leads
+      const lSnap = await getDocs(collection(db, 'leads'));
+      for (const d of lSnap.docs) {
+        await deleteDoc(doc(db, 'leads', d.id));
+      }
+      setLeads([]);
+
+      // 10. Delete test notifications
+      const nSnap = await getDocs(collection(db, 'notifications'));
+      for (const d of nSnap.docs) {
+        await deleteDoc(doc(db, 'notifications', d.id));
+      }
+      setNotifications([]);
+
       await addNotification(
         'Reset de Testes Concluído! 🧹',
-        'Todos os projetos, contratos, orçamentos, propostas e mensalidades de teste foram limpos com sucesso.',
+        'Todos os projetos, contratos, orçamentos, propostas, tickets e movimentações de teste foram removidos do painel e do portal do cliente com sucesso.',
         'project'
       );
       confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
