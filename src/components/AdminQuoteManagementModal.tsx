@@ -23,10 +23,14 @@ import {
   Phone,
   Mail,
   Copy,
-  Check
+  Check,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  FileSignature
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { QuoteRequest, QuoteStatus, QuoteAttachment } from '../types';
+import { QuoteRequest, QuoteStatus, QuoteAttachment, Proposal } from '../types';
 import { TEAM_MEMBERS } from '../data/initialData';
 
 interface AdminQuoteManagementModalProps {
@@ -42,28 +46,67 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
     addQuoteAttachment,
     addQuoteTimelineItem,
     setSelectedQuoteIdForProposal,
+    setSelectedProposalIdForAcceptance,
+    createProposal,
+    proposals,
     setActiveView
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'edit_offer' | 'status' | 'request_info' | 'messages'>('edit_offer');
+  // Find existing proposal associated with this quote if available
+  const existingProposal = proposals.find(p => p.id === quote.proposalId || p.quoteId === quote.id);
 
-  // Offer Edit Form State
-  const [offeredValue, setOfferedValue] = useState<string>(quote.offeredValue ? String(quote.offeredValue) : '');
-  const [offeredDeadline, setOfferedDeadline] = useState<string>(quote.offeredDeadline || quote.deadline || '');
-  const [paymentTerms, setPaymentTerms] = useState<string>(quote.paymentTerms || '50% entrada + 50% na entrega ou 12x no cartão');
+  const [activeTab, setActiveTab] = useState<'edit_offer' | 'status' | 'request_info' | 'messages'>('edit_offer');
+  const [showClientDetails, setShowClientDetails] = useState(true);
+
+  // Proposal Edit Form State
+  const [proposalTitle, setProposalTitle] = useState<string>(
+    existingProposal?.title || (quote.projectTitle ? `Proposta Comercial - ${quote.projectTitle}` : `Proposta Comercial - ${quote.company || quote.clientName}`)
+  );
+  const [offeredValue, setOfferedValue] = useState<string>(
+    existingProposal ? String(existingProposal.totalValue) : (quote.offeredValue ? String(quote.offeredValue) : (quote.aiAnalysis?.suggestedBudget ? String(quote.aiAnalysis.suggestedBudget) : '18500'))
+  );
+  const [recurringMonthlyValue, setRecurringMonthlyValue] = useState<string>(
+    existingProposal?.recurringMonthlyValue ? String(existingProposal.recurringMonthlyValue) : '1200'
+  );
+  const [offeredDeadline, setOfferedDeadline] = useState<string>(
+    quote.offeredDeadline || quote.deadline || '30 dias úteis'
+  );
+  const [paymentTerms, setPaymentTerms] = useState<string>(
+    existingProposal?.paymentTerms || quote.paymentTerms || '30% entrada no aceite digital + parcelas via Pix/Boleto ou 12x cartão'
+  );
   const [assignedTo, setAssignedTo] = useState<string>(quote.assignedTo || 'usr-1');
+  
   const [scopeItems, setScopeItems] = useState<string[]>(
-    quote.scopeItems && quote.scopeItems.length > 0 
-      ? quote.scopeItems 
-      : [
-          'Desenvolvimento do Frontend Responsivo em React / Tailwind',
-          'API RESTful / Express com Criptografia de Dados',
-          'Painel de Gestão Administrativa e Dashboard',
-          'Homologação Técnica e Publicação em Produção'
-        ]
+    existingProposal?.scope && existingProposal.scope.length > 0
+      ? existingProposal.scope
+      : (quote.scopeItems && quote.scopeItems.length > 0 
+        ? quote.scopeItems 
+        : (quote.selectedFeatures && quote.selectedFeatures.length > 0
+          ? quote.selectedFeatures
+          : [
+              'Desenvolvimento do Frontend Responsivo em React / Tailwind',
+              'API RESTful / Express com Criptografia de Dados',
+              'Painel de Gestão Administrativa e Dashboard',
+              'Homologação Técnica e Publicação em Produção'
+            ]
+          )
+        )
   );
   const [newScopeInput, setNewScopeInput] = useState('');
-  const [customNote, setCustomNote] = useState('');
+  const [description, setDescription] = useState<string>(
+    existingProposal?.description || `Desenvolvimento de ecossistema de software sob medida para a empresa ${quote.company || quote.clientName}. Requisitos: ${quote.description}`
+  );
+  const [contractText, setContractText] = useState<string>(
+    existingProposal?.contractText || `CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TECNOLOGIA
+
+CONTRATADA: NCODES TECHNOLOGIES LTDA, inscrita no CNPJ/MF sob o nº 00.000.000/0001-00.
+CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clientName}.
+
+1. OBJETO: A CONTRATADA compromete-se a desenvolver o projeto ${proposalTitle} de acordo com o escopo e especificações aprovadas neste instrumento.
+2. VALOR E CONDIÇÕES DE PAGAMENTO: O valor total do projeto é ajustado conforme valores especificados nesta proposta comercial.
+3. DIREITOS E PROPRIEDADE INTELECTUAL: Após a quitação integral dos valores contratados, a totalidade do código-fonte e licenças proprietárias serão cedidas ao CONTRATANTE.
+4. VALIDADE JURÍDICA E ACEITE DIGITAL: A assinatura deste contrato é realizada por meio de aceite digital, validada eletronicamente via endereço IP, timestamp UTC e hash criptográfico SHA-256 do dispositivo.`
+  );
 
   // Status Change Form State
   const [newStatus, setNewStatus] = useState<QuoteStatus>(quote.status);
@@ -77,6 +120,8 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [generatedPropId, setGeneratedPropId] = useState<string | null>(existingProposal?.id || quote.proposalId || null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const handleAddScopeItem = () => {
     if (newScopeInput.trim()) {
@@ -89,30 +134,67 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
     setScopeItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSaveOfferDetails = async (e: React.FormEvent) => {
+  const handleSuggestScopeFromFeatures = () => {
+    const suggested = [
+      'Modelagem da Arquitetura de Banco de Dados e Backend High-Availability',
+      'Painel de Gestão Administrativa com Controle de Permissões',
+      'Integração de Notificações Push e Comunicação em Tempo Real',
+      'Auditoria de Segurança, Testes de Carga e Homologação Final'
+    ];
+    if (quote.selectedFeatures && quote.selectedFeatures.length > 0) {
+      setScopeItems([...quote.selectedFeatures, ...suggested]);
+    } else {
+      setScopeItems(suggested);
+    }
+  };
+
+  const handleSaveAndGenerateProposal = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     const assignedMember = TEAM_MEMBERS.find(m => m.id === assignedTo);
+    const numericValue = offeredValue ? parseFloat(offeredValue) : (quote.aiAnalysis?.suggestedBudget || 18500);
+    const numericMonthly = recurringMonthlyValue ? parseFloat(recurringMonthlyValue) : 0;
 
+    // 1. Update quote details in system
     await updateQuoteDetails(
       quote.id,
       {
-        offeredValue: offeredValue ? parseFloat(offeredValue) : undefined,
+        offeredValue: numericValue,
         offeredDeadline,
         paymentTerms,
         assignedTo,
         assignedToName: assignedMember ? assignedMember.name : 'Engenheiro NCodes',
         assignedToRole: assignedMember ? assignedMember.role : 'admin',
         scopeItems,
-        status: quote.status === 'solicitado' || quote.status === 'em_analise' ? 'orcamento_disponivel' : quote.status
+        status: 'orcamento_disponivel'
       },
-      customNote.trim() || 'Valores e escopo comercial atualizados pela equipe.'
+      'Proposta comercial elaborada e liberada para o cliente.'
     );
 
+    // 2. Generate or Update Digital Proposal
+    const newProposal = createProposal({
+      quoteId: quote.id,
+      title: proposalTitle,
+      clientName: quote.clientName,
+      company: quote.company || 'Pessoa Física',
+      description,
+      scope: scopeItems,
+      schedule: [
+        { phase: 'Fase 1 - Arquitetura, UX/UI & Especificação Técnica', duration: '10 dias', deliverable: 'Protótipo navegável Figma + especificação técnica' },
+        { phase: 'Fase 2 - Desenvolvimento Core & Módulos Principais', duration: '20 dias', deliverable: 'Build de testes com autenticação e banco de dados' },
+        { phase: 'Fase 3 - Painel Administrativo & Integrações', duration: '15 dias', deliverable: 'Sincronização em tempo real e relatórios' },
+        { phase: 'Fase 4 - Homologação, Treinamento & Publicação Lojas', duration: '10 dias', deliverable: 'Lançamento oficial em produção + documentação' }
+      ],
+      totalValue: numericValue,
+      recurringMonthlyValue: numericMonthly,
+      paymentTerms,
+      contractText
+    });
+
+    setGeneratedPropId(newProposal.id);
     setIsSubmitting(false);
-    setSuccessMsg('Orçamento atualizado com sucesso!');
-    setTimeout(() => setSuccessMsg(''), 3000);
+    setSuccessMsg(`Proposta ${newProposal.id} gerada com sucesso! Link e documento PDF disponíveis para envio e assinatura.`);
   };
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
@@ -173,38 +255,65 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
     }
   };
 
+  const handleOpenProposalPdfView = () => {
+    const targetPropId = generatedPropId || quote.proposalId || existingProposal?.id;
+    if (targetPropId) {
+      setSelectedProposalIdForAcceptance(targetPropId);
+      setActiveView('proposal_accept');
+      onClose();
+    } else {
+      alert('Por gentileza, salve a proposta primeiro para gerar a versão PDF.');
+    }
+  };
+
+  const handleCopyProposalLink = () => {
+    const targetPropId = generatedPropId || quote.proposalId || existingProposal?.id;
+    if (targetPropId) {
+      const link = `${window.location.origin}?view=proposal_accept&id=${targetPropId}`;
+      navigator.clipboard.writeText(link);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200 my-auto">
         
         {/* HEADER */}
-        <div className="p-5 md:p-6 bg-slate-900/90 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-5 md:p-6 bg-slate-900/90 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-mono text-xs px-2.5 py-1 rounded bg-slate-800 text-cyan-400 font-bold border border-slate-700">
+              <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-cyan-400 font-bold border border-slate-700">
                 {quote.id}
               </span>
-              <span className="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 font-medium">
-                Cliente: {quote.clientName} ({quote.company || 'Pessoa Física'})
+              <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-medium">
+                Cliente: <strong className="text-white">{quote.clientName}</strong> ({quote.company || 'Pessoa Física'})
               </span>
+              {quote.proposalId && (
+                <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Proposta Emitida: {quote.proposalId}
+                </span>
+              )}
             </div>
-            <h2 className="text-xl font-bold text-white">
-              Painel Administrativo: {quote.projectTitle || quote.projectType}
+            <h2 className="text-xl font-extrabold text-white">
+              Gerenciar Orçamento: {quote.projectTitle || quote.projectType}
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleConvertToProject}
-              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 cursor-pointer"
             >
               <Briefcase className="w-4 h-4" />
-              Converter em Projeto (1-Clique)
+              <span>Converter em Projeto</span>
             </button>
 
             <button 
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -213,81 +322,339 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
 
         {/* FEEDBACK BANNER */}
         {successMsg && (
-          <div className="bg-emerald-950/60 border-b border-emerald-500/40 p-3 px-6 text-emerald-300 text-xs font-bold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            {successMsg}
+          <div className="bg-emerald-950/80 border-b border-emerald-500/40 p-3.5 px-6 text-emerald-300 text-xs font-bold flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+            {(generatedPropId || quote.proposalId) && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenProposalPdfView}
+                  className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Abrir / Imprimir PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyProposalLink}
+                  className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer border border-slate-700"
+                >
+                  <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{copiedLink ? 'Link Copiado!' : 'Copiar Link'}</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* NAV TABS */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 px-6 gap-2 pt-2">
-          {[
-            { id: 'edit_offer', label: 'Precificação & Escopo', icon: DollarSign },
-            { id: 'status', label: 'Alterar Status', icon: Clock },
-            { id: 'request_info', label: 'Solicitar Informações', icon: AlertTriangle },
-            { id: 'messages', label: 'Mensagens & Proposta PDF', icon: MessageSquare }
-          ].map(tab => {
-            const IconC = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all ${
-                  isActive 
-                    ? 'border-cyan-400 text-cyan-400 bg-cyan-500/10 rounded-t-lg' 
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <IconC className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* MAIN BODY AREA */}
+        <div className="p-5 md:p-6 overflow-y-auto flex-1 space-y-6">
 
-        {/* BODY */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          
-          {/* TAB 1: PRECIFICAÇÃO E ESCOPO */}
+          {/* SECTION 1: SOLICITAÇÃO COMPLETA DO CLIENTE (O QUE FOI SOLICITADO) */}
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 md:p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>O que foi Solicitado pelo Cliente</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      {quote.projectType || 'Projeto Sob Medida'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Acesse abaixo a íntegra dos requisitos, descrição e estimativas enviadas na solicitação de orçamento
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowClientDetails(!showClientDetails)}
+                className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 bg-slate-900 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 transition-colors cursor-pointer shrink-0"
+              >
+                {showClientDetails ? (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    <span>Ocultar Detalhes</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    <span>Ver Solicitação Completa</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {showClientDetails && (
+              <div className="space-y-4 text-xs animate-in fade-in duration-150">
+                
+                {/* Contato e Localização */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80">
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Cliente</span>
+                    <span className="text-slate-200 font-bold">{quote.clientName}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Empresa</span>
+                    <span className="text-slate-200 font-semibold">{quote.company || 'Pessoa Física'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">WhatsApp / Contato</span>
+                    <a 
+                      href={`https://wa.me/55${quote.whatsapp?.replace(/\D/g, '')}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-emerald-400 hover:underline font-semibold flex items-center gap-1"
+                    >
+                      <Phone className="w-3 h-3" />
+                      {quote.whatsapp || quote.phone}
+                    </a>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Localidade / E-mail</span>
+                    <span className="text-slate-300 truncate block">{quote.city}-{quote.state} | {quote.email}</span>
+                  </div>
+                </div>
+
+                {/* Descrição dos Requisitos */}
+                <div className="space-y-1.5">
+                  <span className="text-slate-400 font-bold flex items-center gap-1.5 text-xs">
+                    📌 Descrição dos Requisitos do Projeto:
+                  </span>
+                  <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+                    {quote.description}
+                  </div>
+                </div>
+
+                {/* Funcionalidades Selecionadas e Prazos/Orçamento Desejados */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {quote.selectedFeatures && quote.selectedFeatures.length > 0 && (
+                    <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                      <span className="text-slate-400 font-bold block text-[11px]">Funcionalidades Solicitadas:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {quote.selectedFeatures.map((feat, i) => (
+                          <span key={i} className="px-2 py-1 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[11px] font-medium">
+                            ✓ {feat}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                    <span className="text-slate-400 font-bold block text-[11px]">Expectativa do Cliente:</span>
+                    <div className="grid grid-cols-2 gap-2 text-slate-300">
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">Prazo Solicitado:</span>
+                        <strong className="text-cyan-400">{quote.deadline}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">Faixa de Orçamento:</span>
+                        <strong className="text-emerald-400">{quote.budgetRange}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Referências e Links */}
+                {quote.references && (
+                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-slate-400 font-bold block text-[11px]">🔗 Referências / Links de Inspiração:</span>
+                    <p className="text-slate-300 whitespace-pre-wrap break-all">{quote.references}</p>
+                  </div>
+                )}
+
+                {/* Análise de Engenharia Gemini AI */}
+                {quote.aiAnalysis && (
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-800/50 space-y-2">
+                    <div className="flex items-center justify-between text-blue-300 font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-blue-400" />
+                        Análise de Engenharia Gemini AI
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-blue-500/20 text-[10px] text-blue-200 uppercase font-bold">
+                        Complexidade: {quote.aiAnalysis.complexity}
+                      </span>
+                    </div>
+                    <p className="text-slate-300 leading-relaxed text-[11px]">{quote.aiAnalysis.summary}</p>
+                    <div className="flex flex-wrap items-center justify-between pt-2 text-[11px] border-t border-blue-900/60 font-semibold">
+                      <span className="text-slate-400">Horas Estimadas: <strong className="text-white">{quote.aiAnalysis.estimatedHours}h</strong></span>
+                      <span className="text-emerald-400">Sugestão de Investimento: <strong>R$ {quote.aiAnalysis.suggestedBudget?.toLocaleString('pt-BR')}</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Anexos enviados pelo cliente */}
+                {quote.attachments && quote.attachments.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-slate-400 font-bold block text-[11px]">Anexos Enviados pelo Cliente:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {quote.attachments.map((att, idx) => (
+                        <a 
+                          key={idx} 
+                          href={att.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="px-2.5 py-1 rounded bg-slate-900 text-cyan-400 hover:bg-slate-800 border border-slate-700 flex items-center gap-1 text-[11px]"
+                        >
+                          <Paperclip className="w-3 h-3" />
+                          {att.name} ({att.size})
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 2: NAV TABS FOR ACTION */}
+          <div className="flex border-b border-slate-800 bg-slate-950/60 rounded-t-2xl px-4 gap-2 pt-2">
+            {[
+              { id: 'edit_offer', label: 'Elaborar Proposta Comercial & PDF', icon: FileSignature },
+              { id: 'status', label: 'Alterar Status & E-mail', icon: Clock },
+              { id: 'request_info', label: 'Solicitar Informações', icon: AlertTriangle },
+              { id: 'messages', label: 'Mensagens & Linha do Tempo', icon: MessageSquare }
+            ].map(tab => {
+              const IconC = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                    isActive 
+                      ? 'border-cyan-400 text-cyan-400 bg-cyan-500/10 rounded-t-xl' 
+                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <IconC className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* TAB 1: ELABORAR PROPOSTA COMERCIAL & PDF */}
           {activeTab === 'edit_offer' && (
-            <form onSubmit={handleSaveOfferDetails} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleSaveAndGenerateProposal} className="space-y-5 bg-slate-900/80 p-5 rounded-b-2xl border border-t-0 border-slate-800">
+              
+              <div className="flex items-center justify-between border-b pb-3 border-slate-800">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <FileSignature className="w-4 h-4 text-cyan-400" />
+                    Preencha as Informações da Proposta para o PDF e Aceite Digital
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Defina valores, itens do escopo, formas de pagamento e prazos. As informações serão formatadas no documento oficial em PDF.
+                  </p>
+                </div>
+
+                {(generatedPropId || quote.proposalId) && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenProposalPdfView}
+                      className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Visualizar Proposta em PDF</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Título da Proposta Comercial *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={proposalTitle}
+                  onChange={e => setProposalTitle(e.target.value)}
+                  placeholder="Ex: Proposta Comercial - Sistema de Gestão Web"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Valor do Projeto (R$)
+                    Valor Total do Projeto (R$) *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-xs text-slate-400">R$</span>
+                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">R$</span>
                     <input
                       type="number"
                       step="0.01"
                       required
                       value={offeredValue}
                       onChange={e => setOfferedValue(e.target.value)}
-                      placeholder="28500.00"
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                      placeholder="18500.00"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 p-2.5 text-xs font-bold text-emerald-400 focus:outline-none focus:border-cyan-400"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Prazo Estimado de Entrega
+                    Mensalidade Recorrente (R$/mês)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={recurringMonthlyValue}
+                      onChange={e => setRecurringMonthlyValue(e.target.value)}
+                      placeholder="1200.00"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 p-2.5 text-xs font-bold text-cyan-400 focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Prazo Estimado de Entrega *
                   </label>
                   <input
                     type="text"
                     required
                     value={offeredDeadline}
                     onChange={e => setOfferedDeadline(e.target.value)}
-                    placeholder="Ex: 40 dias úteis"
+                    placeholder="Ex: 30 dias úteis"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Formas e Condições de Pagamento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={paymentTerms}
+                    onChange={e => setPaymentTerms(e.target.value)}
+                    placeholder="Ex: 30% entrada no aceite digital + 2 parcelas mensais via Pix ou 12x cartão"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Responsável pelo Atendimento
+                    Engenheiro / Atendimento Responsável
                   </label>
                   <select
                     value={assignedTo}
@@ -303,34 +670,33 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
                 </div>
               </div>
 
+              {/* Scope Items Builder */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Condições de Pagamento
-                </label>
-                <input
-                  type="text"
-                  value={paymentTerms}
-                  onChange={e => setPaymentTerms(e.target.value)}
-                  placeholder="Ex: 50% de entrada + 3 parcelas sem juros ou 10% de desconto no Pix"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                />
-              </div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-300">
+                    Itens do Escopo e Entregáveis Inclusos (Aparecem no PDF)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSuggestScopeFromFeatures}
+                    className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3 text-cyan-400" />
+                    Sugerir Escopo com Base nos Requisitos
+                  </button>
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-2">
-                  Itens do Escopo do Projeto
-                </label>
                 <div className="space-y-2 mb-3">
                   {scopeItems.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200">
+                    <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200">
                       <span className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                         {item}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleRemoveScopeItem(idx)}
-                        className="text-slate-500 hover:text-red-400 p-1"
+                        className="text-slate-500 hover:text-red-400 p-1 cursor-pointer transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -343,13 +709,13 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
                     type="text"
                     value={newScopeInput}
                     onChange={e => setNewScopeInput(e.target.value)}
-                    placeholder="Adicionar novo item de escopo..."
+                    placeholder="Digitar e adicionar novo item de entrega..."
                     className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
                   />
                   <button
                     type="button"
                     onClick={handleAddScopeItem}
-                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     Adicionar
@@ -357,44 +723,60 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
                 </div>
               </div>
 
+              {/* Executive Overview */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Observações Internas ou Mensagem ao Cliente
+                  Resumo e Detalhes do Escopo da Proposta
                 </label>
                 <textarea
                   rows={2}
-                  value={customNote}
-                  onChange={e => setCustomNote(e.target.value)}
-                  placeholder="Instruções para o cliente ou histórico de negociação..."
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
                 />
               </div>
 
-              <div className="pt-3 flex items-center justify-between">
+              {/* Contract Terms */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Cláusulas e Termos do Contrato (Aceite Digital)
+                </label>
+                <textarea
+                  rows={4}
+                  value={contractText}
+                  onChange={e => setContractText(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-300 font-sans focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800">
                 <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl cursor-pointer border border-slate-700 transition-colors flex items-center gap-2">
                   <Paperclip className="w-4 h-4 text-cyan-400" />
-                  Anexar PDF da Proposta
+                  Anexar PDF Adicional ao Orçamento
                   <input type="file" onChange={handleFileUpload} className="hidden" />
                 </label>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  Salvar e Liberar Orçamento
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Salvar e Gerar Proposta Digital / PDF</span>
+                  </button>
+                </div>
               </div>
+
             </form>
           )}
 
-          {/* TAB 2: ALTERAR STATUS */}
+          {/* TAB 2: ALTERAR STATUS & E-MAIL */}
           {activeTab === 'status' && (
-            <form onSubmit={handleUpdateStatus} className="space-y-5">
+            <form onSubmit={handleUpdateStatus} className="space-y-5 bg-slate-900/80 p-5 rounded-b-2xl border border-t-0 border-slate-800">
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Selecione o Novo Status
+                  Selecione o Novo Status do Orçamento
                 </label>
                 <select
                   value={newStatus}
@@ -414,7 +796,7 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Observação do Status (Enviada no e-mail e na linha do tempo)
+                  Observação do Status (Disparada por e-mail e salva na linha do tempo)
                 </label>
                 <textarea
                   rows={4}
@@ -428,19 +810,19 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-colors"
+                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
-                Atualizar Status Agora
+                Atualizar Status e Notificar Cliente
               </button>
             </form>
           )}
 
           {/* TAB 3: SOLICITAR INFORMAÇÕES */}
           {activeTab === 'request_info' && (
-            <form onSubmit={handleSendInfoRequest} className="space-y-4">
+            <form onSubmit={handleSendInfoRequest} className="space-y-4 bg-slate-900/80 p-5 rounded-b-2xl border border-t-0 border-slate-800">
               <div className="p-4 bg-orange-950/30 border border-orange-500/30 rounded-xl text-orange-200 text-xs">
                 <AlertTriangle className="w-5 h-5 text-orange-400 mb-1" />
-                <p>Ao enviar uma dúvida ou solicitar informações, o status do orçamento será alterado para <strong className="text-orange-300">"Aguardando Informações"</strong> e o cliente receberá um alerta no painel dele.</p>
+                <p>Ao enviar uma dúvida ou solicitar informações complementares, o status do orçamento será alterado para <strong className="text-orange-300">"Aguardando Informações"</strong> e o cliente receberá um aviso no portal.</p>
               </div>
 
               <textarea
@@ -448,14 +830,14 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
                 required
                 value={requestInfoText}
                 onChange={e => setRequestInfoText(e.target.value)}
-                placeholder="Ex: Por gentileza, informe qual API de pagamentos vocês utilizam atualmente..."
+                placeholder="Ex: Por gentileza, informe qual gateway de pagamentos ou API vocês utilizam atualmente..."
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-orange-400"
               />
 
               <button
                 type="submit"
                 disabled={!requestInfoText.trim() || isSubmitting}
-                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-2"
+                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
                 Enviar Solicitação ao Cliente
@@ -463,30 +845,37 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
             </form>
           )}
 
-          {/* TAB 4: MENSAGENS E PROPOSTA PDF */}
+          {/* TAB 4: MENSAGENS E LINHA DO TEMPO */}
           {activeTab === 'messages' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
-                <div>
-                  <h4 className="text-xs font-bold text-white">Proposta Comercial em PDF</h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Gerar a página da proposta para assinatura digital do cliente</p>
+            <div className="space-y-6 bg-slate-900/80 p-5 rounded-b-2xl border border-t-0 border-slate-800">
+              
+              {(generatedPropId || quote.proposalId || existingProposal) && (
+                <div className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                  <div>
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      Proposta Comercial em PDF e Aceite Digital
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Proposta ID: <strong>{generatedPropId || quote.proposalId || existingProposal?.id}</strong>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenProposalPdfView}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Abrir PDF / Aceite Digital
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setSelectedQuoteIdForProposal(quote.id);
-                    setActiveView('proposal_accept');
-                    onClose();
-                  }}
-                  className="px-4 py-2 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Abrir Gerador de Proposta
-                </button>
-              </div>
+              )}
 
               <form onSubmit={handleSendAdminMessage} className="space-y-3">
                 <label className="block text-xs font-bold text-slate-300">
-                  Adicionar Nota na Linha do Tempo
+                  Adicionar Nota Interna na Linha do Tempo
                 </label>
                 <textarea
                   rows={3}
@@ -498,7 +887,7 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
                 <button
                   type="submit"
                   disabled={!adminMessageText.trim() || isSubmitting}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-colors"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Registrar Nota
                 </button>

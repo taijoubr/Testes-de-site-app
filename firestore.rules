@@ -100,5 +100,11 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if true;
     }
+
+    // Contracts collection (Contratos de prestação de serviços gerados)
+    match /contracts/{contractId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
   }
 }

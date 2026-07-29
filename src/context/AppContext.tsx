@@ -38,7 +38,9 @@ import {
   ClientSubscription,
   SubscriptionStatus,
   SiteConfig,
-  ServiceItem
+  ServiceItem,
+  ServiceContract,
+  ContractInstallment
 } from '../types';
 
 import { 
@@ -55,7 +57,8 @@ import {
   INITIAL_CLIENT_USERS,
   INITIAL_SUBSCRIPTIONS,
   INITIAL_SITE_CONFIG,
-  INITIAL_SERVICES
+  INITIAL_SERVICES,
+  INITIAL_CONTRACTS
 } from '../data/initialData';
 
 export type ActiveView = 
@@ -81,6 +84,8 @@ interface AppContextType {
   setSelectedProposalIdForAcceptance: (id?: string) => void;
   selectedProjectId?: string;
   setSelectedProjectId: (id?: string) => void;
+  selectedContractId?: string;
+  setSelectedContractId: (id?: string) => void;
   
   // Theme & User
   isDarkMode: boolean;
@@ -125,6 +130,7 @@ interface AppContextType {
   quotes: QuoteRequest[];
   proposals: Proposal[];
   projects: Project[];
+  contracts: ServiceContract[];
   financials: FinancialTransaction[];
   subscriptions: ClientSubscription[];
   chatMessages: ChatMessage[];
@@ -136,6 +142,9 @@ interface AppContextType {
   createQuoteRequest: (data: Omit<QuoteRequest, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => Promise<QuoteRequest>;
   createProposal: (data: Omit<Proposal, 'id' | 'createdAt' | 'status'>) => Proposal;
   acceptProposal: (proposalId: string, signatureName: string) => Promise<void>;
+  generateContractForQuote: (quoteId: string, customData?: any) => Promise<ServiceContract>;
+  signContract: (contractId: string, signatureData: { signerName: string; signerDocument: string; signerEmail?: string }) => Promise<void>;
+  deleteContract: (contractId: string) => Promise<void>;
   updateQuoteStatus: (quoteId: string, status: QuoteStatus, customMessage?: string) => Promise<void>;
   updateQuoteDetails: (quoteId: string, updates: Partial<QuoteRequest>, notes?: string) => Promise<void>;
   addQuoteTimelineItem: (quoteId: string, notes: string, user?: string, userRole?: 'admin' | 'client' | 'system', statusChangedTo?: QuoteStatus) => Promise<void>;
@@ -146,13 +155,17 @@ interface AppContextType {
   respondToQuoteRequest: (quoteId: string, responseText: string) => Promise<void>;
   convertQuoteToProject: (quoteId: string) => Promise<string | undefined>;
   deleteQuote: (quoteId: string) => Promise<void>;
+  deleteProposal: (proposalId: string) => Promise<void>;
   
   toggleProjectTask: (projectId: string, taskId: string) => void;
   addProjectHours: (projectId: string, hours: number) => void;
   addProjectFile: (projectId: string, fileName: string, size: string, type: 'pdf' | 'doc' | 'image' | 'code' | 'zip') => void;
+  finalizeProjectAndStartSubscription: (projectId: string, customMonthlyValue?: number, completionDateInput?: string) => Promise<{ ruleApplied: string; firstChargeAmount: number; nextDueDate: string; subscriptionId: string; } | null>;
+  deleteProject: (projectId: string) => Promise<void>;
   
   addFinancialTransaction: (data: Omit<FinancialTransaction, 'id'>) => void;
-  updateFinancialStatus: (id: string, status: FinancialTransaction['status']) => void;
+  updateFinancialStatus: (id: string, status: FinancialTransaction['status'], customPaymentDate?: string) => Promise<void>;
+  deleteFinancialTransaction: (id: string) => Promise<void>;
 
   // Subscriptions & Monthly Fees Actions
   addSubscription: (data: Omit<ClientSubscription, 'id'>) => Promise<void>;
@@ -160,6 +173,7 @@ interface AppContextType {
   updateSubscriptionStatus: (subId: string, status: SubscriptionStatus, nextDueDate?: string, lastPaymentDate?: string) => Promise<void>;
   deleteSubscription: (subId: string) => Promise<void>;
   generateSubscriptionBilling: (subId: string) => Promise<void>;
+  manualSettleSubscription: (subId: string, customPaymentDate?: string) => Promise<void>;
   
   sendChatMessage: (text: string, projectId?: string, attachments?: { name: string; type: string; url: string }[], isAudio?: boolean) => void;
   createSupportTicket: (title: string, category: string, priority: SupportTicket['priority']) => void;
@@ -175,6 +189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedQuoteIdForProposal, setSelectedQuoteIdForProposal] = useState<string | undefined>();
   const [selectedProposalIdForAcceptance, setSelectedProposalIdForAcceptance] = useState<string | undefined>(undefined);
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
+  const [selectedContractId, setSelectedContractId] = useState<string | undefined>(undefined);
   
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<UserProfile>(TEAM_MEMBERS[0]); // Default Admin
@@ -237,6 +252,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [quotes, setQuotes] = useState<QuoteRequest[]>(INITIAL_QUOTES);
   const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [contracts, setContracts] = useState<ServiceContract[]>(INITIAL_CONTRACTS);
   const [financials, setFinancials] = useState<FinancialTransaction[]>(INITIAL_FINANCIALS);
   const [subscriptions, setSubscriptions] = useState<ClientSubscription[]>(INITIAL_SUBSCRIPTIONS);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
@@ -351,10 +367,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }, (err) => handleFirestoreError(err, OperationType.GET, 'services'));
 
+      const unsubContracts = onSnapshot(collection(db, 'contracts'), (snap) => {
+        if (!snap.empty) {
+          setContracts(snap.docs.map(d => d.data() as ServiceContract));
+        }
+      }, (err) => handleFirestoreError(err, OperationType.GET, 'contracts'));
+
       return () => {
         unsubQuotes();
         unsubProposals();
         unsubProjects();
+        unsubContracts();
         unsubFinancials();
         unsubChat();
         unsubTickets();
@@ -929,6 +952,272 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newProposal;
   };
 
+  // Generate Contract Automatically for Approved Quote or Proposal
+  const generateContractForQuote = async (quoteId: string, customData?: any): Promise<ServiceContract> => {
+    const quote = quotes.find(q => q.id === quoteId);
+    const proposal = proposals.find(p => p.quoteId === quoteId || p.id === quoteId);
+    const existingContract = contracts.find(c => c.quoteId === quoteId || (proposal && c.proposalId === proposal.id));
+
+    if (existingContract) {
+      if (customData?.projectId && !existingContract.projectId) {
+        const updated = { ...existingContract, projectId: customData.projectId };
+        await saveDoc('contracts', existingContract.id, updated);
+        return updated;
+      }
+      return existingContract;
+    }
+
+    const contractNum = `CTR-2026-${String(contracts.length + 1).padStart(3, '0')}`;
+    const nowISO = new Date().toISOString();
+    const todayStr = nowISO.split('T')[0];
+
+    const clientName = customData?.clientName || proposal?.clientName || quote?.clientName || 'Cliente NCodes';
+    const companyName = customData?.company || proposal?.company || quote?.company || clientName;
+    const clientEmail = customData?.email || quote?.email || `${clientName.toLowerCase().replace(/\s+/g, '')}@cliente.com.br`;
+    const clientPhone = customData?.phone || quote?.phone || '(11) 98765-4321';
+    const clientCpfCnpj = customData?.cpfCnpj || customData?.signerDocument || '34.567.890/0001-12';
+    const legalRep = customData?.signatureName || customData?.legalRepresentative || clientName;
+
+    const projectTitle = proposal?.title || quote?.projectTitle || quote?.projectType || 'Projeto de Software Customizado';
+    const totalVal = Number(customData?.totalValue || proposal?.totalValue || quote?.offeredValue || 15000);
+    const entryVal = Math.round(totalVal * 0.3);
+    const remVal = totalVal - entryVal;
+    const paymentTermsText = proposal?.paymentTerms || quote?.paymentTerms || '30% de entrada no aceite + 3 parcelas mensais de 23,33%';
+
+    const scopeList = proposal?.scope && proposal.scope.length > 0 
+      ? proposal.scope 
+      : (quote?.scopeItems && quote.scopeItems.length > 0 ? quote.scopeItems : [
+          'Desenvolvimento de Aplicação Web / Mobile Responsiva',
+          'Modelagem de Banco de Dados na Nuvem',
+          'Painel Administrativo para Gestão de Dados',
+          'Autenticação Segura e Controle de Acesso',
+          'Publicação em Ambiente de Produção'
+        ]);
+
+    const contractedFeats = quote?.selectedFeatures && quote.selectedFeatures.length > 0
+      ? quote.selectedFeatures
+      : ['Área do Cliente', 'Painel Administrativo', 'Banco de Dados Firestore', 'Módulo Financeiro Pix'];
+
+    // Generate Installments
+    const installmentsList: ContractInstallment[] = [
+      {
+        number: 1,
+        description: 'Entrada 30% — Aceite do Contrato',
+        amount: entryVal,
+        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: customData?.signed ? 'pago' : 'pendente'
+      },
+      {
+        number: 2,
+        description: 'Parcela 2/3 — Entrega da 1ª Fase do Protótipo',
+        amount: Math.round(remVal / 2),
+        dueDate: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'pendente'
+      },
+      {
+        number: 3,
+        description: 'Parcela 3/3 — Entrega Final e Homologação',
+        amount: remVal - Math.round(remVal / 2),
+        dueDate: new Date(Date.now() + 65 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'pendente'
+      }
+    ];
+
+    const newContract: ServiceContract = {
+      id: contractNum,
+      contractNumber: contractNum,
+      quoteId,
+      ...(proposal ? { proposalId: proposal.id } : {}),
+      ...(customData?.projectId ? { projectId: customData.projectId } : {}),
+      contractor: {
+        companyName: 'NCodes Technologies Ltda.',
+        cnpj: '48.912.345/0001-90',
+        email: siteConfig.email || 'contato@ncodes.com.br',
+        phone: siteConfig.phone || '(11) 98765-4321',
+        address: siteConfig.address || 'Av. Paulista, 1000 - Cj. 1402, São Paulo - SP',
+        jurisdiction: 'Foro da Comarca de São Paulo / SP',
+        legalRepresentative: 'Nikolas P. — CEO & Diretor de Tecnologia'
+      },
+      client: {
+        fullName: clientName,
+        companyName,
+        cpfCnpj: clientCpfCnpj,
+        phone: clientPhone,
+        email: clientEmail,
+        legalRepresentative: legalRep
+      },
+      projectTitle,
+      category: quote?.category || 'Sistemas Web',
+      description: proposal?.description || quote?.description || 'Desenvolvimento de solução de software proprietário sob medida.',
+      approvedScope: scopeList,
+      contractedFeatures: contractedFeats,
+      totalValue: totalVal,
+      entryValue: entryVal,
+      paymentMethod: 'PIX / Boleto',
+      paymentTerms: paymentTermsText,
+      installments: installmentsList,
+      lateFeeClause: 'Em caso de atraso injustificado no pagamento de qualquer parcela por período superior a 5 (cinco) dias corridos, incidirá automaticamente multa moratória de 10% (dez por cento) sobre o valor da parcela em atraso, a ser acrescida no lançamento da fatura subsequente.',
+      estimatedDays: quote?.offeredDeadline || quote?.deadline || '45 dias úteis',
+      startDate: todayStr,
+      estimatedDeliveryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      objectClause: `O presente contrato tem por objeto a prestação de serviços de engenharia de software pela CONTRATADA em favor do CONTRATANTE, englobando o planejamento, design de interface, codificação, integração de banco de dados, testes e publicação do projeto "${projectTitle}".`,
+      scopeClause: 'O escopo do projeto contempla estritamente as funcionalidades e entregáveis aprovados na proposta e especificação técnica vinculada.',
+      contractorObligations: [
+        'Desenvolver o software rigorosamente de acordo com o escopo e especificações técnicas aprovadas.',
+        'Manter sigilo absoluto sobre todas as informações estratégicas, operacionais e dados do CONTRATANTE.',
+        'Informar e reportar o andamento do desenvolvimento periodicamente através da Área do Cliente.',
+        'Corrigir quaisquer falhas, vícios ou erros de código durante o período de garantia sem custos adicionais.',
+        'Cumprir os prazos acordados no cronograma de execução, salvo prorrogações motivadas por alterações de escopo ou atraso no envio de insumos pelo cliente.'
+      ],
+      clientObligations: [
+        'Fornecer tempestivamente todas as informações, logotipos, textos, acessos de API e credenciais necessárias para a execução dos serviços.',
+        'Aprovar os protótipos e etapas intermediárias do projeto dentro dos prazos solicitados pela equipe técnica.',
+        'Efetuar os pagamentos estipulados rigorosamente nas datas de vencimento contratadas.'
+      ],
+      paymentClause: `Pelos serviços contratados, o CONTRATANTE pagará à CONTRATADA o valor total fixo de R$ ${totalVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, mediante as condições financeiras ajustadas. Juros de 10% incidirão na parcela posterior em caso de inadimplência superior a 5 dias.`,
+      changesAndExtraScopeClause: 'Qualquer funcionalidade, modificação visual ou integração não prevista expressamente no escopo aprovado neste instrumento será considerada solicitação adicional, ensejando emissão de novo orçamento, aditivo contratual e reajuste no prazo de entrega.',
+      timelineClause: `O projeto terá início na data de aceite e prazo estimado de ${quote?.offeredDeadline || quote?.deadline || '45 dias úteis'}, podendo ser prorrogado mediante acordo formal em caso de força maior ou novos requisitos.`,
+      warrantyClause: 'A CONTRATADA concede ao CONTRATANTE a garantia técnica de 90 (noventa) dias corridos a contar da entrega final do projeto para a correção de eventuais falhas operacionais do código entregue, não cobrindo novas funcionalidades.',
+      warrantyDays: 90,
+      terminationClause: 'O presente contrato poderá ser rescindido por descumprimento injustificado de quaisquer de suas cláusulas ou por falência/recuperação judicial, respondendo a parte infrante pelas perdas e danos apurados.',
+      jurisdictionClause: 'Fica eleito o Foro da Comarca de São Paulo / SP para dirimir quaisquer dúvidas ou litígios oriundos deste contrato, com renúncia expressa a qualquer outro.',
+      signature: {
+        signed: Boolean(customData?.signed),
+        signerName: legalRep,
+        signerDocument: clientCpfCnpj,
+        signerEmail: clientEmail,
+        signedAt: customData?.signed ? nowISO : undefined,
+        ipAddress: '187.58.122.94',
+        deviceFingerprint: `${navigator.platform} - Browser Client`,
+        digitalHash: `SHA256-${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`,
+        contractorName: 'NCodes Technologies Ltda.',
+        contractorSignedAt: nowISO,
+        externalProvider: 'internal',
+        externalStatus: 'ready'
+      },
+      status: customData?.signed ? 'assinado' : 'aguardando_assinatura',
+      createdAt: nowISO,
+      version: 'v1.0',
+      history: [
+        {
+          id: `hst-${Date.now()}-1`,
+          timestamp: nowISO,
+          user: 'Sistema NCodes (Automação)',
+          action: 'Contrato Gerado Automático',
+          details: `Contrato ${contractNum} gerado automaticamente para o orçamento ${quoteId}.`,
+          version: 'v1.0'
+        },
+        ...(customData?.signed ? [{
+          id: `hst-${Date.now()}-2`,
+          timestamp: nowISO,
+          user: legalRep,
+          action: 'Assinatura Eletrônica Registrada',
+          details: `Contrato assinado eletronicamente por ${legalRep} (CPF/CNPJ ${clientCpfCnpj}).`,
+          version: 'v1.0'
+        }] : [])
+      ],
+      qrCodeValue: `${window.location.origin}?contractId=${contractNum}`
+    };
+
+    try {
+      await saveDoc('contracts', contractNum, newContract);
+
+      // Link contractNumber and contractId to quote and proposal
+      if (quote) {
+        await saveDoc('quotes', quote.id, {
+          ...quote,
+          contractId: contractNum,
+          contractNumber: contractNum
+        });
+      }
+      if (proposal) {
+        await saveDoc('proposals', proposal.id, {
+          ...proposal,
+          contractId: contractNum,
+          contractNumber: contractNum
+        });
+      }
+
+      await addNotification(
+        'Contrato Gerado Automático 📄', 
+        `O contrato ${contractNum} foi gerado automaticamente para ${clientName}. Disponível no painel do cliente.`, 
+        'project'
+      );
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `contracts/${contractNum}`);
+    }
+
+    return newContract;
+  };
+
+  const signContract = async (contractId: string, signatureData: { signerName: string; signerDocument: string; signerEmail?: string }) => {
+    const target = contracts.find(c => c.id === contractId);
+    if (!target) return;
+
+    const nowISO = new Date().toISOString();
+    const simIp = '187.58.122.94';
+    const hash = `SHA256-${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
+
+    const updated: ServiceContract = {
+      ...target,
+      status: 'assinado',
+      signature: {
+        ...target.signature,
+        signed: true,
+        signerName: signatureData.signerName,
+        signerDocument: signatureData.signerDocument,
+        signerEmail: signatureData.signerEmail || target.client.email,
+        signedAt: nowISO,
+        ipAddress: simIp,
+        digitalHash: hash
+      },
+      client: {
+        ...target.client,
+        legalRepresentative: signatureData.signerName,
+        cpfCnpj: signatureData.signerDocument
+      },
+      history: [
+        ...target.history,
+        {
+          id: `hst-${Date.now()}`,
+          timestamp: nowISO,
+          user: signatureData.signerName,
+          action: 'Assinatura Eletrônica Registrada',
+          details: `Assinatura digital confirmada pelo cliente (Doc: ${signatureData.signerDocument}, IP: ${simIp}).`,
+          version: target.version
+        }
+      ]
+    };
+
+    try {
+      await saveDoc('contracts', contractId, updated);
+
+      await addNotification(
+        'Contrato Assinado pelo Cliente! 🖊️', 
+        `${signatureData.signerName} assinou o contrato ${contractId} em ${new Date(nowISO).toLocaleDateString('pt-BR')}.`, 
+        'project'
+      );
+
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `contracts/${contractId}`);
+    }
+  };
+
+  const deleteContract = async (contractId: string) => {
+    setContracts(prev => prev.filter(c => c.id !== contractId));
+    try {
+      await deleteDoc(doc(db, 'contracts', contractId));
+      await addNotification('Contrato Excluído', `O contrato ${contractId} foi removido com sucesso.`, 'project');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `contracts/${contractId}`);
+    }
+  };
+
   // Digital Acceptance Flow
   const acceptProposal = async (proposalId: string, signatureName: string) => {
     const now = new Date().toISOString();
@@ -939,6 +1228,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!prop) return;
 
     try {
+      // Automatically generate contract first!
+      const autoContract = await generateContractForQuote(prop.quoteId || proposalId, {
+        signatureName,
+        signed: true,
+        clientName: prop.clientName,
+        company: prop.company,
+        totalValue: prop.totalValue
+      });
+
       // Update proposal in Firestore
       await setDoc(doc(db, 'proposals', proposalId), {
         ...prop,
@@ -946,7 +1244,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         acceptedAt: now,
         clientIp: simulatedIp,
         clientDevice: simulatedDevice,
-        signatureName
+        signatureName,
+        contractId: autoContract.id,
+        contractNumber: autoContract.contractNumber
       });
 
       // Update associated quote status to aprovado in Firestore
@@ -956,7 +1256,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await setDoc(doc(db, 'quotes', prop.quoteId), {
             ...qToUpdate,
             status: 'aprovado',
-            updatedAt: now
+            updatedAt: now,
+            contractId: autoContract.id,
+            contractNumber: autoContract.contractNumber
           });
         }
       }
@@ -979,6 +1281,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         proposalId,
+        contractId: autoContract.id,
+        contractNumber: autoContract.contractNumber,
         tasks: [
           { id: `t-${Date.now()}-1`, title: 'Reunião de Kick-off & Definição de Protótipos', completed: true, category: 'Gestão' },
           { id: `t-${Date.now()}-2`, title: 'Configuração dos Ambientes de Staging & Firestore', completed: false, category: 'DevOps' },
@@ -986,7 +1290,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           { id: `t-${Date.now()}-4`, title: 'Homologação e Teste de Aceite com Cliente', completed: false, category: 'QA' }
         ],
         files: [
-          { id: `f-${Date.now()}`, name: `Contrato_Assinado_${proposalId}.pdf`, size: '1.8 MB', uploadedBy: signatureName, date: now.split('T')[0], type: 'pdf', url: '#' }
+          { id: `f-${Date.now()}`, name: `Contrato_${autoContract.contractNumber}.pdf`, size: '1.8 MB', uploadedBy: signatureName, date: now.split('T')[0], type: 'pdf', url: '#' }
         ]
       };
 
@@ -1010,13 +1314,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await saveDoc('financials', newFinancial.id, newFinancial);
 
       // Automatically instantiate or link Client Subscription for recurring monthly fee or single value agreement
+      const existingSubForProp = subscriptions.find(s => s.proposalId === proposalId || (s.clientName === prop.clientName && s.serviceName.includes(prop.title)));
       const subValue = prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? prop.recurringMonthlyValue : Math.round(prop.totalValue / 12);
-      const subId = `SUB-PROP-${Date.now()}`;
+      const subId = existingSubForProp ? existingSubForProp.id : `SUB-PROP-${Date.now()}`;
       const today = new Date();
       const nextDue = new Date(today.getFullYear(), today.getMonth() + 1, 10).toISOString().split('T')[0];
       const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${subValue}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
 
       const autoSub: ClientSubscription = {
+        ...(existingSubForProp || {}),
         id: subId,
         clientName: prop.clientName,
         clientEmail: `${prop.clientName.toLowerCase().replace(/\s+/g, '')}@cliente.com.br`,
@@ -1030,10 +1336,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notes: `Vinculado automaticamente ao Aceite Digital da Proposta ${proposalId}. Valor total do projeto: R$ ${prop.totalValue.toLocaleString('pt-BR')}.`,
         pixCopyPaste: defaultPix,
         proposalId,
+        projectId: newProjectId,
         ...(prop.quoteId ? { quoteId: prop.quoteId } : {}),
         billingType: prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? 'recorrente' : 'valor_unico',
         oneTimeTotalValue: prop.totalValue
       };
+
+      newProject.subscriptionId = subId;
+
+      await saveDoc('projects', newProjectId, newProject);
       await saveDoc('clientSubscriptions', subId, autoSub);
 
       // Add Lead conversion in CRM
@@ -1058,6 +1369,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `proposals/${proposalId}`);
+    }
+  };
+
+  const deleteProposal = async (proposalId: string) => {
+    setProposals(prev => prev.filter(p => p.id !== proposalId));
+    try {
+      await deleteDoc(doc(db, 'proposals', proposalId));
+      await addNotification('Proposta Removida', `A proposta ${proposalId} foi excluída com sucesso.`, 'quote');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `proposals/${proposalId}`);
     }
   };
 
@@ -1143,6 +1464,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `Status do orçamento #${quoteId} (${q.clientName}) alterado para ${statusLabels[status] || status}.`,
         'quote'
       );
+
+      // Auto convert to Project if approved
+      if (status === 'aprovado' && !q.convertedProjectId) {
+        try {
+          await convertQuoteToProject(quoteId);
+        } catch (convErr) {
+          console.warn('Erro ao converter orçamento aprovado em projeto:', convErr);
+        }
+      }
 
       // Create automated chat message update for the quote
       try {
@@ -1443,6 +1773,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newProjectId = `PRJ-${Date.now().toString().slice(-5)}`;
     const nowISO = new Date().toISOString();
 
+    // Auto generate or link contract
+    const autoContract = await generateContractForQuote(quoteId, {
+      projectId: newProjectId,
+      signed: true,
+      clientName: q.clientName,
+      company: q.company,
+      totalValue: q.offeredValue
+    });
+
     const initialTasks = (q.scopeItems && q.scopeItems.length > 0)
       ? q.scopeItems.map((item, idx) => ({
           id: `tsk-${idx + 1}`,
@@ -1486,17 +1825,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
       tasks: initialTasks,
       files: projectFiles,
-      proposalId: q.proposalId
+      proposalId: q.proposalId,
+      contractId: autoContract.id,
+      contractNumber: autoContract.contractNumber,
+      recurringMonthlyValue: q.recurringMonthlyValue || 1200
     };
 
     try {
       await saveDoc('projects', newProjectId, newProject);
 
-      // Update quote with convertedProjectId
+      // Update quote with convertedProjectId and contract
       const updatedQuote = {
         ...q,
         status: 'aprovado' as QuoteStatus,
         convertedProjectId: newProjectId,
+        contractId: autoContract.id,
+        contractNumber: autoContract.contractNumber,
         updatedAt: nowISO,
         timeline: [
           ...(q.timeline || []),
@@ -1597,6 +1941,191 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const finalizeProjectAndStartSubscription = async (
+    projectId: string, 
+    customMonthlyValue?: number,
+    completionDateInput?: string
+  ) => {
+    const prj = projects.find(p => p.id === projectId);
+    if (!prj) return null;
+
+    const compDate = completionDateInput ? new Date(completionDateInput + 'T12:00:00') : new Date();
+    const dayOfMonth = compDate.getDate();
+
+    let monthlyValue = customMonthlyValue || prj.recurringMonthlyValue || 0;
+    if (!monthlyValue && prj.proposalId) {
+      const prop = proposals.find(p => p.id === prj.proposalId);
+      if (prop?.recurringMonthlyValue) {
+        monthlyValue = prop.recurringMonthlyValue;
+      }
+    }
+    if (!monthlyValue || monthlyValue <= 0) {
+      monthlyValue = 1200;
+    }
+
+    const isFirstHalf = dayOfMonth <= 15;
+    const year = compDate.getFullYear();
+    const month = compDate.getMonth();
+
+    const nextMonthObj = new Date(year, month + 1, 10);
+    const nextDueDateStr = nextMonthObj.toISOString().split('T')[0];
+    const nextMonthName = nextMonthObj.toLocaleString('pt-BR', { month: 'long' });
+
+    let firstChargeAmount = 0;
+    let ruleAppliedText = '';
+
+    if (isFirstHalf) {
+      firstChargeAmount = Math.round((monthlyValue * 0.5) * 100) / 100;
+      ruleAppliedText = `Projeto concluído na 1ª quinzena (dia ${dayOfMonth}). Cobrado 50% pro-rata (R$ ${firstChargeAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) no mês atual. Próxima cobrança integral (R$ ${monthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) em 10 de ${nextMonthName}.`;
+    } else {
+      firstChargeAmount = 0;
+      ruleAppliedText = `Projeto concluído após o dia 15 (dia ${dayOfMonth}). Isento no mês atual. Cobrança de R$ ${monthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} inicia em 10 de ${nextMonthName}.`;
+    }
+
+    const updatedTasks = prj.tasks.map(t => ({ ...t, completed: true }));
+    const updatedProject: Project = {
+      ...prj,
+      status: 'concluido',
+      progressPercentage: 100,
+      recurringMonthlyValue: monthlyValue,
+      completedAt: compDate.toISOString(),
+      billingRuleApplied: ruleAppliedText,
+      tasks: updatedTasks
+    };
+
+    try {
+      await setDoc(doc(db, 'projects', projectId), updatedProject);
+
+      // Check if subscription already exists for this project, proposal, or client service
+      const existingSub = subscriptions.find(s => 
+        s.id === prj.subscriptionId || 
+        s.projectId === prj.id || 
+        (prj.proposalId && s.proposalId === prj.proposalId) ||
+        (s.clientName.toLowerCase() === prj.clientName.toLowerCase() && s.serviceName.toLowerCase().includes(prj.title.toLowerCase()))
+      );
+
+      const subId = existingSub ? existingSub.id : (prj.subscriptionId || `SUB-${Date.now()}`);
+      const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${monthlyValue}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
+
+      const newSub: ClientSubscription = {
+        ...(existingSub || {}),
+        id: subId,
+        clientName: prj.clientName,
+        clientEmail: prj.clientId || existingSub?.clientEmail || `${prj.clientName.toLowerCase().replace(/\s+/g, '')}@cliente.com.br`,
+        serviceName: existingSub?.serviceName || `Manutenção & Suporte - ${prj.title}`,
+        monthlyValue: monthlyValue,
+        billingCycleDay: 10,
+        status: 'ativo',
+        startDate: existingSub?.startDate || compDate.toISOString().split('T')[0],
+        nextDueDate: isFirstHalf ? new Date(year, month, 25).toISOString().split('T')[0] : nextDueDateStr,
+        paymentMethod: 'pix',
+        pixCopyPaste: defaultPix,
+        lastPaymentDate: isFirstHalf ? compDate.toISOString().split('T')[0] : existingSub?.lastPaymentDate,
+        notes: ruleAppliedText,
+        projectId: prj.id,
+        proposalId: prj.proposalId
+      };
+
+      await saveDoc('clientSubscriptions', subId, newSub);
+
+      // Prevent generating duplicate financial installment transactions if one already exists
+      const existingFin = financials.find(f => 
+        f.projectId === prj.id || 
+        f.subscriptionId === subId || 
+        (f.clientName === prj.clientName && f.title.includes(prj.title) && f.status === 'pendente')
+      );
+
+      if (!existingFin) {
+        if (isFirstHalf) {
+          const finCurrentMonth: FinancialTransaction = {
+            id: `FIN-PRO-RATA-${Date.now()}`,
+            title: `Mensalidade Pro-rata (50%) - ${prj.title}`,
+            type: 'receita',
+            category: 'Sustentação e Suporte Recorrente',
+            amount: firstChargeAmount,
+            dueDate: new Date(year, month, 25).toISOString().split('T')[0],
+            status: 'pendente',
+            paymentMethod: 'pix',
+            clientName: prj.clientName,
+            projectId: prj.id,
+            subscriptionId: subId
+          };
+          await setDoc(doc(db, 'financials', finCurrentMonth.id), finCurrentMonth);
+        } else {
+          const finNextMonth: FinancialTransaction = {
+            id: `FIN-SUB-NEXT-${Date.now()}`,
+            title: `1ª Mensalidade Integral - ${prj.title}`,
+            type: 'receita',
+            category: 'Sustentação e Suporte Recorrente',
+            amount: monthlyValue,
+            dueDate: nextDueDateStr,
+            status: 'pendente',
+            paymentMethod: 'pix',
+            clientName: prj.clientName,
+            projectId: prj.id,
+            subscriptionId: subId
+          };
+          await setDoc(doc(db, 'financials', finNextMonth.id), finNextMonth);
+        }
+      }
+
+      await addNotification(
+        'Projeto Concluído & Mensalidade Ativada! 🎉',
+        `O projeto "${prj.title}" foi finalizado. ${ruleAppliedText}`,
+        'project'
+      );
+
+      return {
+        ruleApplied: ruleAppliedText,
+        firstChargeAmount,
+        nextDueDate: nextDueDateStr,
+        subscriptionId: subId
+      };
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `projects/${projectId}`);
+      return null;
+    }
+  };
+
+  const deleteProject = async (projectId: string) => {
+    const prj = projects.find(p => p.id === projectId);
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+
+    // Find linked subscriptions to delete automatically as well
+    const linkedSubs = subscriptions.filter(s => 
+      s.projectId === projectId ||
+      (prj && prj.subscriptionId && s.id === prj.subscriptionId) ||
+      (prj && prj.title && s.serviceName.toLowerCase().includes(prj.title.toLowerCase()))
+    );
+
+    if (linkedSubs.length > 0) {
+      const linkedIds = new Set(linkedSubs.map(s => s.id));
+      setSubscriptions(prev => prev.filter(s => !linkedIds.has(s.id)));
+    }
+
+    try {
+      await deleteDoc(doc(db, 'projects', projectId));
+
+      // Cascade delete linked subscriptions from Firestore
+      for (const sub of linkedSubs) {
+        try {
+          await deleteDoc(doc(db, 'clientSubscriptions', sub.id));
+          await deleteDoc(doc(db, 'subscriptions', sub.id));
+        } catch (subErr) {
+          console.warn('Erro ao excluir mensalidade vinculada:', subErr);
+        }
+      }
+
+      await addNotification(
+        'Projeto Removido', 
+        `O projeto ID ${projectId}${linkedSubs.length > 0 ? ' e a mensalidade/contrato vinculados foram excluídos' : ''} com sucesso.`, 
+        'project'
+      );
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `projects/${projectId}`);
+    }
+  };
+
   const addFinancialTransaction = async (data: Omit<FinancialTransaction, 'id'>) => {
     const newFin: FinancialTransaction = {
       ...data,
@@ -1611,32 +2140,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateFinancialStatus = async (id: string, status: FinancialTransaction['status']) => {
+  const updateFinancialStatus = async (id: string, status: FinancialTransaction['status'], customPaymentDate?: string) => {
     const fin = financials.find(f => f.id === id);
     if (!fin) return;
+
+    const chosenPaymentDate = customPaymentDate || new Date().toISOString().split('T')[0];
 
     const updated = {
       ...fin,
       status,
-      paymentDate: status === 'pago' ? new Date().toISOString().split('T')[0] : fin.paymentDate
+      paymentDate: status === 'pago' ? chosenPaymentDate : fin.paymentDate
     };
 
     try {
       await setDoc(doc(db, 'financials', id), updated);
+      if (status === 'pago') {
+        await addNotification('Baixa efetuada', `Lançamento ${fin.title} marcado como PAGO (Data: ${chosenPaymentDate}).`, 'payment');
+      }
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `financials/${id}`);
     }
   };
 
+  const deleteFinancialTransaction = async (id: string) => {
+    setFinancials(prev => prev.filter(f => f.id !== id));
+    try {
+      await deleteDoc(doc(db, 'financials', id));
+      await addNotification('Lançamento Removido', `O lançamento financeiro foi excluído com sucesso.`, 'payment');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `financials/${id}`);
+    }
+  };
+
   const addSubscription = async (data: Omit<ClientSubscription, 'id'>) => {
-    const subId = `SUB-${Date.now()}`;
+    // Deduplicate if a subscription with exact clientName & serviceName already exists
+    const existing = subscriptions.find(s => 
+      s.clientName.toLowerCase().trim() === data.clientName.toLowerCase().trim() &&
+      s.serviceName.toLowerCase().trim() === data.serviceName.toLowerCase().trim()
+    );
+
+    const subId = existing ? existing.id : `SUB-${Date.now()}`;
     const newSub: ClientSubscription = {
+      ...(existing || {}),
       ...data,
       id: subId
     };
+
     try {
       await saveDoc('clientSubscriptions', subId, newSub);
-      await addNotification('Nova Mensalidade Cadastrada', `Contrato de R$ ${data.monthlyValue.toLocaleString('pt-BR')}/mês cadastrado para ${data.clientName}.`, 'payment');
+      await addNotification('Mensalidade Salva', `Contrato de R$ ${data.monthlyValue.toLocaleString('pt-BR')}/mês salvo para ${data.clientName}.`, 'payment');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `clientSubscriptions/${subId}`);
     }
@@ -1678,9 +2230,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteSubscription = async (subId: string) => {
+    setSubscriptions(prev => prev.filter(s => s.id !== subId));
     try {
       await deleteDoc(doc(db, 'clientSubscriptions', subId));
-      await addNotification('Mensalidade Removida', `Assinatura ${subId} foi removida.`, 'payment');
+      await deleteDoc(doc(db, 'subscriptions', subId));
+      await addNotification('Mensalidade Removida', `Assinatura/Mensalidade foi excluída com sucesso.`, 'payment');
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `clientSubscriptions/${subId}`);
     }
@@ -1712,6 +2266,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await addNotification('Fatura de Mensalidade Gerada', `Cobrança de R$ ${sub.monthlyValue.toLocaleString('pt-BR')} gerada para ${sub.clientName}.`, 'payment');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `financials/${newFin.id}`);
+    }
+  };
+
+  const manualSettleSubscription = async (subId: string, customPaymentDate?: string) => {
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+
+    const chosenPaymentDate = customPaymentDate || new Date().toISOString().split('T')[0];
+    const baseDate = new Date(chosenPaymentDate + 'T12:00:00');
+
+    let nextYear = baseDate.getFullYear();
+    let nextMonth = baseDate.getMonth() + 1;
+    if (nextMonth > 11) {
+      nextMonth = 0;
+      nextYear += 1;
+    }
+    const daysInNextMonth = new Date(nextYear, nextMonth + 1, 0).getDate();
+    const cycleDay = Math.min(sub.billingCycleDay || 10, daysInNextMonth);
+    const calculatedNextDueDate = new Date(nextYear, nextMonth, cycleDay).toISOString().split('T')[0];
+
+    const updatedSub: ClientSubscription = {
+      ...sub,
+      status: 'ativo',
+      lastPaymentDate: chosenPaymentDate,
+      nextDueDate: calculatedNextDueDate
+    };
+
+    try {
+      await saveDoc('clientSubscriptions', subId, updatedSub);
+
+      const pendingFin = financials.find(f => 
+        (f.subscriptionId === subId || (f.clientName === sub.clientName && (f.category.includes('Suporte') || f.category.includes('Mensalidade')))) && 
+        f.status === 'pendente'
+      );
+
+      if (pendingFin) {
+        await setDoc(doc(db, 'financials', pendingFin.id), {
+          ...pendingFin,
+          status: 'pago',
+          paymentDate: chosenPaymentDate
+        });
+      } else {
+        const paidFin: FinancialTransaction = {
+          id: `FIN-PAID-${Date.now()}`,
+          title: `Baixa Manual de Mensalidade - ${sub.serviceName}`,
+          type: 'receita',
+          category: 'Sustentação e Suporte Recorrente',
+          amount: sub.monthlyValue,
+          dueDate: sub.nextDueDate || chosenPaymentDate,
+          paymentDate: chosenPaymentDate,
+          status: 'pago',
+          paymentMethod: sub.paymentMethod || 'pix',
+          clientName: sub.clientName,
+          subscriptionId: sub.id,
+          isRecurring: true
+        };
+        await setDoc(doc(db, 'financials', paidFin.id), paidFin);
+      }
+
+      await addNotification(
+        'Baixa Manual Concluída! 💰',
+        `A mensalidade de ${sub.clientName} (${sub.serviceName}) foi baixada como PAGA (Data do pagamento: ${chosenPaymentDate}). Próximo vencimento: ${calculatedNextDueDate}.`,
+        'payment'
+      );
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `clientSubscriptions/${subId}`);
     }
   };
 
@@ -1823,6 +2443,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedProposalIdForAcceptance,
       selectedProjectId,
       setSelectedProjectId,
+      selectedContractId,
+      setSelectedContractId,
       isDarkMode,
       toggleTheme,
       currentUser,
@@ -1855,6 +2477,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       quotes,
       proposals,
       projects,
+      contracts,
       financials,
       subscriptions,
       chatMessages,
@@ -1864,6 +2487,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createQuoteRequest,
       createProposal,
       acceptProposal,
+      generateContractForQuote,
+      signContract,
+      deleteContract,
       updateQuoteStatus,
       updateQuoteDetails,
       addQuoteTimelineItem,
@@ -1874,16 +2500,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       respondToQuoteRequest,
       convertQuoteToProject,
       deleteQuote,
+      deleteProposal,
       toggleProjectTask,
       addProjectHours,
       addProjectFile,
+      finalizeProjectAndStartSubscription,
+      deleteProject,
       addFinancialTransaction,
       updateFinancialStatus,
+      deleteFinancialTransaction,
       addSubscription,
       updateSubscription,
       updateSubscriptionStatus,
       deleteSubscription,
       generateSubscriptionBilling,
+      manualSettleSubscription,
       sendChatMessage,
       createSupportTicket,
       updateLeadStage,

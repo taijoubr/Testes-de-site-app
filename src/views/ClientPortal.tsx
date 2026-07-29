@@ -44,6 +44,7 @@ export const ClientPortal: React.FC = () => {
     quotes,
     proposals,
     projects, 
+    contracts,
     financials, 
     subscriptions,
     chatMessages, 
@@ -54,6 +55,8 @@ export const ClientPortal: React.FC = () => {
     currentClientUser,
     logoutClient,
     setSelectedProposalIdForAcceptance,
+    setSelectedContractId,
+    generateContractForQuote,
     setActiveView,
     siteConfig
   } = useApp();
@@ -70,7 +73,7 @@ export const ClientPortal: React.FC = () => {
       : DEFAULT_QUOTE_FEATURES
   ).filter(feat => !feat.hidden);
 
-  const [activeTab, setActiveTab] = useState<'quotes' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
+  const [activeTab, setActiveTab] = useState<'quotes' | 'contracts' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
   
   // Quote Tracker Modal State
   const [selectedQuoteForTracker, setSelectedQuoteForTracker] = useState<QuoteRequest | null>(null);
@@ -150,6 +153,7 @@ export const ClientPortal: React.FC = () => {
   const firstName = clientNameKey.split(' ')[0] || '';
 
   const myQuotes = quotes.filter(q => {
+    if (q.status === 'aprovado') return false;
     if (!currentClientUser) return true;
     const qEmail = (q.email || '').trim().toLowerCase();
     const qClientName = (q.clientName || '').trim().toLowerCase();
@@ -329,6 +333,16 @@ export const ClientPortal: React.FC = () => {
             >
               <FileCheck className="w-4 h-4" />
               <span>Orçamentos ({myQuotes.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('contracts')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'contracts' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Contratos ({contracts.length})</span>
             </button>
 
             <button
@@ -574,6 +588,114 @@ export const ClientPortal: React.FC = () => {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* TAB 2: CONTRACTS & DIGITAL SIGNATURES */}
+        {activeTab === 'contracts' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <span>Contratos de Prestação de Serviços</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Acesse os instrumentos contratuais, cláusulas de escopo, garantias e registro de assinaturas eletrônicas.
+                </p>
+              </div>
+            </div>
+
+            {contracts.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <h4 className="text-lg font-bold text-slate-900 dark:text-white">Nenhum Contrato Registrado</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  Os contratos de prestação de serviços são gerados automaticamente assim que uma proposta ou orçamento for aprovado.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {contracts.map(contract => (
+                  <div key={contract.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md hover:shadow-xl transition-all space-y-5 flex flex-col justify-between">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                            {contract.contractNumber} • {contract.category}
+                          </span>
+                          <h4 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
+                            {contract.projectTitle}
+                          </h4>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                          contract.status === 'assinado' 
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        }`}>
+                          {contract.status === 'assinado' ? '✓ Assinado' : 'Aguardando Assinatura'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Contratante:</span>
+                          <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate block">
+                            {contract.client.companyName || contract.client.fullName}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Valor Total:</span>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                            R$ {contract.totalValue.toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Prazo Estimado:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                            {contract.estimatedDays}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Data de Emissão:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                            {new Date(contract.createdAt).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase text-slate-400">Funcionalidades do Escopo:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {contract.contractedFeatures.slice(0, 4).map((feat, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-medium">
+                              {feat}
+                            </span>
+                          ))}
+                          {contract.contractedFeatures.length > 4 && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-medium">
+                              +{contract.contractedFeatures.length - 4} mais
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        onClick={() => setSelectedContractId(contract.id)}
+                        className="w-full py-2.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Visualizar / Assinar Contrato (PDF)</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

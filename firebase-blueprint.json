@@ -173,9 +173,27 @@
         "technologies": { "type": "array" }
       },
       "required": ["id", "title", "description"]
+    },
+    "ServiceContract": {
+      "title": "Service Contract",
+      "description": "Contratos formais de prestação de serviço gerados automaticamente",
+      "type": "object",
+      "properties": {
+        "contractNumber": { "type": "string", "maxLength": 100 },
+        "quoteId": { "type": "string", "maxLength": 100 },
+        "projectTitle": { "type": "string", "maxLength": 200 },
+        "totalValue": { "type": "number" },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["contractNumber", "quoteId", "projectTitle", "totalValue", "status"]
     }
   },
   "firestore": {
+    "/contracts/{contractId}": {
+      "schema": { "$ref": "#/entities/ServiceContract" },
+      "description": "Coleção de contratos prestação de serviços"
+    },
     "/siteSettings/{settingsId}": {
       "schema": { "$ref": "#/entities/SiteConfig" },
       "description": "Configurações institucionais públicas e ao vivo do site"

@@ -65,12 +65,14 @@ import {
   Code,
   Eye,
   EyeOff,
-  Tag
+  Tag,
+  Building2
 } from 'lucide-react';
 
 import { useApp } from '../context/AppContext';
 import { ProposalGeneratorModal } from '../components/ProposalGeneratorModal';
 import { AdminQuoteManagementModal } from '../components/AdminQuoteManagementModal';
+import { FinalizeProjectModal } from '../components/FinalizeProjectModal';
 import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem, QuoteCategoryOption, QuoteFeatureOption } from '../types';
 import { DEFAULT_QUOTE_CATEGORIES, DEFAULT_QUOTE_FEATURES } from '../data/initialData';
 
@@ -79,6 +81,7 @@ export const AdminPanel: React.FC = () => {
     quotes, 
     proposals, 
     projects, 
+    contracts,
     financials, 
     subscriptions,
     addSubscription,
@@ -86,14 +89,21 @@ export const AdminPanel: React.FC = () => {
     updateSubscriptionStatus,
     deleteSubscription,
     generateSubscriptionBilling,
+    manualSettleSubscription,
+    deleteFinancialTransaction,
+    setSelectedContractId,
+    generateContractForQuote,
+    deleteContract,
     leads, 
     updateQuoteStatus, 
     deleteQuote,
+    deleteProposal,
     setSelectedProposalIdForAcceptance, 
     setActiveView,
     toggleProjectTask,
     addProjectHours,
     addProjectFile,
+    deleteProject,
     addFinancialTransaction,
     updateFinancialStatus,
     updateLeadStage,
@@ -116,7 +126,7 @@ export const AdminPanel: React.FC = () => {
     deleteService
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'subscriptions' | 'projects' | 'financials' | 'clients' | 'crm' | 'team' | 'admin_users' | 'site_settings' | 'services'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'contracts' | 'subscriptions' | 'projects' | 'financials' | 'clients' | 'crm' | 'team' | 'admin_users' | 'site_settings' | 'services'>('dashboard');
 
   // Service Management States
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -205,6 +215,17 @@ export const AdminPanel: React.FC = () => {
 
   // Quote Admin Management State
   const [selectedQuoteForAdminManagement, setSelectedQuoteForAdminManagement] = useState<QuoteRequest | null>(null);
+  const [selectedProjectForFinalize, setSelectedProjectForFinalize] = useState<Project | null>(null);
+  const [deleteProjectConfirmId, setDeleteProjectConfirmId] = useState<string | null>(null);
+  const [deleteProposalConfirmId, setDeleteProposalConfirmId] = useState<string | null>(null);
+  const [settleModalData, setSettleModalData] = useState<{
+    type: 'subscription' | 'financial';
+    id: string;
+    title: string;
+    clientName: string;
+    amount: number;
+    paymentDate: string;
+  } | null>(null);
 
   // Edit Subscription Modal States
   const [editingSub, setEditingSub] = useState<ClientSubscription | null>(null);
@@ -442,25 +463,34 @@ export const AdminPanel: React.FC = () => {
   const [showFinModal, setShowFinModal] = useState(false);
   const [finTitle, setFinTitle] = useState('');
   const [finType, setFinType] = useState<'receita' | 'despesa'>('receita');
-  const [finCategory, setFinCategory] = useState('Desenvolvimento de Software');
-  const [finAmount, setFinAmount] = useState(5000);
+  const [finCategory, setFinCategory] = useState('Hospedagem & Infraestrutura Cloud');
+  const [customFinCategory, setCustomFinCategory] = useState('');
+  const [finAmount, setFinAmount] = useState(1500);
   const [finDueDate, setFinDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [finPaymentMethod, setFinPaymentMethod] = useState<'pix' | 'cartao' | 'transferencia' | 'dinheiro'>('pix');
+  const [finEntityType, setFinEntityType] = useState<'cliente' | 'empresa'>('cliente');
+  const [finClientName, setFinClientName] = useState('');
+  const [finIsRecurring, setFinIsRecurring] = useState(false);
 
   // Subscriptions & Client Recurring Fees State
   const [finSubTab, setFinSubTab] = useState<'subscriptions' | 'transactions'>('subscriptions');
   const [subSearch, setSubSearch] = useState('');
   const [subStatusFilter, setSubStatusFilter] = useState<'todos' | 'ativo' | 'inadimplente' | 'suspenso'>('todos');
   const [showNewSubModal, setShowNewSubModal] = useState(false);
+  const [subEntityType, setSubEntityType] = useState<'cliente' | 'empresa'>('cliente');
+  const [subEntryType, setSubEntryType] = useState<'receita' | 'despesa'>('receita');
+  const [subCategory, setSubCategory] = useState('Hospedagem & Infraestrutura Cloud');
+  const [customSubCategory, setCustomSubCategory] = useState('');
   const [selectedSubClientId, setSelectedSubClientId] = useState<string>('');
   const [subClientName, setSubClientName] = useState('');
   const [subClientEmail, setSubClientEmail] = useState('');
-  const [subServiceName, setSubServiceName] = useState('Sustentação de App Mobile & Infraestrutura Cloud');
+  const [subServiceName, setSubServiceName] = useState('Sustentação de App Mobile & Hospedagem AWS');
   const [subMonthlyValue, setSubMonthlyValue] = useState(1800);
   const [subBillingCycleDay, setSubBillingCycleDay] = useState(10);
   const [subPaymentMethod, setSubPaymentMethod] = useState<'pix' | 'cartao' | 'boleto' | 'transferencia'>('pix');
   const [subNotes, setSubNotes] = useState('');
   const [copiedSubPixId, setCopiedSubPixId] = useState<string | null>(null);
+  const [deleteSubConfirmData, setDeleteSubConfirmData] = useState<{ id: string; name: string } | null>(null);
 
   // Subscription Calculations
   const totalMRR = subscriptions.filter(s => s.status === 'ativo').reduce((acc, curr) => acc + curr.monthlyValue, 0);
@@ -469,8 +499,12 @@ export const AdminPanel: React.FC = () => {
 
   const handleCreateSubscription = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subClientName.trim() || !subServiceName.trim() || !subMonthlyValue) {
-      alert('Por favor, preencha os campos obrigatórios.');
+    const finalClientName = subEntityType === 'empresa' 
+      ? 'NCodes Technologies (Empresa / Interno)' 
+      : (subClientName.trim() || 'Cliente Direto');
+
+    if (!subServiceName.trim() || !subMonthlyValue) {
+      alert('Por favor, preencha o nome do serviço e valor mensal.');
       return;
     }
 
@@ -478,9 +512,13 @@ export const AdminPanel: React.FC = () => {
     const nextDueDate = new Date(today.getFullYear(), today.getMonth() + 1, Number(subBillingCycleDay)).toISOString().split('T')[0];
     const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${subMonthlyValue}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
 
+    const finalCategory = subCategory === '+ Criar Nova Categoria...' 
+      ? (customSubCategory.trim() || 'Hospedagem & Infraestrutura Cloud') 
+      : subCategory;
+
     await addSubscription({
-      clientName: subClientName.trim(),
-      clientEmail: subClientEmail.trim() || undefined,
+      clientName: finalClientName,
+      clientEmail: subEntityType === 'empresa' ? 'financeiro@ncodes.com.br' : (subClientEmail.trim() || undefined),
       serviceName: subServiceName.trim(),
       monthlyValue: Number(subMonthlyValue),
       billingCycleDay: Number(subBillingCycleDay),
@@ -489,7 +527,10 @@ export const AdminPanel: React.FC = () => {
       nextDueDate,
       paymentMethod: subPaymentMethod,
       notes: subNotes.trim() || undefined,
-      pixCopyPaste: defaultPix
+      pixCopyPaste: defaultPix,
+      entityType: subEntityType,
+      category: finalCategory,
+      entryType: subEntryType
     });
 
     setShowNewSubModal(false);
@@ -497,6 +538,7 @@ export const AdminPanel: React.FC = () => {
     setSubClientName('');
     setSubClientEmail('');
     setSubNotes('');
+    setCustomSubCategory('');
   };
 
   const handleOpenEditSub = (sub: ClientSubscription) => {
@@ -601,19 +643,55 @@ export const AdminPanel: React.FC = () => {
     { month: 'Jul', Receitas: totalRevenue, Despesas: totalExpenses }
   ];
 
-  const handleCreateFinancial = (e: React.FormEvent) => {
+  const handleCreateFinancial = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalCategory = finCategory === '+ Criar Nova Categoria...' 
+      ? (customFinCategory.trim() || 'Hospedagem & Infraestrutura Cloud') 
+      : finCategory;
+
+    const finalClientName = finEntityType === 'empresa' 
+      ? 'NCodes Technologies (Empresa / Interno)' 
+      : (finClientName.trim() || 'Cliente Direto');
+
     addFinancialTransaction({
       title: finTitle,
       type: finType,
-      category: finCategory,
+      category: finalCategory,
       amount: Number(finAmount),
       dueDate: finDueDate,
       status: 'pendente',
-      paymentMethod: finPaymentMethod
+      paymentMethod: finPaymentMethod,
+      clientName: finalClientName,
+      entityType: finEntityType,
+      isRecurring: finIsRecurring
     });
+
+    // If marked as recurring monthly, also instantiate as ClientSubscription
+    if (finIsRecurring) {
+      const today = new Date();
+      const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${finAmount}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
+      await addSubscription({
+        clientName: finalClientName,
+        clientEmail: finEntityType === 'empresa' ? 'financeiro@ncodes.com.br' : undefined,
+        serviceName: finTitle,
+        monthlyValue: Number(finAmount),
+        billingCycleDay: 10,
+        status: 'ativo',
+        startDate: today.toISOString().split('T')[0],
+        nextDueDate: finDueDate,
+        paymentMethod: finPaymentMethod === 'dinheiro' ? 'pix' : finPaymentMethod,
+        pixCopyPaste: defaultPix,
+        entityType: finEntityType,
+        category: finalCategory,
+        entryType: finType
+      });
+    }
+
     setShowFinModal(false);
     setFinTitle('');
+    setFinClientName('');
+    setCustomFinCategory('');
+    setFinIsRecurring(false);
   };
 
   const handleCreateAdminUser = (e: React.FormEvent) => {
@@ -756,7 +834,17 @@ export const AdminPanel: React.FC = () => {
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>Orçamentos ({quotes.length})</span>
+            <span>Orçamentos ({quotes.filter(q => q.status !== 'aprovado').length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('contracts')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'contracts' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            <FileSignature className="w-3.5 h-3.5" />
+            <span>Contratos ({contracts.length})</span>
           </button>
 
           <button
@@ -948,7 +1036,7 @@ export const AdminPanel: React.FC = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Solicitações de Orçamento Recentes</h2>
               <button onClick={() => setActiveTab('quotes')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                Gerenciar Todos os Orçamentos ({quotes.length})
+                Gerenciar Orçamentos ({quotes.filter(q => q.status !== 'aprovado').length})
               </button>
             </div>
 
@@ -964,7 +1052,7 @@ export const AdminPanel: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {quotes.map(q => (
+                  {quotes.filter(q => q.status !== 'aprovado').map(q => (
                     <tr key={q.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 font-semibold text-slate-900 dark:text-white">
                         {q.id} <span className="block text-[10px] text-slate-400 font-normal">{q.clientName} ({q.company})</span>
@@ -1041,7 +1129,16 @@ export const AdminPanel: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-6">
-            {quotes.map(q => (
+            {quotes.filter(q => q.status !== 'aprovado').length === 0 ? (
+              <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum Orçamento Pendente</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  Todos os orçamentos aprovados foram convertidos e estão disponíveis exclusivamente na aba "Projetos".
+                </p>
+              </div>
+            ) : (
+              quotes.filter(q => q.status !== 'aprovado').map(q => (
               <div key={q.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-4">
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-4 border-slate-100 dark:border-slate-800">
@@ -1085,14 +1182,6 @@ export const AdminPanel: React.FC = () => {
                     >
                       <Mail className="w-3.5 h-3.5" />
                       <span>Posicionamento por E-mail</span>
-                    </button>
-
-                    <button
-                      onClick={() => setSelectedQuoteForProp(q)}
-                      className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
-                    >
-                      <FileSignature className="w-3.5 h-3.5" />
-                      <span>Gerar Proposta</span>
                     </button>
 
                     <button
@@ -1166,7 +1255,7 @@ export const AdminPanel: React.FC = () => {
                 )}
 
               </div>
-            ))}
+            )))}
           </div>
         </div>
       )}
@@ -1271,9 +1360,18 @@ export const AdminPanel: React.FC = () => {
                           <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">{prop.clientName}</h4>
                           <p className="text-xs text-slate-500">{prop.company || 'Empresa'} • {prop.title}</p>
                         </div>
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          Aceito
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            Aceito
+                          </span>
+                          <button
+                            onClick={() => setDeleteProposalConfirmId(prop.id)}
+                            title="Excluir Proposta"
+                            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-700">
@@ -1383,7 +1481,21 @@ export const AdminPanel: React.FC = () => {
                         </td>
 
                         <td className="py-3 px-3 font-medium text-slate-800 dark:text-slate-200 max-w-xs">
-                          <span className="font-semibold block">{sub.serviceName}</span>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="font-semibold block">{sub.serviceName}</span>
+                            {sub.entityType === 'empresa' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shrink-0">
+                                🏢 Empresa
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0">
+                                👤 Cliente
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">
+                            🏷️ {sub.category || 'Hospedagem & Infraestrutura'}
+                          </span>
                           {sub.notes && (
                             <span className="text-[10px] text-slate-400 truncate block max-w-[220px]">{sub.notes}</span>
                           )}
@@ -1426,6 +1538,23 @@ export const AdminPanel: React.FC = () => {
                         <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             
+                            {/* Dar Baixa Manual de Mensalidade */}
+                            <button
+                              onClick={() => setSettleModalData({
+                                type: 'subscription',
+                                id: sub.id,
+                                title: sub.serviceName,
+                                clientName: sub.clientName,
+                                amount: sub.monthlyValue,
+                                paymentDate: new Date().toISOString().split('T')[0]
+                              })}
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] flex items-center gap-1 cursor-pointer transition-all shadow-sm shadow-emerald-500/20"
+                              title="Dar baixa manual de pagamento desta mensalidade (escolha a data do pagamento)"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Dar Baixa (Pago)</span>
+                            </button>
+
                             {/* Botão EXCLUSIVO de Alterar Mensalidade */}
                             <button
                               onClick={() => handleOpenEditSub(sub)}
@@ -1447,9 +1576,9 @@ export const AdminPanel: React.FC = () => {
 
                             {/* Deletar */}
                             <button
-                              onClick={() => deleteSubscription(sub.id)}
+                              onClick={() => setDeleteSubConfirmData({ id: sub.id, name: `${sub.clientName} - ${sub.serviceName}` })}
                               className="p-1.5 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 font-bold text-[10px] cursor-pointer"
-                              title="Remover contrato"
+                              title="Excluir contrato e limpar duplicidades"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1468,6 +1597,134 @@ export const AdminPanel: React.FC = () => {
       )}
 
       {/* TAB 3: PROJECTS KANBAN & CHECKLIST */}
+      {/* TAB: CONTRACTS MANAGEMENT */}
+      {activeTab === 'contracts' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
+                <FileSignature className="w-4 h-4 text-blue-500" />
+                <span>Módulo de Geração Automática de Contratos</span>
+              </div>
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                Contratos de Prestação de Serviços (NCodes Standard)
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Instrumentos gerados automaticamente após aceite de orçamento/proposta com vínculo direto ao projeto.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                Total de Contratos: {contracts.length}
+              </span>
+            </div>
+          </div>
+
+          {contracts.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm">
+              <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+                <FileSignature className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Nenhum Contrato no Sistema</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Assim que um cliente aceita uma proposta ou orçamento, um contrato é emitido e vinculado ao projeto de forma imediata.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {contracts.map(contract => (
+                <div key={contract.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                          {contract.contractNumber} • {contract.category}
+                        </span>
+                        <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
+                          {contract.projectTitle}
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Cliente: <strong>{contract.client.companyName || contract.client.fullName}</strong>
+                        </p>
+                      </div>
+
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
+                        contract.status === 'assinado' 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                      }`}>
+                        {contract.status === 'assinado' ? '✓ Assinado Digitalmente' : 'Aguardando Assinatura'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Contratante / CNPJ:</span>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate block">
+                          {contract.client.cpfCnpj || 'Não informado'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Valor do Contrato:</span>
+                        <span className="font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                          R$ {contract.totalValue.toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Entrada / Condição:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                          R$ {contract.entryValue.toLocaleString('pt-BR')} ({contract.installmentsCount}x)
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Prazo de Entrega:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                          {contract.estimatedDays}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase text-slate-400">Escopo & Funcionalidades:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {contract.contractedFeatures.slice(0, 5).map((f, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-medium">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center gap-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => setSelectedContractId(contract.id)}
+                      className="flex-1 py-2.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    >
+                      <FileSignature className="w-4 h-4" />
+                      <span>Abrir / Assinar Contrato (PDF)</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (confirm(`Deseja realmente remover o contrato ${contract.contractNumber}?`)) {
+                          deleteContract(contract.id);
+                        }
+                      }}
+                      title="Excluir Contrato"
+                      className="p-2.5 rounded-2xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-800 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'projects' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
@@ -1488,11 +1745,21 @@ export const AdminPanel: React.FC = () => {
                     <p className="text-xs text-slate-500">Cliente: {p.clientName}</p>
                   </div>
 
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                    p.status === 'em_andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {p.status.replace('_', ' ')}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                      p.status === 'em_andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                    }`}>
+                      {p.status.replace('_', ' ')}
+                    </span>
+
+                    <button
+                      onClick={() => setDeleteProjectConfirmId(p.id)}
+                      title="Excluir Projeto"
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Progress bar */}
@@ -1558,6 +1825,39 @@ export const AdminPanel: React.FC = () => {
                   >
                     + Anexar Arquivo
                   </button>
+                </div>
+
+                {/* Recurring Monthly Fee & Finalization Control */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-extrabold tracking-wider">Mensalidade Pós-Implementação</span>
+                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                        R$ {(p.recurringMonthlyValue || 1200).toLocaleString('pt-BR')}/mês
+                      </span>
+                    </div>
+
+                    {p.status === 'concluido' ? (
+                      <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-xs flex items-center gap-1.5 shrink-0">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Projeto Finalizado - Mensalidade Ativa</span>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setSelectedProjectForFinalize(p)}
+                        className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Finalizar & Iniciar Mensalidade</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {p.billingRuleApplied && (
+                    <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-200 leading-relaxed">
+                      <strong>Regra de Cobrança:</strong> {p.billingRuleApplied}
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -1935,16 +2235,38 @@ export const AdminPanel: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 text-right">
-                          {f.status !== 'pago' ? (
+                          <div className="flex items-center justify-end gap-2">
+                            {f.status !== 'pago' ? (
+                              <button
+                                onClick={() => setSettleModalData({
+                                  type: 'financial',
+                                  id: f.id,
+                                  title: f.title,
+                                  clientName: f.clientName,
+                                  amount: f.amount,
+                                  paymentDate: new Date().toISOString().split('T')[0]
+                                })}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] cursor-pointer shadow-sm transition-all flex items-center gap-1"
+                                title="Dar baixa manual no financeiro: Marcar como PAGO (com data de pagamento)"
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Dar Baixa (Pago)</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/10 inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                <span>Confirmado</span>
+                              </span>
+                            )}
+
                             <button
-                              onClick={() => updateFinancialStatus(f.id, 'pago')}
-                              className="px-3 py-1 rounded bg-emerald-600 text-white font-bold text-[10px] cursor-pointer"
+                              onClick={() => deleteFinancialTransaction(f.id)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all cursor-pointer"
+                              title="Excluir parcela ou lançamento financeiro"
                             >
-                              Dar Baixa (Pago)
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          ) : (
-                            <span className="text-[10px] text-emerald-500 font-bold">✓ Confirmado</span>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -3338,47 +3660,156 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateSubscription} className="space-y-4">
-              {/* Select Client Dropdown */}
+              {/* Vínculo (Cliente vs Empresa) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                  <span>Selecionar Cliente Cadastrado *</span>
-                  {selectedSubClientId && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Vinculado
-                    </span>
-                  )}
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Vínculo do Pagamento / Custo
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubEntityType('cliente');
+                      setSubClientName('');
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      subEntityType === 'cliente'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Cliente Específico</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubEntityType('empresa');
+                      setSubClientName('NCodes Technologies (Empresa / Interno)');
+                      setSelectedSubClientId('');
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      subEntityType === 'empresa'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>Custos Empresa / Internos</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Natureza (Receita vs Despesa) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Natureza Financeira
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubEntryType('receita')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      subEntryType === 'receita'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    <span>Receita (+ Entrando)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSubEntryType('despesa')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      subEntryType === 'despesa'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <TrendingDown className="w-4 h-4" />
+                    <span>Despesa (- Custo Infra)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Categoria do Pagamento */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Categoria de Pagamento / Serviço
                 </label>
                 <select
-                  value={selectedSubClientId}
-                  onChange={e => {
-                    const id = e.target.value;
-                    setSelectedSubClientId(id);
-                    if (id === 'custom') {
-                      setSubClientName('');
-                      setSubClientEmail('');
-                    } else if (id) {
-                      const found = clientUsers.find(c => c.id === id);
-                      if (found) {
-                        setSubClientName(found.company ? `${found.name} (${found.company})` : found.name);
-                        setSubClientEmail(found.email);
-                      }
-                    }
-                  }}
+                  value={subCategory}
+                  onChange={e => setSubCategory(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="">-- Escolha um cliente da base cadastrada --</option>
-                  {clientUsers.map(client => (
-                    <option key={client.id} value={client.id}>
-                      👤 {client.name} {client.company ? `• ${client.company}` : ''} ({client.email})
-                    </option>
-                  ))}
-                  <option value="custom">✏️ Digitar outro cliente manualmente...</option>
+                  <option value="Hospedagem & Infraestrutura Cloud">☁️ Hospedagem & Infraestrutura Cloud</option>
+                  <option value="Domínios & Certificados SSL">🌐 Domínios & Certificados SSL</option>
+                  <option value="Licenças & SaaS (Software)">⚙️ Licenças & SaaS (Software)</option>
+                  <option value="Sustentação de App & Suporte">🛠️ Sustentação de App & Suporte</option>
+                  <option value="Servidores VPS & Banco de Dados">🗄️ Servidores VPS & Banco de Dados</option>
+                  <option value="Custos Operacionais Empresa">💼 Custos Operacionais Empresa</option>
+                  <option value="Consultoria Técnica">📊 Consultoria Técnica</option>
+                  <option value="+ Criar Nova Categoria...">➕ Criar Nova Categoria Personalizada...</option>
                 </select>
+
+                {subCategory === '+ Criar Nova Categoria...' && (
+                  <input
+                    type="text"
+                    required
+                    value={customSubCategory}
+                    onChange={e => setCustomSubCategory(e.target.value)}
+                    placeholder="Digite o nome da nova categoria (ex: AWS Serverless API)"
+                    className="w-full mt-2 px-3.5 py-2 rounded-xl border border-emerald-500 bg-emerald-500/5 text-xs text-slate-900 dark:text-white font-bold focus:outline-none"
+                  />
+                )}
               </div>
+
+              {/* Select Client Dropdown (se for vínculo cliente) */}
+              {subEntityType === 'cliente' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Selecionar Cliente Cadastrado *</span>
+                    {selectedSubClientId && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Vinculado
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={selectedSubClientId}
+                    onChange={e => {
+                      const id = e.target.value;
+                      setSelectedSubClientId(id);
+                      if (id === 'custom') {
+                        setSubClientName('');
+                        setSubClientEmail('');
+                      } else if (id) {
+                        const found = clientUsers.find(c => c.id === id);
+                        if (found) {
+                          setSubClientName(found.company ? `${found.name} (${found.company})` : found.name);
+                          setSubClientEmail(found.email);
+                        }
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="">-- Escolha um cliente da base cadastrada --</option>
+                    {clientUsers.map(client => (
+                      <option key={client.id} value={client.id}>
+                        👤 {client.name} {client.company ? `• ${client.company}` : ''} ({client.email})
+                      </option>
+                    ))}
+                    <option value="custom">✏️ Digitar outro cliente manualmente...</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Nome do Cliente / Empresa *
+                  Nome do Cliente / Empresa Beneficiária *
                 </label>
                 <input
                   type="text"
@@ -3390,18 +3821,20 @@ export const AdminPanel: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  E-mail do Cliente (para acesso no portal)
-                </label>
-                <input
-                  type="email"
-                  value={subClientEmail}
-                  onChange={e => setSubClientEmail(e.target.value)}
-                  placeholder="contato@farmaciavida.com.br"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
-                />
-              </div>
+              {subEntityType === 'cliente' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    E-mail do Cliente (para acesso no portal)
+                  </label>
+                  <input
+                    type="email"
+                    value={subClientEmail}
+                    onChange={e => setSubClientEmail(e.target.value)}
+                    placeholder="contato@farmaciavida.com.br"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -4041,57 +4474,202 @@ export const AdminPanel: React.FC = () => {
       {/* New Financial Modal */}
       {showFinModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Novo Lançamento Financeiro</h2>
-            <form onSubmit={handleCreateFinancial} className="space-y-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-500" />
+                <span>Novo Lançamento Financeiro</span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowFinModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateFinancial} className="space-y-3.5">
+              {/* Entity Selection */}
               <div>
-                <label className="block text-xs font-semibold mb-1">Título / Descrição</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Vínculo do Lançamento
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinEntityType('cliente');
+                      setFinClientName('');
+                    }}
+                    className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                      finEntityType === 'cliente'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Cliente Cadastrado</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinEntityType('empresa');
+                      setFinClientName('NCodes Technologies (Empresa / Interno)');
+                    }}
+                    className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                      finEntityType === 'empresa'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>Empresa / Custos Internos</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Título / Descrição *
+                </label>
                 <input
                   type="text"
                   required
                   value={finTitle}
                   onChange={e => setFinTitle(e.target.value)}
-                  placeholder="Ex: Parcela 1 - Projeto X"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  placeholder="Ex: Pagamento de Servidor AWS / Hospedagem Mensal"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium"
                 />
+              </div>
+
+              {finEntityType === 'cliente' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nome do Cliente / Empresa Vinculada
+                  </label>
+                  <input
+                    type="text"
+                    value={finClientName}
+                    onChange={e => setFinClientName(e.target.value)}
+                    placeholder="Ex: Drogaria Nova Era"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium"
+                  />
+                </div>
+              )}
+
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Categoria de Pagamento
+                </label>
+                <select
+                  value={finCategory}
+                  onChange={e => setFinCategory(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold"
+                >
+                  <option value="Hospedagem & Infraestrutura Cloud">☁️ Hospedagem & Infraestrutura Cloud</option>
+                  <option value="Domínios & Certificados SSL">🌐 Domínios & Certificados SSL</option>
+                  <option value="Licenças & SaaS (Software)">⚙️ Licenças & SaaS (Software)</option>
+                  <option value="Sustentação de App & Suporte">🛠️ Sustentação de App & Suporte</option>
+                  <option value="Servidores VPS & Banco de Dados">🗄️ Servidores VPS & Banco de Dados</option>
+                  <option value="Custos Operacionais Empresa">💼 Custos Operacionais Empresa</option>
+                  <option value="Consultoria Técnica">📊 Consultoria Técnica</option>
+                  <option value="+ Criar Nova Categoria...">➕ Criar Nova Categoria Personalizada...</option>
+                </select>
+
+                {finCategory === '+ Criar Nova Categoria...' && (
+                  <input
+                    type="text"
+                    required
+                    value={customFinCategory}
+                    onChange={e => setCustomFinCategory(e.target.value)}
+                    placeholder="Digite o nome da nova categoria ex: Domínios Registro.br..."
+                    className="w-full mt-2 px-3.5 py-2 rounded-xl border border-emerald-500 bg-emerald-500/5 text-xs text-slate-900 dark:text-white font-bold"
+                  />
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Tipo</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tipo de Operação</label>
                   <select
                     value={finType}
                     onChange={e => setFinType(e.target.value as 'receita' | 'despesa')}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold"
                   >
-                    <option value="receita">Receita (+)</option>
-                    <option value="despesa">Despesa (-)</option>
+                    <option value="receita">Receita (+ Entrando)</option>
+                    <option value="despesa">Despesa (- Custo)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Valor (R$)</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Valor (R$) *</label>
                   <input
                     type="number"
                     required
+                    min={1}
                     value={finAmount}
                     onChange={e => setFinAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-extrabold text-emerald-600 dark:text-emerald-400"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Vencimento</label>
+                  <input
+                    type="date"
+                    required
+                    value={finDueDate}
+                    onChange={e => setFinDueDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Forma de Pagamento</label>
+                  <select
+                    value={finPaymentMethod}
+                    onChange={e => setFinPaymentMethod(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white uppercase font-bold"
+                  >
+                    <option value="pix">PIX</option>
+                    <option value="cartao">Cartão</option>
+                    <option value="transferencia">Transferência</option>
+                    <option value="dinheiro">Dinheiro</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Recurring Option */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  id="finIsRecurring"
+                  checked={finIsRecurring}
+                  onChange={e => setFinIsRecurring(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+                <label htmlFor="finIsRecurring" className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                  Cadastrar também como Pagamento Mensal Recorrente
+                  <span className="block text-[10px] text-slate-400 font-normal">Irá gerar contrato mensal automatizado para o futuro</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowFinModal(false)}
-                  className="px-4 py-2 rounded-xl border text-xs"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20"
                 >
                   Salvar Lançamento
                 </button>
@@ -4688,6 +5266,210 @@ export const AdminPanel: React.FC = () => {
           quote={selectedQuoteForAdminManagement}
           onClose={() => setSelectedQuoteForAdminManagement(null)}
         />
+      )}
+
+      {/* Finalize Project Modal */}
+      {selectedProjectForFinalize && (
+        <FinalizeProjectModal
+          project={selectedProjectForFinalize}
+          onClose={() => setSelectedProjectForFinalize(null)}
+        />
+      )}
+
+      {/* Delete Project Confirmation Modal */}
+      {deleteProjectConfirmId && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl border border-rose-500/20">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Excluir Projeto?</h3>
+                <p className="text-xs text-slate-500">ID: {deleteProjectConfirmId}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Tem certeza que deseja excluir este projeto permanentemente? Esta ação removerá o projeto, o repositório de arquivos e o checklist em tempo real do banco de dados.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeleteProjectConfirmId(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteProject(deleteProjectConfirmId);
+                  setDeleteProjectConfirmId(null);
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Excluir Projeto</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Proposal Confirmation Modal */}
+      {deleteProposalConfirmId && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl border border-rose-500/20">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Excluir Proposta?</h3>
+                <p className="text-xs text-slate-500">ID: {deleteProposalConfirmId}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Tem certeza que deseja excluir esta proposta? Ela será removida da lista de propostas prontas para vincular mensalidade.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeleteProposalConfirmId(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteProposal(deleteProposalConfirmId);
+                  setDeleteProposalConfirmId(null);
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Excluir Proposta</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settle / Custom Payment Date Modal */}
+      {settleModalData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-500/20">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Dar Baixa no Pagamento</h3>
+                <p className="text-xs text-slate-500">{settleModalData.clientName}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+              <p className="text-xs text-slate-500">Lançamento / Serviço:</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">{settleModalData.title}</p>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 pt-1">
+                Valor: R$ {settleModalData.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Data do Pagamento Efetivado:
+              </label>
+              <input
+                type="date"
+                value={settleModalData.paymentDate}
+                onChange={e => setSettleModalData({ ...settleModalData, paymentDate: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+              <p className="text-[10px] text-slate-500">
+                Selecione a data em que o pagamento realmente caiu na conta para manter o histórico financeiro preciso.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSettleModalData(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (settleModalData.type === 'subscription') {
+                    await manualSettleSubscription(settleModalData.id, settleModalData.paymentDate);
+                  } else {
+                    await updateFinancialStatus(settleModalData.id, 'pago', settleModalData.paymentDate);
+                  }
+                  setSettleModalData(null);
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Confirmar Baixa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Subscription Confirmation Modal */}
+      {deleteSubConfirmData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Excluir Mensalidade / Contrato</h3>
+                <p className="text-xs text-rose-500 font-bold">Remoção de Duplicidade ou Cancelamento</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+              <p className="text-xs text-slate-500">Contrato / Serviço selecionado:</p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white">{deleteSubConfirmData.name}</p>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Deseja realmente excluir permanentemente este lançamento? A exclusão removerá o registro do banco de dados do servidor e limpará valores duplicados.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeleteSubConfirmData(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteSubscription(deleteSubConfirmData.id);
+                  setDeleteSubConfirmData(null);
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Confirmar Exclusão</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       </div>

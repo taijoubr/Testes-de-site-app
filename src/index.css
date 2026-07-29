@@ -58,3 +58,16 @@
   background: rgba(71, 85, 105, 1);
 }
 
+@media print {
+  .no-print, nav, header, footer {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  div {
+    box-shadow: none !important;
+  }
+}
+

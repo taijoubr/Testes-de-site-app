@@ -15,7 +15,8 @@ import {
   ClientSubscription,
   SiteConfig,
   QuoteCategoryOption,
-  QuoteFeatureOption
+  QuoteFeatureOption,
+  ServiceContract
 } from '../types';
 
 export const INITIAL_SERVICES: ServiceItem[] = [
@@ -532,3 +533,121 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   lastUpdated: '25/07/2026 12:00',
   updatedBy: 'Admin Master'
 };
+
+export const INITIAL_CONTRACTS: ServiceContract[] = [
+  {
+    id: 'CTR-2026-001',
+    contractNumber: 'CTR-2026-001',
+    quoteId: 'ORC-2026-001',
+    proposalId: 'PROP-2026-001',
+    projectId: 'PRJ-2026-01',
+    contractor: {
+      companyName: 'NCodes Technologies Ltda.',
+      cnpj: '48.912.345/0001-90',
+      email: 'contato@ncodes.com.br',
+      phone: '(11) 98765-4321',
+      address: 'Av. Paulista, 1000 - Cj. 1402, Bela Vista, São Paulo - SP',
+      jurisdiction: 'Foro da Comarca de São Paulo / SP',
+      legalRepresentative: 'Nikolas P. - Diretor Executivo de Tecnologia'
+    },
+    client: {
+      fullName: 'Carlos Eduardo Santos',
+      companyName: 'Santos Logistics & Tech',
+      cpfCnpj: '34.567.890/0001-12',
+      phone: '(11) 98765-4321',
+      email: 'carlos@santoslogistics.com.br',
+      legalRepresentative: 'Carlos Eduardo Santos'
+    },
+    projectTitle: 'Plataforma SaaS de Gestão de Frota & Logística',
+    category: 'Sistemas Web',
+    description: 'Desenvolvimento de plataforma web completa para controle de frotas, rotas, comissões de motoristas e telemetria GPS.',
+    approvedScope: [
+      'Painel Web Administrativo Responsivo em React + Vite',
+      'API RESTful em Node.js / Express com Criptografia de Dados',
+      'Módulo de Rastreamento GPS e Integração de Telemetria',
+      'Gestão de Custos de Frota e Manutenção Preventiva',
+      'Relatórios Interativos em PDF e Excel',
+      'Controle Avançado de Permissões (RBAC) e Audit Log'
+    ],
+    contractedFeatures: [
+      'Área Administrativa',
+      'Área do Cliente',
+      'Banco de Dados Firestore / Cloud',
+      'Módulo Financeiro Pix',
+      'Relatórios Interativos',
+      'APIs Integradas'
+    ],
+    totalValue: 28500,
+    entryValue: 8550,
+    paymentMethod: 'PIX / Boleto',
+    paymentTerms: '30% entrada no aceite (R$ 8.550,00) + 3 parcelas mensais de R$ 6.650,00',
+    installments: [
+      { number: 1, description: 'Entrada 30% - Aceite do Contrato', amount: 8550, dueDate: '2026-08-01', status: 'pago' },
+      { number: 2, description: 'Parcela 2/3 - Entrega Módulo Core', amount: 6650, dueDate: '2026-09-01', status: 'pendente' },
+      { number: 3, description: 'Parcela 3/3 - Homologação', amount: 6650, dueDate: '2026-10-01', status: 'pendente' },
+      { number: 4, description: 'Parcela Final - Lançamento', amount: 6650, dueDate: '2026-11-01', status: 'pendente' }
+    ],
+    lateFeeClause: 'Em caso de atraso injustificado no pagamento de qualquer parcela por período superior a 5 (cinco) dias, incidirá automaticamente multa moratória de 10% (dez por cento) sobre o valor da parcela em atraso, a ser acrescida no lançamento subsequente.',
+    estimatedDays: '40 dias úteis',
+    startDate: '2026-07-25',
+    estimatedDeliveryDate: '2026-09-15',
+    objectClause: 'O presente contrato tem por objeto a prestação de serviços de engenharia de software pela CONTRATADA em favor do CONTRATANTE, englobando o planejamento, design de interface, codificação, integração de banco de dados, testes e publicação da Plataforma SaaS de Gestão de Frota & Logística.',
+    scopeClause: 'O escopo do projeto contempla estritamente as funcionalidades e entregáveis aprovados na Proposta Comercial vinculada.',
+    contractorObligations: [
+      'Desenvolver o software rigorosamente de acordo com o escopo e especificações técnicas aprovadas.',
+      'Manter sigilo absoluto sobre todas as informações estratégicas, operacionais e dados do CONTRATANTE.',
+      'Informar e reportar o andamento do desenvolvimento periodicamente através da Área do Cliente.',
+      'Corrigir quaisquer falhas, vícios ou erros de código durante o período de garantia sem custos adicionais.',
+      'Cumprir os prazos acordados no cronograma de execução, salvo prorrogações motivadas por alterações de escopo ou atraso no envio de insumos pelo cliente.'
+    ],
+    clientObligations: [
+      'Fornecer tempestivamente todas as informações, logotipos, textos, acessos de API e credenciais necessárias para a execução dos serviços.',
+      'Aprovar os protótipos e etapas intermediárias do projeto dentro dos prazos solicitados pela equipe técnica.',
+      'Efetuar os pagamentos estipulados rigorosamente nas datas de vencimento contratadas.'
+    ],
+    paymentClause: 'Pelos serviços contratados, o CONTRATANTE pagará à CONTRATADA o valor total fixo de R$ 28.500,00 (vinte e oito mil e quinhentos reais), mediante as condições financeiras ajustadas. Juros de 10% incidirão na parcela posterior em caso de inadimplência superior a 5 dias.',
+    changesAndExtraScopeClause: 'Qualquer funcionalidade, modificação visual ou integração não prevista expressamente no escopo aprovado neste instrumento será considerada solicitação adicional, ensejando emissão de novo orçamento, aditivo contratual e reajuste no prazo de entrega.',
+    timelineClause: 'O projeto terá início na data estipulada e prazo estimado de 40 dias úteis, podendo ser prorrogado mediante acordo formal em caso de força maior ou novos requisitos.',
+    warrantyClause: 'A CONTRATADA concede ao CONTRATANTE a garantia técnica de 90 (noventa) dias corridos a contar da entrega final do projeto para a correção de eventuais falhas operacionais do código entregue, não cobrindo novas funcionalidades.',
+    warrantyDays: 90,
+    terminationClause: 'O presente contrato poderá ser rescindido por descumprimento injustificado de quaisquer de suas cláusulas ou por falência/recuperação judicial, respondendo a parte infrante pelas perdas e danos apurados.',
+    jurisdictionClause: 'Fica eleito o Foro da Comarca de São Paulo / SP para dirimir quaisquer dúvidas ou litígios oriundos deste contrato, com renúncia expressa a qualquer outro.',
+    signature: {
+      signed: true,
+      signerName: 'Carlos Eduardo Santos',
+      signerDocument: '34.567.890/0001-12',
+      signerEmail: 'carlos@santoslogistics.com.br',
+      signedAt: '2026-07-25T14:30:00.000Z',
+      ipAddress: '187.58.122.94',
+      deviceFingerprint: 'Linux x86_64 - Chrome 126.0',
+      digitalHash: 'SHA256-a8f3e91b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f',
+      contractorName: 'NCodes Technologies Ltda.',
+      contractorSignedAt: '2026-07-25T14:32:00.000Z',
+      externalProvider: 'internal',
+      externalStatus: 'ready_for_external_sync'
+    },
+    status: 'assinado',
+    createdAt: '2026-07-25T14:00:00.000Z',
+    version: 'v1.0',
+    history: [
+      {
+        id: 'hst-1',
+        timestamp: '2026-07-25T14:00:00.000Z',
+        user: 'Sistema NCodes (Automação)',
+        action: 'Contrato Gerado Automático',
+        details: 'Contrato CTR-2026-001 gerado automaticamente com base no orçamento aprovado ORC-2026-001.',
+        version: 'v1.0'
+      },
+      {
+        id: 'hst-2',
+        timestamp: '2026-07-25T14:30:00.000Z',
+        user: 'Carlos Eduardo Santos',
+        action: 'Assinatura Eletrônica Registrada',
+        details: 'Cliente assinou eletronicamente via confirmação digital (IP 187.58.122.94).',
+        version: 'v1.0'
+      }
+    ],
+    qrCodeValue: 'https://ncodes.com.br/validar-contrato?id=CTR-2026-001&hash=a8f3e91b'
+  }
+];
+

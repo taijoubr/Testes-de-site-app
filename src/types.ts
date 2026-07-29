@@ -118,6 +118,7 @@ export interface QuoteRequest {
   assignedToRole?: string;
   
   offeredValue?: number;
+  recurringMonthlyValue?: number;
   offeredDeadline?: string;
   paymentTerms?: string;
   scopeItems?: string[];
@@ -137,6 +138,8 @@ export interface QuoteRequest {
   };
   proposalId?: string;
   convertedProjectId?: string;
+  contractId?: string;
+  contractNumber?: string;
 }
 
 export interface ProposalDeliverable {
@@ -164,6 +167,113 @@ export interface Proposal {
   clientIp?: string;
   clientDevice?: string;
   signatureName?: string;
+  contractId?: string;
+  contractNumber?: string;
+}
+
+export interface ContractInstallment {
+  number: number;
+  description: string;
+  amount: number;
+  dueDate: string;
+  status: 'pendente' | 'pago' | 'atrasado';
+}
+
+export interface ContractHistoryItem {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: string;
+  details: string;
+  version: string;
+}
+
+export interface ContractSignatureInfo {
+  signed: boolean;
+  signerName?: string;
+  signerDocument?: string;
+  signerEmail?: string;
+  signedAt?: string;
+  ipAddress?: string;
+  deviceFingerprint?: string;
+  digitalHash?: string;
+  contractorName?: string;
+  contractorSignedAt?: string;
+  externalProvider?: 'internal' | 'docusign' | 'clicksign' | 'zapsign';
+  externalStatus?: string;
+}
+
+export interface ServiceContract {
+  id: string; // e.g. CTR-2026-001
+  contractNumber: string;
+  quoteId: string;
+  proposalId?: string;
+  projectId?: string;
+  
+  // Contratada (NCodes)
+  contractor: {
+    companyName: string;
+    cnpj: string;
+    email: string;
+    phone: string;
+    address: string;
+    jurisdiction: string;
+    legalRepresentative: string;
+  };
+
+  // Contratante (Cliente)
+  client: {
+    fullName: string;
+    companyName: string;
+    cpfCnpj: string;
+    phone: string;
+    email: string;
+    legalRepresentative: string;
+  };
+
+  // Informações do Projeto / Orçamento
+  projectTitle: string;
+  category: string;
+  description: string;
+  approvedScope: string[];
+  contractedFeatures: string[];
+  
+  // Condições Financeiras
+  totalValue: number;
+  entryValue: number;
+  paymentMethod: string;
+  paymentTerms: string;
+  installments: ContractInstallment[];
+  lateFeeClause: string;
+
+  // Prazos
+  estimatedDays: number | string;
+  startDate: string;
+  estimatedDeliveryDate: string;
+
+  // Cláusulas detalhadas
+  objectClause: string;
+  scopeClause: string;
+  contractorObligations: string[];
+  clientObligations: string[];
+  paymentClause: string;
+  changesAndExtraScopeClause: string;
+  timelineClause: string;
+  warrantyClause: string;
+  warrantyDays: number;
+  terminationClause: string;
+  jurisdictionClause: string;
+
+  // Assinatura Eletrônica
+  signature: ContractSignatureInfo;
+
+  // Metadata / Histórico
+  status: 'rascunho' | 'aguardando_assinatura' | 'assinado' | 'cancelado';
+  createdAt: string;
+  version: string;
+  history: ContractHistoryItem[];
+  pdfUrl?: string;
+  qrCodeValue?: string;
 }
 
 export type ProjectStatus = 'planejamento' | 'em_andamento' | 'em_revisao' | 'concluido' | 'pausado';
@@ -204,6 +314,12 @@ export interface Project {
   tasks: ProjectTask[];
   files: ProjectFile[];
   proposalId?: string;
+  recurringMonthlyValue?: number;
+  subscriptionId?: string;
+  contractId?: string;
+  contractNumber?: string;
+  completedAt?: string;
+  billingRuleApplied?: string;
 }
 
 export type FinancialStatus = 'pago' | 'pendente' | 'atrasado' | 'cancelado' | 'reembolsado';
@@ -226,8 +342,12 @@ export interface ClientSubscription {
   pixCopyPaste?: string;
   proposalId?: string;
   quoteId?: string;
+  projectId?: string;
   billingType?: 'recorrente' | 'valor_unico';
   oneTimeTotalValue?: number;
+  entityType?: 'empresa' | 'cliente';
+  category?: string;
+  entryType?: 'receita' | 'despesa';
 }
 
 export interface FinancialTransaction {
@@ -245,6 +365,7 @@ export interface FinancialTransaction {
   subscriptionId?: string;
   invoiceUrl?: string;
   isRecurring?: boolean;
+  entityType?: 'empresa' | 'cliente';
 }
 
 export interface ChatAttachment {

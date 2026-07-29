@@ -18,26 +18,55 @@ import { ProposalAcceptancePage } from './views/ProposalAcceptancePage';
 
 // Modals
 import { QuoteWizardModal } from './components/QuoteWizardModal';
+import { ContractModal } from './components/ContractModal';
 
 const AppContent: React.FC = () => {
-  const { activeView, isAdminAuthenticated, isClientAuthenticated } = useApp();
+  const { activeView, isAdminAuthenticated, isClientAuthenticated, selectedContractId, setSelectedContractId } = useApp();
+
+  const globalContractModal = selectedContractId ? (
+    <ContractModal
+      contractId={selectedContractId}
+      isOpen={Boolean(selectedContractId)}
+      onClose={() => setSelectedContractId(undefined)}
+    />
+  ) : null;
 
   // Render Admin views in a dedicated standalone page layout
   if (activeView === 'admin_login') {
-    return <AdminLoginPage />;
+    return (
+      <>
+        <AdminLoginPage />
+        {globalContractModal}
+      </>
+    );
   }
 
   if (activeView === 'admin_panel') {
-    return isAdminAuthenticated ? <AdminPanel /> : <AdminLoginPage />;
+    return (
+      <>
+        {isAdminAuthenticated ? <AdminPanel /> : <AdminLoginPage />}
+        {globalContractModal}
+      </>
+    );
   }
 
   // Render Client views in a dedicated standalone page layout
   if (activeView === 'client_auth') {
-    return <ClientAuthPage />;
+    return (
+      <>
+        <ClientAuthPage />
+        {globalContractModal}
+      </>
+    );
   }
 
   if (activeView === 'client_portal') {
-    return isClientAuthenticated ? <ClientPortal /> : <ClientAuthPage />;
+    return (
+      <>
+        {isClientAuthenticated ? <ClientPortal /> : <ClientAuthPage />}
+        {globalContractModal}
+      </>
+    );
   }
 
   const renderActiveView = () => {
@@ -77,6 +106,8 @@ const AppContent: React.FC = () => {
       <main className="flex-1">
         {renderActiveView()}
       </main>
+
+      {globalContractModal}
 
       {/* Footer */}
       <Footer />
