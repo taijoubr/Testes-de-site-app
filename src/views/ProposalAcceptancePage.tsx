@@ -19,7 +19,7 @@ import {
 import { useApp } from '../context/AppContext';
 
 export const ProposalAcceptancePage: React.FC = () => {
-  const { proposals, quotes, selectedProposalIdForAcceptance, acceptProposal, setActiveView, currentRole } = useApp();
+  const { proposals, quotes, selectedProposalIdForAcceptance, acceptProposal, setActiveView, setSelectedContractId, currentRole } = useApp();
 
   let proposal = proposals.find(p => p.id === selectedProposalIdForAcceptance || p.quoteId === selectedProposalIdForAcceptance);
 
@@ -83,7 +83,7 @@ export const ProposalAcceptancePage: React.FC = () => {
     <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-8">
       
       {/* Top Navigation Control Bar (Hidden on print) */}
-      <div className="flex items-center justify-between no-print border-b border-slate-200 dark:border-slate-800 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 no-print border-b border-slate-200 dark:border-slate-800 pb-4">
         <button
           onClick={() => setActiveView(currentRole === 'admin' ? 'admin' : 'client_portal')}
           className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
@@ -92,13 +92,23 @@ export const ProposalAcceptancePage: React.FC = () => {
           <span>Voltar ao {currentRole === 'admin' ? 'Painel Administrativo' : 'Portal do Cliente'}</span>
         </button>
 
-        <button
-          onClick={handleDownloadPdf}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold shadow-md transition-all cursor-pointer"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Imprimir / Salvar PDF da Proposta</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedContractId(proposal.contractId || proposal.quoteId || proposal.id)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold shadow-md transition-all cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>📄 Visualizar Contrato em PDF</span>
+          </button>
+
+          <button
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-extrabold shadow-md transition-all cursor-pointer border border-slate-700"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Imprimir / Salvar PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* Top Banner Header */}
@@ -252,22 +262,42 @@ export const ProposalAcceptancePage: React.FC = () => {
                   <p><strong>Dispositivo:</strong> {proposal.clientDevice}</p>
                 </div>
 
-                <button
-                  onClick={() => setActiveView('client_portal')}
-                  className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-2 mt-2 cursor-pointer no-print"
-                >
-                  <span>Acessar Portal do Cliente</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="grid grid-cols-1 gap-2 pt-2">
+                  <button
+                    onClick={() => setSelectedContractId(proposal.contractId || proposal.quoteId || proposal.id)}
+                    className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer no-print"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Ver Contrato Assinado (PDF)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveView('client_portal')}
+                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer no-print"
+                  >
+                    <span>Acessar Portal do Cliente</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ) : (
-              <button
-                onClick={() => setModalOpen(true)}
-                className="no-print w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 transition-all transform active:scale-95 cursor-pointer"
-              >
-                <FileSignature className="w-4 h-4" />
-                <span>ACEITAR PROPOSTA</span>
-              </button>
+              <div className="space-y-3 no-print">
+                <button
+                  onClick={() => setSelectedContractId(proposal.contractId || proposal.quoteId || proposal.id)}
+                  className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span>📄 Ler Minuta Completa em PDF</span>
+                </button>
+
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 transition-all transform active:scale-95 cursor-pointer"
+                >
+                  <FileSignature className="w-4 h-4" />
+                  <span>ACEITAR PROPOSTA</span>
+                </button>
+              </div>
             )}
 
           </div>

@@ -74,6 +74,71 @@ export const ClientPortal: React.FC = () => {
   ).filter(feat => !feat.hidden);
 
   const [activeTab, setActiveTab] = useState<'quotes' | 'contracts' | 'projects' | 'financials' | 'chat' | 'tickets'>('quotes');
+
+  // Derive client contracts combining saved contracts + proposals/quotes
+  const allClientContracts = [...contracts];
+  quotes.forEach(q => {
+    if ((q.proposalId || q.offeredValue || q.contractId) && !allClientContracts.some(c => c.id === q.id || c.quoteId === q.id || c.id === q.contractId)) {
+      allClientContracts.push({
+        id: q.contractId || q.proposalId || q.id,
+        contractNumber: q.contractNumber || (q.contractId ? `CTR-${q.contractId}` : `CTR-${q.id.replace('QUOTE-', '')}`),
+        quoteId: q.id,
+        proposalId: q.proposalId,
+        projectTitle: q.projectTitle || q.projectType || 'Desenvolvimento de Software',
+        category: q.category || 'Desenvolvimento Web & Mobile',
+        version: 'v1.0',
+        status: q.status === 'aprovado' ? 'assinado' : 'aguardando_assinatura',
+        createdAt: q.createdAt,
+        contractor: {
+          companyName: siteConfig?.companyName || 'NCodes Technologies Ltda.',
+          cnpj: siteConfig?.cnpj || '48.921.304/0001-92',
+          address: siteConfig?.address || 'Av. Paulista, 1000 - SP',
+          email: siteConfig?.contactEmail || 'contato@ncodes.com.br',
+          phone: siteConfig?.contactPhone || '(11) 98765-4321',
+          legalRepresentative: 'Nicolas P.'
+        },
+        client: {
+          fullName: q.clientName,
+          companyName: q.company || q.clientName,
+          cpfCnpj: 'Cadastrado no Sistema',
+          email: q.email,
+          phone: q.phone,
+          address: 'São Paulo - SP'
+        },
+        description: q.description,
+        approvedScope: q.selectedFeatures || ['Desenvolvimento Web/Mobile'],
+        contractedFeatures: q.selectedFeatures || ['Web App', 'API Backend'],
+        totalValue: q.offeredValue || 15000,
+        entryValue: Math.round((q.offeredValue || 15000) * 0.3),
+        paymentMethod: 'PIX / Boleto',
+        paymentTerms: '30% entrada + parcelamento',
+        installments: [],
+        lateFeeClause: '10% multa por atraso',
+        estimatedDays: q.offeredDeadline || q.deadline || '45 dias úteis',
+        startDate: q.createdAt.split('T')[0],
+        estimatedDeliveryDate: q.createdAt.split('T')[0],
+        objectClause: `Objeto: ${q.projectTitle}`,
+        scopeClause: 'Escopo conforme proposta aprovada.',
+        contractorObligations: [],
+        clientObligations: [],
+        paymentClause: `Valor Total: R$ ${(q.offeredValue || 15000).toLocaleString('pt-BR')}`,
+        changesAndExtraScopeClause: 'Escopo adicional sob consulta.',
+        timelineClause: `Prazo: ${q.offeredDeadline || q.deadline || '45 dias'}`,
+        warrantyClause: 'Garantia de 90 dias.',
+        warrantyDays: 90,
+        terminationClause: 'Rescisão contratual padrão.',
+        jurisdictionClause: 'Foro de São Paulo/SP.',
+        signature: {
+          signed: q.status === 'aprovado',
+          signerName: q.clientName,
+          signerDocument: 'Cadastrado',
+          signerEmail: q.email,
+          signedAt: q.updatedAt
+        },
+        history: []
+      });
+    }
+  });
   
   // Quote Tracker Modal State
   const [selectedQuoteForTracker, setSelectedQuoteForTracker] = useState<QuoteRequest | null>(null);
@@ -563,23 +628,33 @@ export const ClientPortal: React.FC = () => {
                           <div className="flex items-center gap-3">
                             <Sparkles className="w-5 h-5 text-emerald-500 shrink-0" />
                             <div>
-                              <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">Proposta Commercial & Contrato Disponível!</h5>
+                              <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">Proposta Comercial & Contrato Disponível!</h5>
                               <p className="text-[11px] text-slate-600 dark:text-slate-300">
                                 Valor do Projeto: <strong>R$ {(associatedProp?.totalValue || quote.offeredValue || 15000).toLocaleString('pt-BR')}</strong>
                               </p>
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => {
-                              setSelectedProposalIdForAcceptance(quote.proposalId || quote.id);
-                              setActiveView('proposal_accept');
-                            }}
-                            className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-2 cursor-pointer shrink-0"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            <span>Visualizar & Assinar Proposta</span>
-                          </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => setSelectedContractId(quote.contractId || quote.proposalId || quote.id)}
+                              className="py-2.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-blue-400" />
+                              <span>Ver Contrato (PDF)</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setSelectedProposalIdForAcceptance(quote.proposalId || quote.id);
+                                setActiveView('proposal_accept');
+                              }}
+                              className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-2 cursor-pointer"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Visualizar & Assinar Proposta</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -606,7 +681,7 @@ export const ClientPortal: React.FC = () => {
               </div>
             </div>
 
-            {contracts.length === 0 ? (
+            {allClientContracts.length === 0 ? (
               <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
                   <FileText className="w-8 h-8" />
@@ -618,7 +693,7 @@ export const ClientPortal: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {contracts.map(contract => (
+                {allClientContracts.map(contract => (
                   <div key={contract.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md hover:shadow-xl transition-all space-y-5 flex flex-col justify-between">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">

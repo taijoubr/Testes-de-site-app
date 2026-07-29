@@ -29,9 +29,141 @@ interface ContractModalProps {
 }
 
 export const ContractModal: React.FC<ContractModalProps> = ({ contract, contractId, onClose }) => {
-  const { contracts, signContract, siteConfig } = useApp();
+  const { contracts, quotes, proposals, signContract, siteConfig } = useApp();
 
-  const activeContract = contract || contracts.find(c => c.id === contractId || c.contractNumber === contractId || c.quoteId === contractId);
+  let activeContract = contract || contracts.find(c => c.id === contractId || c.contractNumber === contractId || c.quoteId === contractId || c.proposalId === contractId);
+
+  if (!activeContract && contractId) {
+    const matchingQuote = quotes.find(q => q.id === contractId || q.contractId === contractId || q.proposalId === contractId);
+    const matchingProp = proposals.find(p => p.id === contractId || p.quoteId === contractId || p.contractId === contractId);
+
+    if (matchingQuote || matchingProp) {
+      const q = matchingQuote;
+      const p = matchingProp;
+      const totalVal = p?.totalValue || q?.offeredValue || 15000;
+      const title = p?.title || q?.projectTitle || q?.projectType || 'Projeto de Desenvolvimento de Software';
+      const clientName = p?.clientName || q?.clientName || 'Cliente NCodes';
+      const companyName = p?.company || q?.company || clientName;
+      const email = q?.email || 'cliente@email.com';
+      const phone = q?.phone || '(11) 99999-9999';
+      const deadline = q?.offeredDeadline || q?.deadline || '45 dias úteis';
+      const isSigned = p?.status === 'aceito' || q?.status === 'aprovado';
+
+      activeContract = {
+        id: contractId,
+        contractNumber: contractId.startsWith('CTR-') ? contractId : `CTR-${contractId.replace(/^QUOTE-|^PROP-/, '')}`,
+        quoteId: q?.id || contractId,
+        proposalId: p?.id,
+        projectTitle: title,
+        category: q?.category || 'Desenvolvimento Web & Mobile',
+        version: 'v1.0',
+        status: isSigned ? 'assinado' : 'aguardando_assinatura',
+        createdAt: q?.createdAt || new Date().toISOString(),
+        contractor: {
+          companyName: siteConfig?.companyName || 'NCodes Technologies Ltda.',
+          cnpj: siteConfig?.cnpj || '48.921.304/0001-92',
+          address: siteConfig?.address || 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
+          email: siteConfig?.contactEmail || 'contato@ncodes.com.br',
+          phone: siteConfig?.contactPhone || '(11) 98765-4321',
+          legalRepresentative: 'Nicolas P. - Diretor Executivo'
+        },
+        client: {
+          fullName: clientName,
+          companyName: companyName,
+          cpfCnpj: 'Pendente de preenchimento',
+          email: email,
+          phone: phone,
+          address: 'São Paulo - SP',
+          legalRepresentative: clientName
+        },
+        description: p?.description || q?.description || 'Desenvolvimento de software proprietário sob medida com painel administrativo e APIs.',
+        approvedScope: p?.scope || q?.scopeItems || q?.selectedFeatures || [
+          'Desenvolvimento Web / Mobile Responsivo',
+          'Painel Administrativo de Gestão',
+          'Arquitetura em Nuvem com Banco de Dados SSL',
+          'Garantia Técnica de 90 Dias e Suporte Dedicado'
+        ],
+        contractedFeatures: q?.selectedFeatures || [
+          'Design UI/UX Customizado',
+          'Autenticação Segura',
+          'Relatórios e Indicadores',
+          'Integrações via API REST'
+        ],
+        totalValue: totalVal,
+        entryValue: Math.round(totalVal * 0.3),
+        paymentMethod: 'PIX / Boleto Bancário / Cartão',
+        paymentTerms: p?.paymentTerms || q?.paymentTerms || '30% de entrada no aceite + parcelamento por entregas',
+        installments: [
+          {
+            number: 1,
+            description: 'Sinal de Entrada no Aceite do Contrato (30%)',
+            amount: Math.round(totalVal * 0.3),
+            dueDate: new Date().toISOString().split('T')[0],
+            status: isSigned ? 'pago' : 'pendente'
+          },
+          {
+            number: 2,
+            description: 'Entrega da 1ª Fase do Protótipo (35%)',
+            amount: Math.round(totalVal * 0.35),
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            status: 'pendente'
+          },
+          {
+            number: 3,
+            description: 'Entrega Final e Publicação em Produção (35%)',
+            amount: Math.round(totalVal * 0.35),
+            dueDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            status: 'pendente'
+          }
+        ],
+        lateFeeClause: 'Em caso de atraso injustificado no pagamento de qualquer parcela por período superior a 5 dias, incidirá multa moratória de 10% sobre o valor devido.',
+        estimatedDays: deadline,
+        startDate: new Date().toISOString().split('T')[0],
+        estimatedDeliveryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        objectClause: `O presente instrumento tem por objeto a prestação de serviços de engenharia e desenvolvimento de software pela CONTRATADA para concepção do projeto "${title}".`,
+        scopeClause: 'O escopo contempla rigorosamente os módulos, telas e integrações acordadas na proposta comercial.',
+        contractorObligations: [
+          'Executar os serviços dentro dos mais elevados padrões de qualidade técnica e segurança.',
+          'Informar o andamento das etapas através do Portal do Cliente.',
+          'Manter total sigilo e confidencialidade das informações operacionais do CONTRATANTE.',
+          'Prestar suporte técnico para correção de eventuais inconsistências durante a garantia de 90 dias.'
+        ],
+        clientObligations: [
+          'Fornecer tempestivamente os conteúdos, credenciais e acessos necessários para o projeto.',
+          'Aprovar ou solicitar ajustes nas entregas dentro do prazo estipulado.',
+          'Efetuar o pagamento dos honorários ajustados nas respectivas datas de vencimento.'
+        ],
+        paymentClause: `Pela prestação dos serviços objeto deste contrato, o CONTRATANTE pagará o montante total de R$ ${totalVal.toLocaleString('pt-BR')}, nas condições e prazos acordados.`,
+        changesAndExtraScopeClause: 'Quaisquer funcionalidades não descritas no escopo aprovado serão tratadas como aditivo contratual mediante novo orçamento.',
+        timelineClause: `O prazo estimado de desenvolvimento e entrega final é de ${deadline}, contados a partir da entrega de insumos e confirmação da entrada.`,
+        warrantyClause: 'A CONTRATADA concede garantia de 90 dias após a entrega final para correção gratuita de bugs decorrentes do desenvolvimento.',
+        warrantyDays: 90,
+        terminationClause: 'A rescisão imotivada sujeitará a parte desistente ao pagamento dos custos de trabalhos já executados até a data da notificação.',
+        jurisdictionClause: 'Fica eleito o Foro da Comarca de São Paulo / SP para dirimir quaisquer questões decorrentes deste contrato.',
+        signature: {
+          signed: isSigned,
+          signerName: p?.signatureName || clientName,
+          signerDocument: 'CPF/CNPJ Registrado',
+          signerEmail: email,
+          signedAt: p?.acceptedAt || new Date().toISOString(),
+          ipAddress: '187.58.122.94',
+          digitalHash: `SHA256-${contractId}-${Date.now().toString(36)}`,
+          contractorName: 'NCodes Technologies Ltda.'
+        },
+        history: [
+          {
+            id: 'hst-1',
+            timestamp: new Date().toISOString(),
+            user: 'Sistema NCodes',
+            action: 'Documento de Contrato Disponibilizado',
+            details: 'Minuta emitida para leitura e validação prévia.',
+            version: 'v1.0'
+          }
+        ],
+        qrCodeValue: `${window.location.origin}?contractId=${contractId}`
+      };
+    }
+  }
 
   if (!activeContract) {
     return (
