@@ -232,9 +232,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
               <style>
                 @media print {
                   body { font-family: system-ui, -apple-system, sans-serif; background: #ffffff !important; color: #000000 !important; padding: 15px; }
+                  p, span, td, th, li, div, h1, h2, h3, h4, strong { color: #000000 !important; font-weight: 500 !important; }
                   .no-print { display: none !important; }
                 }
-                body { font-family: system-ui, -apple-system, sans-serif; padding: 30px; background: #ffffff; color: #0f172a; }
+                body { font-family: system-ui, -apple-system, sans-serif; padding: 30px; background: #ffffff; color: #0f172a; font-weight: 500; }
               </style>
             </head>
             <body>
@@ -370,10 +371,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
                     {activeContract.contractor.companyName}
                   </h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+                  <p className="text-xs text-slate-800 dark:text-slate-200 mt-1 font-semibold">
                     CNPJ: {activeContract.contractor.cnpj} • {activeContract.contractor.email}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-800 dark:text-slate-200 font-medium">
                     {activeContract.contractor.address}
                   </p>
                 </div>
@@ -382,8 +383,8 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
                   <div className="inline-block bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-mono font-bold px-3 py-1.5 rounded-lg text-xs uppercase tracking-widest">
                     {activeContract.contractNumber}
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Ref: Orçamento {activeContract.quoteId}</p>
-                  <p className="text-[10px] text-slate-400">Versão: {activeContract.version}</p>
+                  <p className="text-[10px] text-slate-700 dark:text-slate-300 font-medium mt-1">Ref: Orçamento {activeContract.quoteId}</p>
+                  <p className="text-[10px] text-slate-700 dark:text-slate-300 font-medium">Versão: {activeContract.version}</p>
                 </div>
               </div>
 
@@ -392,55 +393,55 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
                 <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wide">
                   INSTRUMENTO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS DE DESENVOLVIMENTO DE SOFTWARE E TECNOLOGIA
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                <p className="text-xs text-slate-800 dark:text-slate-200 font-semibold italic">
                   Documento padronizado emitido automaticamente por NCodes Technologies em {new Date(activeContract.createdAt).toLocaleDateString('pt-BR')}
                 </p>
               </div>
 
               {/* Qualificação das Partes */}
-              <div className="bg-slate-50 dark:bg-slate-900/80 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-                <h3 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider">
+              <div className="bg-slate-50 dark:bg-slate-900/80 p-4 sm:p-5 rounded-2xl border border-slate-300 dark:border-slate-800 space-y-3">
+                <h3 className="text-xs font-black uppercase text-blue-700 dark:text-blue-400 tracking-wider">
                   DAS PARTES CONTRATANTES
                 </h3>
                 
-                <div className="space-y-2 text-xs leading-relaxed">
+                <div className="space-y-2 text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   <p>
-                    <strong className="text-slate-900 dark:text-white">CONTRATADA:</strong> <strong>{activeContract.contractor.companyName}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o nº {activeContract.contractor.cnpj}, com sede em {activeContract.contractor.address}, representada neste ato por seu {activeContract.contractor.legalRepresentative}.
+                    <strong className="text-slate-900 dark:text-white font-extrabold">CONTRATADA:</strong> <strong>{activeContract.contractor.companyName}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o nº {activeContract.contractor.cnpj}, com sede em {activeContract.contractor.address}, representada neste ato por seu {activeContract.contractor.legalRepresentative}.
                   </p>
 
                   <p>
-                    <strong className="text-slate-900 dark:text-white">CONTRATANTE:</strong> <strong>{activeContract.client?.companyName || activeContract.client?.fullName}</strong>, inscrita sob o CPF/CNPJ nº <strong>{activeContract.client?.cpfCnpj || 'Pendente de preenchimento'}</strong>, e-mail {activeContract.client?.email}, telefone {activeContract.client?.phone}, representada por <strong>{activeContract.client?.legalRepresentative || activeContract.client?.fullName}</strong>.
+                    <strong className="text-slate-900 dark:text-white font-extrabold">CONTRATANTE:</strong> <strong>{activeContract.client?.companyName || activeContract.client?.fullName}</strong>, inscrita sob o CPF/CNPJ nº <strong>{activeContract.client?.cpfCnpj || 'Pendente de preenchimento'}</strong>, e-mail {activeContract.client?.email}, telefone {activeContract.client?.phone}, representada por <strong>{activeContract.client?.legalRepresentative || activeContract.client?.fullName}</strong>.
                   </p>
                 </div>
               </div>
 
               {/* Cláusula 1ª - Do Objeto */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA PRIMEIRA — DO OBJETO DO CONTRATO
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   {activeContract.objectClause}
                 </p>
               </div>
 
               {/* Cláusula 2ª - Do Escopo do Projeto */}
               <div className="space-y-3">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA SEGUNDA — DO ESCOPO APROVADO E ENTREGÁVEIS
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   {activeContract.scopeClause}
                 </p>
 
-                <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-300 dark:border-slate-800 space-y-2">
+                  <span className="text-xs font-extrabold text-slate-900 dark:text-white block">
                     Funcionalidades e Módulos Inclusos no Projeto:
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {activeContract.approvedScope?.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      <div key={idx} className="flex items-start gap-2 text-xs font-medium text-slate-900 dark:text-slate-100">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                         <span>{item}</span>
                       </div>
                     ))}
@@ -450,10 +451,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
 
               {/* Cláusula 3ª - Das Obrigações da Contratada */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA TERCEIRA — DAS OBRIGAÇÕES DA CONTRATADA (NCODES)
                 </h3>
-                <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-900 dark:text-slate-100 font-medium leading-relaxed">
                   {activeContract.contractorObligations?.map((ob, idx) => (
                     <li key={idx}>{ob}</li>
                   ))}
@@ -462,10 +463,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
 
               {/* Cláusula 4ª - Das Obrigações do Contratante */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA QUARTA — DAS OBRIGAÇÕES DO CONTRATANTE (CLIENTE)
                 </h3>
-                <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-900 dark:text-slate-100 font-medium leading-relaxed">
                   {activeContract.clientObligations?.map((ob, idx) => (
                     <li key={idx}>{ob}</li>
                   ))}
@@ -474,38 +475,34 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
 
               {/* Cláusula 5ª - Do Preço e Condições de Pagamento */}
               <div className="space-y-3">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
-                  CLÁUSULA QUINTA — DO PREÇO, PARCELAMENTO E JUROS DE MORA
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
+                  CLÁUSULA QUINTA — DO PREÇO, PARCELAMENTO E CONDIÇÕES DE PAGAMENTO
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  Pelos serviços ora contratados, o CONTRATANTE pagará à CONTRATADA o valor total de <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">R$ {activeContract.totalValue?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>, mediante as seguintes condições e parcelas:
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
+                  Pelos serviços ora contratados, o CONTRATANTE pagará à CONTRATADA o valor total fixo de <strong className="text-emerald-700 dark:text-emerald-400 font-black">R$ {activeContract.totalValue?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>, mediante as seguintes condições e datas de vencimento:
                 </p>
 
-                {/* Table of Installments */}
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                {/* Table of Main Installments - NO STATUS COLUMN */}
+                <div className="border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                    <thead className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold border-b border-slate-300 dark:border-slate-700">
                       <tr>
-                        <th className="p-2.5">Parcela / Descrição</th>
-                        <th className="p-2.5">Vencimento</th>
-                        <th className="p-2.5">Valor (R$)</th>
-                        <th className="p-2.5">Status</th>
+                        <th className="p-3">Parcela / Descrição</th>
+                        <th className="p-3">Data de Vencimento</th>
+                        <th className="p-3">Valor (R$)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-900 dark:text-slate-100">
                       {activeContract.installments?.map((inst, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                          <td className="p-2.5 font-medium">{inst.description}</td>
-                          <td className="p-2.5 font-mono">{new Date(inst.dueDate).toLocaleDateString('pt-BR')}</td>
-                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">R$ {inst.amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                          <td className="p-2.5">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                              inst.status === 'pago' 
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                            }`}>
-                              {inst.status === 'pago' ? 'Pago' : 'Pendente'}
-                            </span>
+                          <td className="p-3 font-semibold text-slate-900 dark:text-slate-100">{inst.description}</td>
+                          <td className="p-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                            {inst.dueDate.includes('-') 
+                              ? new Date(inst.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') 
+                              : inst.dueDate}
+                          </td>
+                          <td className="p-3 font-extrabold text-slate-900 dark:text-slate-100">
+                            R$ {inst.amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                         </tr>
                       ))}
@@ -513,57 +510,82 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
                   </table>
                 </div>
 
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-medium">
-                  <strong>⚠️ Cláusula de Mora e Inadimplência:</strong> {activeContract.lateFeeClause}
+                {/* Monthly Fee Section - Initial agreed values and due date only */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-300 dark:border-slate-700 space-y-2 mt-3">
+                  <span className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider block">
+                    📌 Mensalidade de Suporte & Infraestrutura (Valores Iniciais Acordados):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-900 dark:text-slate-100 font-medium">
+                    <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <span className="text-slate-600 dark:text-slate-400 font-bold block text-[11px] mb-0.5">Valor Mensal Inicial Acordado:</span>
+                      <strong className="text-blue-700 dark:text-blue-400 font-extrabold text-sm">
+                        R$ {(activeContract.recurringMonthlyValue || 1200).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / mês
+                      </strong>
+                    </div>
+                    <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <span className="text-slate-600 dark:text-slate-400 font-bold block text-[11px] mb-0.5">Data de Vencimento da Mensalidade:</span>
+                      <strong className="text-slate-900 dark:text-slate-100 font-bold font-mono text-sm">
+                        {activeContract.monthlyDueDate 
+                          ? (activeContract.monthlyDueDate.includes('-') 
+                              ? new Date(activeContract.monthlyDueDate + 'T12:00:00').toLocaleDateString('pt-BR') 
+                              : activeContract.monthlyDueDate) 
+                          : 'Dia 10 de cada mês'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-slate-900 dark:text-amber-300 font-medium">
+                  <strong className="text-amber-800 dark:text-amber-400 font-bold">⚠️ Cláusula de Mora e Inadimplência:</strong> {activeContract.lateFeeClause}
                 </div>
               </div>
 
               {/* Cláusula 6ª - Escopo Adicional */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA SEXTA — DAS ALTERAÇÕES E SOLICITAÇÕES ADICIONAIS
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   {activeContract.changesAndExtraScopeClause}
                 </p>
               </div>
 
               {/* Cláusula 7ª - Prazo */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA SÉTIMA — DO PRAZO E EXECUÇÃO
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   {activeContract.timelineClause} O prazo estimado de entrega do projeto é de <strong>{activeContract.estimatedDays}</strong>, com início em {new Date(activeContract.startDate).toLocaleDateString('pt-BR')} e entrega prevista para {new Date(activeContract.estimatedDeliveryDate).toLocaleDateString('pt-BR')}.
                 </p>
               </div>
 
               {/* Cláusula 8ª - Garantia */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA OITAVA — DA GARANTIA TÉCNICA
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   {activeContract.warrantyClause}
                 </p>
               </div>
 
               {/* Cláusula 9ª - Rescisão */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA NONA — DA RESCISÃO
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   {activeContract.terminationClause}
                 </p>
               </div>
 
               {/* Cláusula 10ª - Foro */}
               <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider border-b pb-1 border-slate-300 dark:border-slate-800">
                   CLÁUSULA DÉCIMA — DO FORO
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-slate-900 dark:text-slate-100 font-medium">
                   {activeContract.jurisdictionClause}
                 </p>
               </div>

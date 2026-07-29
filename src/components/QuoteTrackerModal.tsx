@@ -53,6 +53,12 @@ export const QuoteTrackerModal: React.FC<QuoteTrackerModalProps> = ({ quote, onC
   const [showRefuseModal, setShowRefuseModal] = useState(false);
   const [showChangeModal, setShowChangeModal] = useState(false);
 
+  // Manual Due Dates for Aceite
+  const [manualDueDate, setManualDueDate] = useState<string>(
+    new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  );
+  const [manualMonthlyDueDate, setManualMonthlyDueDate] = useState<string>('Dia 10 de cada mês');
+
   // Form states
   const [refusalReason, setRefusalReason] = useState('');
   const [changeText, setChangeText] = useState('');
@@ -153,7 +159,10 @@ export const QuoteTrackerModal: React.FC<QuoteTrackerModalProps> = ({ quote, onC
 
   const handleApprove = async () => {
     setIsSubmitting(true);
-    await approveQuoteByClient(quote.id);
+    await approveQuoteByClient(quote.id, {
+      dueDate: manualDueDate,
+      monthlyDueDate: manualMonthlyDueDate
+    });
     setIsSubmitting(false);
     setShowApproveModal(false);
   };
@@ -706,20 +715,53 @@ export const QuoteTrackerModal: React.FC<QuoteTrackerModalProps> = ({ quote, onC
               <h3 className="text-lg font-bold text-white">Confirmar Aprovação do Orçamento?</h3>
               <p className="text-xs text-slate-400 mt-1">
                 Ao aprovar, o orçamento de <strong className="text-emerald-400">R$ {quote.offeredValue?.toLocaleString('pt-BR')}</strong> será
-                convertido em um projeto ativo e nossa equipe iniciará a alocação de engenheiros.
+                convertido em um projeto ativo com contrato vinculado.
               </p>
             </div>
+
+            <div className="space-y-3 bg-slate-850 p-3.5 rounded-xl border border-slate-800 text-left text-xs">
+              <span className="font-extrabold text-white text-[11px] block border-b border-slate-800 pb-1 uppercase tracking-wider">
+                Definir Vencimentos Manualmente:
+              </span>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  📅 Vencimento da Parcela Principal / Entrada *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={manualDueDate}
+                  onChange={e => setManualDueDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono font-bold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  📌 Vencimento da Mensalidade (Suporte & Infra)
+                </label>
+                <input
+                  type="text"
+                  value={manualMonthlyDueDate}
+                  onChange={e => setManualMonthlyDueDate(e.target.value)}
+                  placeholder="Ex: Dia 10 de cada mês"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-medium text-xs"
+                />
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => setShowApproveModal(false)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors"
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleApprove}
                 disabled={isSubmitting}
-                className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 Aprovar Agora

@@ -48,6 +48,10 @@ export const ProposalAcceptancePage: React.FC = () => {
   }
 
   const [signatureName, setSignatureName] = useState(proposal?.clientName || 'Representante Legal');
+  const [manualDueDate, setManualDueDate] = useState<string>(
+    new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  );
+  const [manualMonthlyDueDate, setManualMonthlyDueDate] = useState<string>('Dia 10 de cada mês');
   const [accepting, setAccepting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -70,7 +74,10 @@ export const ProposalAcceptancePage: React.FC = () => {
   const handleConfirmAcceptance = async (e: React.FormEvent) => {
     e.preventDefault();
     setAccepting(true);
-    await acceptProposal(proposal.id, signatureName);
+    await acceptProposal(proposal.id, signatureName, {
+      dueDate: manualDueDate,
+      monthlyDueDate: manualMonthlyDueDate
+    });
     setAccepting(false);
     setModalOpen(false);
   };
@@ -386,6 +393,34 @@ export const ProposalAcceptancePage: React.FC = () => {
                   placeholder="Nome completo do responsável"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-semibold"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    📅 Vencimento da Parcela / Entrada *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={manualDueDate}
+                    onChange={e => setManualDueDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    📌 Vencimento da Mensalidade
+                  </label>
+                  <input
+                    type="text"
+                    value={manualMonthlyDueDate}
+                    onChange={e => setManualMonthlyDueDate(e.target.value)}
+                    placeholder="Ex: Dia 10 de cada mês"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium"
+                  />
+                </div>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 space-y-1">

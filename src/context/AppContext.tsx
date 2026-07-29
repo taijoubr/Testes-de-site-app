@@ -149,7 +149,7 @@ interface AppContextType {
   // Actions
   createQuoteRequest: (data: Omit<QuoteRequest, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => Promise<QuoteRequest>;
   createProposal: (data: Omit<Proposal, 'id' | 'createdAt' | 'status'>) => Proposal;
-  acceptProposal: (proposalId: string, signatureName: string) => Promise<void>;
+  acceptProposal: (proposalId: string, signatureName: string, customOptions?: { dueDate?: string; monthlyDueDate?: string }) => Promise<void>;
   generateContractForQuote: (quoteId: string, customData?: any) => Promise<ServiceContract>;
   signContract: (contractId: string, signatureData: { signerName: string; signerDocument: string; signerEmail?: string }) => Promise<void>;
   deleteContract: (contractId: string) => Promise<void>;
@@ -157,11 +157,11 @@ interface AppContextType {
   updateQuoteDetails: (quoteId: string, updates: Partial<QuoteRequest>, notes?: string) => Promise<void>;
   addQuoteTimelineItem: (quoteId: string, notes: string, user?: string, userRole?: 'admin' | 'client' | 'system', statusChangedTo?: QuoteStatus) => Promise<void>;
   addQuoteAttachment: (quoteId: string, attachment: Omit<QuoteAttachment, 'id' | 'createdAt'>) => Promise<void>;
-  approveQuoteByClient: (quoteId: string) => Promise<void>;
+  approveQuoteByClient: (quoteId: string, customOptions?: { dueDate?: string; monthlyDueDate?: string }) => Promise<void>;
   refuseQuoteByClient: (quoteId: string, reason?: string) => Promise<void>;
   requestQuoteChangesByClient: (quoteId: string, changeRequestText: string) => Promise<void>;
   respondToQuoteRequest: (quoteId: string, responseText: string) => Promise<void>;
-  convertQuoteToProject: (quoteId: string) => Promise<string | undefined>;
+  convertQuoteToProject: (quoteId: string, customOptions?: any) => Promise<string | undefined>;
   deleteQuote: (quoteId: string) => Promise<void>;
   deleteProposal: (proposalId: string) => Promise<void>;
   
@@ -1068,27 +1068,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? quote.selectedFeatures
       : ['Área do Cliente', 'Painel Administrativo', 'Banco de Dados Firestore', 'Módulo Financeiro Pix'];
 
-    // Generate Installments
+    // Generate Installments with manual due date support
+    const userDueDate = customData?.dueDate || customData?.installmentDueDate || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const userMonthlyDueDate = customData?.monthlyDueDate || 'Dia 10 de cada mês';
+    const recMonthlyVal = customData?.recurringMonthlyValue ?? proposal?.recurringMonthlyValue ?? quote?.recurringMonthlyValue ?? 1200;
+
+    let inst1Date = userDueDate;
+    let inst2Date = new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    let inst3Date = new Date(Date.now() + 65 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    try {
+      if (userDueDate && userDueDate.includes('-')) {
+        const base = new Date(userDueDate + 'T12:00:00');
+        if (!isNaN(base.getTime())) {
+          inst1Date = base.toISOString().split('T')[0];
+          const d2 = new Date(base);
+          d2.setDate(d2.getDate() + 30);
+          inst2Date = d2.toISOString().split('T')[0];
+          const d3 = new Date(base);
+          d3.setDate(d3.getDate() + 60);
+          inst3Date = d3.toISOString().split('T')[0];
+        }
+      }
+    } catch {
+      // fallback
+    }
+
     const installmentsList: ContractInstallment[] = [
       {
         number: 1,
         description: 'Entrada 30% — Aceite do Contrato',
         amount: entryVal,
-        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: inst1Date,
         status: customData?.signed ? 'pago' : 'pendente'
       },
       {
         number: 2,
         description: 'Parcela 2/3 — Entrega da 1ª Fase do Protótipo',
         amount: Math.round(remVal / 2),
-        dueDate: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: inst2Date,
         status: 'pendente'
       },
       {
         number: 3,
         description: 'Parcela 3/3 — Entrega Final e Homologação',
         amount: remVal - Math.round(remVal / 2),
-        dueDate: new Date(Date.now() + 65 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: inst3Date,
         status: 'pendente'
       }
     ];
@@ -1123,6 +1148,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       contractedFeatures: contractedFeats,
       totalValue: totalVal,
       entryValue: entryVal,
+      recurringMonthlyValue: recMonthlyVal,
+      monthlyDueDate: userMonthlyDueDate,
       paymentMethod: 'PIX / Boleto',
       paymentTerms: paymentTermsText,
       installments: installmentsList,
@@ -1289,7 +1316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Digital Acceptance Flow
-  const acceptProposal = async (proposalId: string, signatureName: string) => {
+  const acceptProposal = async (proposalId: string, signatureName: string, customOptions?: { dueDate?: string; monthlyDueDate?: string }) => {
     const now = new Date().toISOString();
     const simulatedIp = '187.58.122.94';
     const simulatedDevice = `${navigator.platform} - ${navigator.userAgent.slice(0, 40)}...`;
@@ -1325,7 +1352,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signed: true,
         clientName: prop.clientName,
         company: prop.company,
-        totalValue: prop.totalValue
+        totalValue: prop.totalValue,
+        dueDate: customOptions?.dueDate,
+        monthlyDueDate: customOptions?.monthlyDueDate,
+        recurringMonthlyValue: prop.recurringMonthlyValue
       });
 
       // Update proposal in Firestore
@@ -1706,7 +1736,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const approveQuoteByClient = async (quoteId: string) => {
+  const approveQuoteByClient = async (quoteId: string, customOptions?: { dueDate?: string; monthlyDueDate?: string }) => {
     const q = quotes.find(item => item.id === quoteId);
     if (!q) return;
 
@@ -1744,7 +1774,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Auto convert to Project if not converted yet
       if (!q.convertedProjectId) {
-        await convertQuoteToProject(quoteId);
+        await convertQuoteToProject(quoteId, customOptions);
+      } else {
+        await generateContractForQuote(quoteId, customOptions);
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `quotes/${quoteId}`);
@@ -1857,7 +1889,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const convertQuoteToProject = async (quoteId: string): Promise<string | undefined> => {
+  const convertQuoteToProject = async (quoteId: string, customOptions?: any): Promise<string | undefined> => {
     const q = quotes.find(item => item.id === quoteId);
     if (!q) return undefined;
 
@@ -1870,7 +1902,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       signed: true,
       clientName: q.clientName,
       company: q.company,
-      totalValue: q.offeredValue
+      totalValue: q.offeredValue,
+      dueDate: customOptions?.dueDate,
+      monthlyDueDate: customOptions?.monthlyDueDate,
+      recurringMonthlyValue: customOptions?.recurringMonthlyValue || q.recurringMonthlyValue
     });
 
     const initialTasks = (q.scopeItems && q.scopeItems.length > 0)

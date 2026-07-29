@@ -241,6 +241,8 @@ export interface ServiceContract {
   // Condições Financeiras
   totalValue: number;
   entryValue: number;
+  recurringMonthlyValue?: number;
+  monthlyDueDate?: string;
   paymentMethod: string;
   paymentTerms: string;
   installments: ContractInstallment[];
