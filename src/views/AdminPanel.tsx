@@ -73,7 +73,7 @@ import { useApp } from '../context/AppContext';
 import { ProposalGeneratorModal } from '../components/ProposalGeneratorModal';
 import { AdminQuoteManagementModal } from '../components/AdminQuoteManagementModal';
 import { FinalizeProjectModal } from '../components/FinalizeProjectModal';
-import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem, QuoteCategoryOption, QuoteFeatureOption } from '../types';
+import { QuoteRequest, Project, FinancialTransaction, LeadCRM, QuoteStatus, ClientSubscription, SubscriptionStatus, Proposal, ClientUser, ServiceItem, QuoteCategoryOption, QuoteFeatureOption, PortfolioProject } from '../types';
 import { DEFAULT_QUOTE_CATEGORIES, DEFAULT_QUOTE_FEATURES } from '../data/initialData';
 
 export const AdminPanel: React.FC = () => {
@@ -123,10 +123,14 @@ export const AdminPanel: React.FC = () => {
     services,
     addService,
     updateService,
-    deleteService
+    deleteService,
+    portfolioProjects,
+    addPortfolioProject,
+    updatePortfolioProject,
+    deletePortfolioProject
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'contracts' | 'subscriptions' | 'projects' | 'financials' | 'clients' | 'crm' | 'team' | 'admin_users' | 'site_settings' | 'services'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'contracts' | 'subscriptions' | 'projects' | 'financials' | 'clients' | 'crm' | 'team' | 'admin_users' | 'site_settings' | 'services' | 'portfolio'>('dashboard');
 
   // Service Management States
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -139,6 +143,123 @@ export const AdminPanel: React.FC = () => {
   const [serviceBenefitsInput, setServiceBenefitsInput] = useState('');
   const [serviceTechnologiesInput, setServiceTechnologiesInput] = useState('');
   const [deleteServiceConfirmId, setDeleteServiceConfirmId] = useState<string | null>(null);
+
+  // Portfolio Management States
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [editingPortfolio, setEditingPortfolio] = useState<PortfolioProject | null>(null);
+  const [portfolioTitle, setPortfolioTitle] = useState('');
+  const [portfolioSubtitle, setPortfolioSubtitle] = useState('');
+  const [portfolioCategory, setPortfolioCategory] = useState('Mobile');
+  const [portfolioImage, setPortfolioImage] = useState('');
+  const [portfolioDescription, setPortfolioDescription] = useState('');
+  const [portfolioTagsInput, setPortfolioTagsInput] = useState('');
+  const [portfolioMetrics, setPortfolioMetrics] = useState('');
+  const [portfolioClientName, setPortfolioClientName] = useState('');
+  const [portfolioYear, setPortfolioYear] = useState('2025');
+  const [portfolioFilterCategory, setPortfolioFilterCategory] = useState('Todos');
+  const [deletePortfolioConfirmId, setDeletePortfolioConfirmId] = useState<string | null>(null);
+
+  const handleOpenNewPortfolioModal = () => {
+    setEditingPortfolio(null);
+    setPortfolioTitle('');
+    setPortfolioSubtitle('');
+    setPortfolioCategory('Mobile');
+    setPortfolioImage('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1000');
+    setPortfolioDescription('');
+    setPortfolioTagsInput('React Native, TypeScript, Node.js');
+    setPortfolioMetrics('Alta performance, +10k downloads');
+    setPortfolioClientName('Cliente NCodes');
+    setPortfolioYear(new Date().getFullYear().toString());
+    setIsPortfolioModalOpen(true);
+  };
+
+  const handleOpenEditPortfolioModal = (p: PortfolioProject) => {
+    setEditingPortfolio(p);
+    setPortfolioTitle(p.title);
+    setPortfolioSubtitle(p.subtitle || '');
+    setPortfolioCategory(p.category || 'Mobile');
+    setPortfolioImage(p.image || '');
+    setPortfolioDescription(p.description || '');
+    setPortfolioTagsInput(p.tags ? p.tags.join(', ') : '');
+    setPortfolioMetrics(p.metrics || '');
+    setPortfolioClientName(p.clientName || '');
+    setPortfolioYear(p.year || new Date().getFullYear().toString());
+    setIsPortfolioModalOpen(true);
+  };
+
+  const handleSavePortfolio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!portfolioTitle.trim() || !portfolioDescription.trim()) {
+      alert('Por favor, informe o título e a descrição do projeto.');
+      return;
+    }
+
+    const tagsArray = portfolioTagsInput
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+
+    const payload = {
+      title: portfolioTitle.trim(),
+      subtitle: portfolioSubtitle.trim(),
+      category: portfolioCategory,
+      image: portfolioImage.trim() || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1000',
+      description: portfolioDescription.trim(),
+      tags: tagsArray.length > 0 ? tagsArray : ['React', 'TypeScript'],
+      metrics: portfolioMetrics.trim() || undefined,
+      clientName: portfolioClientName.trim() || 'NCodes Client',
+      year: portfolioYear.trim() || '2025'
+    };
+
+    if (editingPortfolio) {
+      await updatePortfolioProject(editingPortfolio.id, payload);
+    } else {
+      await addPortfolioProject(payload);
+    }
+
+    setIsPortfolioModalOpen(false);
+  };
+
+  const handleDeletePortfolio = async (id: string) => {
+    await deletePortfolioProject(id);
+    setDeletePortfolioConfirmId(null);
+  };
+
+  const [isDraggingPortfolioImage, setIsDraggingPortfolioImage] = useState(false);
+  const [showUrlFallback, setShowUrlFallback] = useState(false);
+
+  const processPortfolioImageFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP, SVG).');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Selecione uma imagem local com menos de 8MB.');
+      return;
+    }
+    try {
+      const compressedBase64 = await compressAndResizeImage(file);
+      setPortfolioImage(compressedBase64);
+    } catch (err) {
+      alert('Erro ao processar e comprimir a imagem local.');
+    }
+  };
+
+  const handlePortfolioImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processPortfolioImageFile(file);
+    }
+  };
+
+  const handlePortfolioImageDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingPortfolioImage(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processPortfolioImageFile(file);
+    }
+  };
 
   const handleOpenNewServiceModal = () => {
     setEditingService(null);
@@ -917,6 +1038,16 @@ export const AdminPanel: React.FC = () => {
           >
             <Layers className="w-3.5 h-3.5 text-blue-400" />
             <span>Serviços do Site ({services.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('portfolio')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'portfolio' ? 'bg-cyan-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            <FolderGit2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Portfólio ({portfolioProjects.length})</span>
           </button>
 
           <button
@@ -1816,15 +1947,9 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* File Uploader Sim */}
+                {/* File Repository Summary */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">{p.files.length} arquivos no repositório</span>
-                  <button
-                    onClick={() => addProjectFile(p.id, `Manual_Tecnico_${Date.now()}.pdf`, '1.5 MB', 'pdf')}
-                    className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
-                  >
-                    + Anexar Arquivo
-                  </button>
+                  <span className="text-slate-400">{p.files.length} arquivo(s) no repositório do projeto</span>
                 </div>
 
                 {/* Recurring Monthly Fee & Finalization Control */}
@@ -3508,6 +3633,170 @@ export const AdminPanel: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB: GESTÃO DO PORTFÓLIO DO SITE */}
+      {activeTab === 'portfolio' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Header */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-1">
+                <FolderGit2 className="w-4 h-4 text-cyan-500 animate-pulse" />
+                <span>Gestão do Portfólio de Projetos • Tempo Real</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                Portfólio de Casos de Sucesso
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+                Adicione, edite ou remova os projetos exibidos no portfólio público do site. Qualquer alteração salva será refletida em tempo real via Firestore.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveView('portfolio')}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Ver Portfólio no Site</span>
+              </button>
+              <button
+                onClick={handleOpenNewPortfolioModal}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition-all transform active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Novo Projeto no Portfólio</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-cyan-100 dark:bg-cyan-950/80 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+                <FolderGit2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Projetos Publicados</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{portfolioProjects.length}</p>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Tag className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Categorias Ativas</p>
+                <p className="text-lg font-black text-slate-900 dark:text-white">Mobile, Web, Sistemas, IA</p>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Sincronização</p>
+                <p className="text-sm font-bold text-emerald-500 flex items-center gap-1.5 mt-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Firestore On (Live)</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {['Todos', 'Mobile', 'Web', 'Sistemas', 'IA'].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setPortfolioFilterCategory(cat)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  portfolioFilterCategory === cat
+                    ? 'bg-cyan-600 text-white shadow-md'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Portfolio Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {portfolioProjects
+              .filter(p => portfolioFilterCategory === 'Todos' || p.category === portfolioFilterCategory)
+              .map(proj => (
+                <div
+                  key={proj.id}
+                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-md hover:shadow-xl transition-all flex flex-col justify-between group"
+                >
+                  <div className="relative h-48 overflow-hidden bg-slate-950">
+                    <img
+                      src={proj.image}
+                      alt={proj.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900/80 text-cyan-300 border border-cyan-500/30 backdrop-blur-md">
+                      {proj.category}
+                    </span>
+                  </div>
+
+                  <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          {proj.clientName} • {proj.year}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenEditPortfolioModal(proj)}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-cyan-950 text-slate-600 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-400 transition-colors cursor-pointer"
+                            title="Editar Projeto"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeletePortfolioConfirmId(proj.id)}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950 text-slate-600 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                            title="Excluir Projeto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                        {proj.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                        {proj.subtitle}
+                      </p>
+                    </div>
+
+                    {proj.metrics && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span className="truncate">{proj.metrics}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-1 pt-2">
+                      {proj.tags && proj.tags.map(tag => (
+                        <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
           </div>
 
         </div>
@@ -5462,6 +5751,310 @@ export const AdminPanel: React.FC = () => {
                   await deleteSubscription(deleteSubConfirmData.id);
                   setDeleteSubConfirmData(null);
                 }}
+                className="px-5 py-2 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Confirmar Exclusão</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Portfolio Item Create / Edit Modal */}
+      {isPortfolioModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl p-6 sm:p-8 space-y-6 shadow-2xl relative my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-100 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
+                  <FolderGit2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    {editingPortfolio ? 'Editar Projeto do Portfólio' : 'Cadastrar Novo Projeto'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {editingPortfolio ? `Alterando dados do caso de sucesso #${editingPortfolio.id}` : 'Insira os dados do caso de sucesso para exibir no site'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPortfolioModalOpen(false)}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePortfolio} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Título do Projeto *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: App de Saúde FarmaExpress"
+                    value={portfolioTitle}
+                    onChange={e => setPortfolioTitle(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Categoria *
+                  </label>
+                  <select
+                    value={portfolioCategory}
+                    onChange={e => setPortfolioCategory(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-cyan-500 outline-none"
+                  >
+                    <option value="Mobile">Mobile</option>
+                    <option value="Web">Web</option>
+                    <option value="Sistemas">Sistemas</option>
+                    <option value="IA">IA</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Subtítulo / Breve Resumo
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Plataforma iOS/Android de telemedicina e entrega rápida de medicamentos."
+                  value={portfolioSubtitle}
+                  onChange={e => setPortfolioSubtitle(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Descrição Completa do Caso *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Descreva o desafio do cliente, a solução desenvolvida e os resultados obtidos..."
+                  value={portfolioDescription}
+                  onChange={e => setPortfolioDescription(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 outline-none resize-none"
+                />
+              </div>
+
+              {/* Image Input & Preview - Local File Upload */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Imagem do Projeto (Upload do Arquivo Local) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlFallback(!showUrlFallback)}
+                    className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
+                  >
+                    {showUrlFallback ? 'Ocultar URL Externa' : 'Ou colar URL externa'}
+                  </button>
+                </div>
+
+                {/* Local File Dropzone / Upload Box */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingPortfolioImage(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); setIsDraggingPortfolioImage(false); }}
+                  onDrop={handlePortfolioImageDrop}
+                  className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all flex flex-col items-center justify-center gap-2 relative ${
+                    isDraggingPortfolioImage
+                      ? 'border-cyan-500 bg-cyan-500/10 dark:bg-cyan-950/40'
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                    <Upload className="w-5 h-5 animate-bounce" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Arraste e solte o arquivo da imagem aqui
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      ou clique no botão abaixo para selecionar do computador (PNG, JPG, WEBP, SVG até 8MB)
+                    </p>
+                  </div>
+
+                  <label className="mt-1 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold cursor-pointer transition-all shadow-md shadow-cyan-500/20 flex items-center gap-1.5 transform active:scale-95">
+                    <Image className="w-3.5 h-3.5" />
+                    <span>Selecionar Arquivo Local</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePortfolioImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Fallback URL input */}
+                {showUrlFallback && (
+                  <div className="pt-1">
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/..."
+                      value={portfolioImage}
+                      onChange={e => setPortfolioImage(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* Local Image Preview Card */}
+                {portfolioImage && (
+                  <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-4 shadow-sm">
+                    <div className="w-24 h-16 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shrink-0 relative">
+                      <img src={portfolioImage} alt="Pré-visualização do projeto" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Imagem Pronta para Publicação</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        Imagem local carregada e otimizada
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <label className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer transition-colors" title="Substituir Imagem Local">
+                        <Upload className="w-3.5 h-3.5" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePortfolioImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setPortfolioImage('')}
+                        className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 hover:bg-rose-100 text-xs font-bold transition-colors"
+                        title="Remover Imagem"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nome do Cliente
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Grupo FarmaVida"
+                    value={portfolioClientName}
+                    onChange={e => setPortfolioClientName(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Ano do Projeto
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 2025"
+                    value={portfolioYear}
+                    onChange={e => setPortfolioYear(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Tags de Tecnologias (separadas por vírgula)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: React Native, TypeScript, Firebase"
+                    value={portfolioTagsInput}
+                    onChange={e => setPortfolioTagsInput(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Métricas / Resultados Alcançados
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: +50k usuários ativos, 99.9% uptime"
+                    value={portfolioMetrics}
+                    onChange={e => setPortfolioMetrics(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsPortfolioModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{editingPortfolio ? 'Salvar Alterações' : 'Publicar Projeto'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Portfolio Project Confirmation Modal */}
+      {deletePortfolioConfirmId && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Excluir Projeto do Portfólio</h3>
+                <p className="text-xs text-rose-500 font-bold">Remoção em Tempo Real</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Tem certeza de que deseja remover este projeto do portfólio? Ele deixará de ser exibido na galeria do site imediatamente.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeletePortfolioConfirmId(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeletePortfolio(deletePortfolioConfirmId)}
                 className="px-5 py-2 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />

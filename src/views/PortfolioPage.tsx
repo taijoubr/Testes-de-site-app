@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight, CheckCircle2, Filter, ExternalLink, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { INITIAL_PORTFOLIO } from '../data/initialData';
 import { PortfolioProject } from '../types';
 
 export const PortfolioPage: React.FC = () => {
-  const { setActiveView, isClientAuthenticated } = useApp();
+  const { setActiveView, isClientAuthenticated, portfolioProjects } = useApp();
   const [activeCategory, setActiveCategory] = useState<string>('Todos');
   const [selectedProject, setSelectedProject] = useState<PortfolioProject | null>(null);
 
   const categories = ['Todos', 'Mobile', 'Web', 'Sistemas', 'IA'];
 
   const filteredProjects = activeCategory === 'Todos'
-    ? INITIAL_PORTFOLIO
-    : INITIAL_PORTFOLIO.filter(p => p.category === activeCategory);
+    ? portfolioProjects
+    : portfolioProjects.filter(p => p.category === activeCategory);
 
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-12">

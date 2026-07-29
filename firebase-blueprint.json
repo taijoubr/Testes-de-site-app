@@ -187,9 +187,31 @@
         "createdAt": { "type": "string", "maxLength": 50 }
       },
       "required": ["contractNumber", "quoteId", "projectTitle", "totalValue", "status"]
+    },
+    "PortfolioProject": {
+      "title": "Portfolio Project",
+      "description": "Casos de sucesso e projetos no portfólio público do site",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 200 },
+        "subtitle": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "maxLength": 100 },
+        "image": { "type": "string" },
+        "description": { "type": "string", "maxLength": 5000 },
+        "tags": { "type": "array" },
+        "metrics": { "type": "string", "maxLength": 200 },
+        "clientName": { "type": "string", "maxLength": 150 },
+        "year": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["id", "title", "description", "category"]
     }
   },
   "firestore": {
+    "/portfolio/{portfolioId}": {
+      "schema": { "$ref": "#/entities/PortfolioProject" },
+      "description": "Coleção de projetos do portfólio público do site"
+    },
     "/contracts/{contractId}": {
       "schema": { "$ref": "#/entities/ServiceContract" },
       "description": "Coleção de contratos prestação de serviços"

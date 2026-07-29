@@ -18,10 +18,9 @@ import {
   Users2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { INITIAL_SERVICES, INITIAL_PORTFOLIO } from '../data/initialData';
 
 export const InstitutionalHome: React.FC = () => {
-  const { setActiveView, isAdminAuthenticated, isClientAuthenticated, siteConfig } = useApp();
+  const { setActiveView, isAdminAuthenticated, isClientAuthenticated, siteConfig, portfolioProjects } = useApp();
 
   return (
     <div className="space-y-24 pb-20">
@@ -209,7 +208,7 @@ export const InstitutionalHome: React.FC = () => {
                 Sobre a NCodes
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Nossa história, missão, visão, valores corporativos e a equipe de engenheiros responsável pelas entregas.
+                Nossa história, missão, visão e os valores corporativos que orientam nossa atuação no mercado.
               </p>
             </div>
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-6 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
@@ -288,7 +287,7 @@ export const InstitutionalHome: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
-          {INITIAL_PORTFOLIO.slice(0, 3).map(item => (
+          {portfolioProjects.slice(0, 3).map(item => (
             <div 
               key={item.id}
               onClick={() => setActiveView('portfolio')}

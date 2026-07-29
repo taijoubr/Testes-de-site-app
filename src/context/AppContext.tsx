@@ -40,7 +40,8 @@ import {
   SiteConfig,
   ServiceItem,
   ServiceContract,
-  ContractInstallment
+  ContractInstallment,
+  PortfolioProject
 } from '../types';
 
 import { 
@@ -58,7 +59,8 @@ import {
   INITIAL_SUBSCRIPTIONS,
   INITIAL_SITE_CONFIG,
   INITIAL_SERVICES,
-  INITIAL_CONTRACTS
+  INITIAL_CONTRACTS,
+  INITIAL_PORTFOLIO
 } from '../data/initialData';
 
 export type ActiveView = 
@@ -125,6 +127,12 @@ interface AppContextType {
   addService: (data: Omit<ServiceItem, 'id'>) => Promise<void>;
   updateService: (id: string, data: Partial<ServiceItem>) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
+
+  // Portfolio Management
+  portfolioProjects: PortfolioProject[];
+  addPortfolioProject: (data: Omit<PortfolioProject, 'id'>) => Promise<void>;
+  updatePortfolioProject: (id: string, data: Partial<PortfolioProject>) => Promise<void>;
+  deletePortfolioProject: (id: string) => Promise<void>;
 
   // Data collections
   quotes: QuoteRequest[];
@@ -249,6 +257,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // State collections
   const [services, setServices] = useState<ServiceItem[]>(INITIAL_SERVICES);
+  const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>(INITIAL_PORTFOLIO);
   const [quotes, setQuotes] = useState<QuoteRequest[]>(INITIAL_QUOTES);
   const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
@@ -367,6 +376,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }, (err) => handleFirestoreError(err, OperationType.GET, 'services'));
 
+      // 14. Portfolio Catalog
+      try {
+        const portSnap = await getDocs(collection(db, 'portfolio'));
+        if (portSnap.empty) {
+          for (const item of INITIAL_PORTFOLIO) {
+            await setDoc(doc(db, 'portfolio', item.id), item);
+          }
+        }
+      } catch (err) {
+        console.warn('Portfolio check warning:', err);
+      }
+
+      const unsubPortfolio = onSnapshot(collection(db, 'portfolio'), (snap) => {
+        if (!snap.empty) {
+          setPortfolioProjects(snap.docs.map(d => d.data() as PortfolioProject));
+        }
+      }, (err) => handleFirestoreError(err, OperationType.GET, 'portfolio'));
+
       const unsubContracts = onSnapshot(collection(db, 'contracts'), (snap) => {
         if (!snap.empty) {
           setContracts(snap.docs.map(d => d.data() as ServiceContract));
@@ -388,6 +415,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubSiteSettings();
         unsubSubscriptions();
         unsubServices();
+        unsubPortfolio();
       };
     };
 
@@ -460,6 +488,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `services/${id}`);
+    }
+  };
+
+  const addPortfolioProject = async (data: Omit<PortfolioProject, 'id'>) => {
+    const newId = `p_${Date.now()}`;
+    const newProject: PortfolioProject = {
+      ...data,
+      id: newId
+    };
+    setPortfolioProjects(prev => [newProject, ...prev]);
+    try {
+      await saveDoc('portfolio', newId, newProject);
+      await addNotification('Projeto de Portfólio Adicionado', `O projeto "${data.title}" foi publicado no portfólio.`, 'project');
+      confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `portfolio/${newId}`);
+    }
+  };
+
+  const updatePortfolioProject = async (id: string, data: Partial<PortfolioProject>) => {
+    const existing = portfolioProjects.find(p => p.id === id);
+    if (!existing) return;
+    const updated = { ...existing, ...data };
+    setPortfolioProjects(prev => prev.map(p => p.id === id ? updated : p));
+    try {
+      await saveDoc('portfolio', id, updated);
+      await addNotification('Portfólio Atualizado', `Os dados do projeto "${updated.title}" foram salvos com sucesso.`, 'project');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `portfolio/${id}`);
+    }
+  };
+
+  const deletePortfolioProject = async (id: string) => {
+    const existing = portfolioProjects.find(p => p.id === id);
+    setPortfolioProjects(prev => prev.filter(p => p.id !== id));
+    try {
+      await deleteDoc(doc(db, 'portfolio', id));
+      if (existing) {
+        await addNotification('Projeto do Portfólio Removido', `O projeto "${existing.title}" foi removido do portfólio.`, 'project');
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `portfolio/${id}`);
     }
   };
 
@@ -2495,6 +2565,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addService,
       updateService,
       deleteService,
+      portfolioProjects,
+      addPortfolioProject,
+      updatePortfolioProject,
+      deletePortfolioProject,
       quotes,
       proposals,
       projects,

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Sparkles, Target, Eye, Award, Users, CheckCircle2, ShieldCheck, Heart } from 'lucide-react';
-import { TEAM_MEMBERS } from '../data/initialData';
+import { Sparkles, Target, Eye, Award } from 'lucide-react';
 
 export const AboutPage: React.FC = () => {
   return (
@@ -85,31 +84,6 @@ export const AboutPage: React.FC = () => {
           </p>
         </div>
 
-      </div>
-
-      {/* Team Showcase */}
-      <div className="space-y-8">
-        <div className="text-center">
-          <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-            Profissionais Talentosos
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">
-            Conheça Nossa Equipe
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {TEAM_MEMBERS.slice(0, 4).map(member => (
-            <div key={member.id} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3 shadow-md hover:shadow-xl transition-all">
-              <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-blue-500" />
-              <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">{member.name}</h3>
-                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">{member.role}</p>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{member.company}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
     </div>
