@@ -111,6 +111,10 @@ export interface QuoteRequest {
   selectedFeatures?: string[];
   references?: string;
   additionalNotes?: string;
+  isImprovement?: boolean;
+  parentProjectId?: string;
+  parentProjectTitle?: string;
+  urgency?: string;
   
   // Responsável e Valores Oferecidos
   assignedTo?: string;

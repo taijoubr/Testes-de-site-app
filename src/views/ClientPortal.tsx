@@ -199,6 +199,15 @@ export const ClientPortal: React.FC = () => {
     setSelectedFeatures(prev => prev.filter(f => f !== featToRemove));
   };
 
+  // Improvement Request Modal State
+  const [showImprovementModal, setShowImprovementModal] = useState(false);
+  const [selectedParentProjectId, setSelectedParentProjectId] = useState<string>('');
+  const [improvementTitle, setImprovementTitle] = useState('');
+  const [improvementDescription, setImprovementDescription] = useState('');
+  const [improvementUrgency, setImprovementUrgency] = useState<'baixa' | 'media' | 'alta' | 'urgente'>('media');
+  const [improvementNotes, setImprovementNotes] = useState('');
+  const [isSubmittingImprovement, setIsSubmittingImprovement] = useState(false);
+
   // Chat input
   const [chatInput, setChatInput] = useState('');
   
@@ -242,6 +251,71 @@ export const ClientPortal: React.FC = () => {
     );
   });
   const activeProject = myProjects[0] || projects[0];
+
+  const handleOpenImprovementModal = (projectId?: string) => {
+    if (projectId) {
+      setSelectedParentProjectId(projectId);
+    } else if (myProjects.length > 0) {
+      setSelectedParentProjectId(myProjects[0].id);
+    }
+    if (currentClientUser) {
+      setClientName(currentClientUser.name || '');
+      setCompany(currentClientUser.company || '');
+      setEmail(currentClientUser.email || '');
+      setPhone(currentClientUser.phone || '');
+      setWhatsapp(currentClientUser.phone || '');
+      setCity(currentClientUser.city || '');
+      setState(currentClientUser.state || '');
+    }
+    setShowImprovementModal(true);
+  };
+
+  const handleCreateImprovement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!improvementTitle.trim() || !improvementDescription.trim()) return;
+
+    setIsSubmittingImprovement(true);
+    const parentProj = projects.find(p => p.id === selectedParentProjectId) || myProjects[0];
+    const parentProjTitle = parentProj ? parentProj.title : 'Projeto do Cliente';
+
+    const fullDescription = [
+      `⚡ SOLICITAÇÃO DE MELHORIA / ADITIVO DE ESCOPO`,
+      `📌 Projeto de Origem: ${parentProjTitle} (${selectedParentProjectId || 'ID N/D'})`,
+      `🏷️ Título da Melhoria: ${improvementTitle}`,
+      `🚨 Nível de Urgência: ${improvementUrgency.toUpperCase()}`,
+      `📝 Descrição e Requisitos da Melhoria:\n${improvementDescription}`,
+      improvementNotes ? `💬 Observações Adicionais:\n${improvementNotes}` : ''
+    ].filter(Boolean).join('\n\n');
+
+    await createQuoteRequest({
+      clientName: clientName || currentClientUser?.name || 'Cliente NCodes',
+      company: company || currentClientUser?.company || 'Pessoa Física',
+      email: email || currentClientUser?.email || '',
+      phone: phone || whatsapp || currentClientUser?.phone || '(11) 99999-8888',
+      whatsapp: whatsapp || phone || currentClientUser?.phone || '(11) 99999-8888',
+      city: city || currentClientUser?.city || 'São Paulo',
+      state: state || currentClientUser?.state || 'SP',
+      projectType: 'Melhoria / Aditivo',
+      projectTitle: `[Melhoria] ${improvementTitle}`,
+      category: 'Melhoria em Projeto Existente',
+      description: fullDescription,
+      deadline: improvementUrgency === 'urgente' ? 'Até 7 dias' : improvementUrgency === 'alta' ? 'Até 15 dias' : 'Até 30 dias',
+      budgetRange: 'A avaliar pela equipe',
+      isImprovement: true,
+      parentProjectId: selectedParentProjectId || (parentProj ? parentProj.id : undefined),
+      parentProjectTitle: parentProjTitle,
+      urgency: improvementUrgency
+    });
+
+    setIsSubmittingImprovement(false);
+    setShowImprovementModal(false);
+
+    // Reset Form
+    setImprovementTitle('');
+    setImprovementDescription('');
+    setImprovementNotes('');
+    setImprovementUrgency('media');
+  };
 
   const handleCreateQuote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -470,13 +544,24 @@ export const ClientPortal: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                onClick={handleOpenQuoteModal}
-                className="py-3 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Nova Solicitação de Orçamento</span>
-              </button>
+              <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                <button
+                  onClick={() => handleOpenImprovementModal()}
+                  className="py-3 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-extrabold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  title="Solicitar alterações, novos recursos ou aditivo de escopo em projeto existente"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Solicitar Melhoria / Aditivo</span>
+                </button>
+
+                <button
+                  onClick={handleOpenQuoteModal}
+                  className="py-3 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Nova Solicitação de Orçamento</span>
+                </button>
+              </div>
             </div>
 
             {/* List of Quotes */}
@@ -786,7 +871,15 @@ export const ClientPortal: React.FC = () => {
                     <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{activeProject.title}</h3>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={() => handleOpenImprovementModal(activeProject.id)}
+                      className="py-2 px-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs rounded-xl shadow-md shadow-orange-500/20 flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Solicitar Melhoria</span>
+                    </button>
+
                     <span className="px-3.5 py-1 rounded-full text-xs font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                       {(activeProject.status || '').replace('_', ' ')}
                     </span>
@@ -1507,6 +1600,160 @@ export const ClientPortal: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Improvement Request Modal */}
+      {showImprovementModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl my-8 animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b pb-4 border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Solicitar Melhoria ou Alteração de Escopo</h3>
+                  <p className="text-xs text-slate-500">Adicione novos recursos ou modificações ao seu projeto existente.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowImprovementModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Explanation Banner */}
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1.5 text-amber-900 dark:text-amber-200">
+              <div className="flex items-center gap-2 font-extrabold">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>Avaliação de Impacto & Orçamento de Melhoria</span>
+              </div>
+              <p className="leading-relaxed opacity-90">
+                Sua solicitação de melhoria será analisada pela equipe de engenharia da NCodes. Caso haja custo adicional ou alteração de prazo de desenvolvimento, geraremos um <strong>Novo Orçamento de Melhoria</strong> no seu portal para sua validação e aceite antes do início do desenvolvimento.
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateImprovement} className="space-y-4">
+              
+              {/* Project Selection */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Projeto de Origem <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={selectedParentProjectId}
+                  onChange={e => setSelectedParentProjectId(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  {myProjects.length === 0 ? (
+                    <option value="">Nenhum projeto encontrado (Será vinculado ao perfil)</option>
+                  ) : (
+                    myProjects.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} ({p.id})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Title of Improvement */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Título da Melhoria / Recurso Desejado <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Módulo de exportação em Excel e integração com WhatsApp API"
+                  value={improvementTitle}
+                  onChange={e => setImprovementTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Urgency */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nível de Urgência
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['baixa', 'media', 'alta', 'urgente'] as const).map(urg => (
+                    <button
+                      key={urg}
+                      type="button"
+                      onClick={() => setImprovementUrgency(urg)}
+                      className={`py-2 px-3 rounded-xl text-xs font-extrabold capitalize transition-all border cursor-pointer ${
+                        improvementUrgency === urg
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-md'
+                          : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {urg}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Descrição Detalhada dos Requisitos <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Descreva exatamente o que precisa ser alterado, telas envolvidas ou novos campos/regras de negócio..."
+                  value={improvementDescription}
+                  onChange={e => setImprovementDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Additional Notes */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Observações / Links de Referência (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Figma, links ou dados adicionais"
+                  value={improvementNotes}
+                  onChange={e => setImprovementNotes(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowImprovementModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingImprovement}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs shadow-md shadow-amber-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{isSubmittingImprovement ? 'Enviando Solicitação...' : 'Enviar Solicitação de Melhoria'}</span>
+                </button>
+              </div>
+
+            </form>
+
           </div>
         </div>
       )}

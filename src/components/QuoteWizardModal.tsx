@@ -62,6 +62,7 @@ export const QuoteWizardModal: React.FC = () => {
   const [additionalNotes, setAdditionalNotes] = useState('');
 
   // 7. Informações do Solicitante
+  const [personType, setPersonType] = useState<'fisica' | 'juridica'>('fisica');
   const [clientName, setClientName] = useState('');
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
@@ -77,7 +78,15 @@ export const QuoteWizardModal: React.FC = () => {
       if (!email) setEmail(currentClientUser.email || '');
       if (!phone) setPhone(currentClientUser.phone || '');
       if (!whatsapp) setWhatsapp(currentClientUser.phone || '');
-      if (!company) setCompany(currentClientUser.company || '');
+      if (!company) {
+        if (currentClientUser.company && currentClientUser.company !== 'Pessoa Física') {
+          setPersonType('juridica');
+          setCompany(currentClientUser.company);
+        } else {
+          setPersonType('fisica');
+          setCompany('');
+        }
+      }
       if (!city) setCity(currentClientUser.city || '');
       if (!state) setState(currentClientUser.state || '');
     }
@@ -117,9 +126,13 @@ export const QuoteWizardModal: React.FC = () => {
         additionalNotes ? `💬 Informações Adicionais:\n${additionalNotes}` : ''
       ].filter(Boolean).join('\n\n');
 
+      const finalCompany = personType === 'juridica'
+        ? (company.trim() || 'Empresa (PJ)')
+        : 'Pessoa Física';
+
       await createQuoteRequest({
         clientName: clientName || (currentClientUser?.name) || 'Cliente Visitante',
-        company: company || (currentClientUser?.company) || 'Pessoa Física',
+        company: finalCompany,
         email: email || (currentClientUser?.email) || 'contato@cliente.com',
         phone: phone || whatsapp || '(11) 99999-8888',
         whatsapp: whatsapp || phone || '(11) 99999-8888',
@@ -460,7 +473,45 @@ export const QuoteWizardModal: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                
+                {/* Tipo de Cadastro / Solicitante */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Tipo de Solicitante *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPersonType('fisica');
+                        setCompany('');
+                      }}
+                      className={`py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        personType === 'fisica'
+                          ? 'bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400 font-extrabold shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Pessoa Física</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPersonType('juridica')}
+                      className={`py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        personType === 'juridica'
+                          ? 'bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400 font-extrabold shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      <span>Empresa (PJ)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className={personType === 'juridica' ? '' : 'sm:col-span-2'}>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Seu Nome Completo *
                   </label>
@@ -477,21 +528,24 @@ export const QuoteWizardModal: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Empresa / Organização
-                  </label>
-                  <div className="relative">
-                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                    <input
-                      type="text"
-                      value={company}
-                      onChange={e => setCompany(e.target.value)}
-                      placeholder="Ex: NCodes Tech ou Pessoa Física"
-                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                {personType === 'juridica' && (
+                  <div className="animate-in fade-in duration-200">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Nome da Empresa *
+                    </label>
+                    <div className="relative">
+                      <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <input
+                        type="text"
+                        required
+                        value={company}
+                        onChange={e => setCompany(e.target.value)}
+                        placeholder="Ex: NCodes Tech Ltda"
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">

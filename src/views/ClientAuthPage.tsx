@@ -33,6 +33,7 @@ export const ClientAuthPage: React.FC = () => {
   const [loginError, setLoginError] = useState('');
 
   // Register Form
+  const [personType, setPersonType] = useState<'fisica' | 'juridica'>('fisica');
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
@@ -65,11 +66,15 @@ export const ClientAuthPage: React.FC = () => {
 
     setIsSubmitting(true);
     
+    const finalCompany = personType === 'juridica'
+      ? (regCompany.trim() || 'Empresa (PJ)')
+      : 'Pessoa Física';
+
     const result = await registerClient({
       name: regName,
       email: regEmail,
       phone: regPhone,
-      company: regCompany || 'Pessoa Física / Startup',
+      company: finalCompany,
       city: regCity,
       state: regState,
       passwordHash: regPassword
@@ -279,6 +284,44 @@ export const ClientAuthPage: React.FC = () => {
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                
+                {/* Tipo de Cadastro: Pessoa Física vs Empresa */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Tipo de Cadastro *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPersonType('fisica');
+                        setRegCompany('');
+                      }}
+                      className={`py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        personType === 'fisica'
+                          ? 'bg-blue-600/20 border-blue-500 text-blue-400 shadow-sm'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Pessoa Física</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPersonType('juridica')}
+                      className={`py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        personType === 'juridica'
+                          ? 'bg-blue-600/20 border-blue-500 text-blue-400 shadow-sm'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      <span>Empresa (PJ)</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-300 mb-1">
                     Nome Completo *
@@ -336,23 +379,26 @@ export const ClientAuthPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Empresa / Negócio
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                      <Building2 className="w-4 h-4" />
+                {personType === 'juridica' && (
+                  <div className="sm:col-span-2 animate-in fade-in duration-200">
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      Nome da Empresa *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                        <Building2 className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={regCompany}
+                        onChange={e => setRegCompany(e.target.value)}
+                        placeholder="Ex: Silva Tech Ltda"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={regCompany}
-                      onChange={e => setRegCompany(e.target.value)}
-                      placeholder="Ex: Silva Tech Startups"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all"
-                    />
                   </div>
-                </div>
+                )}
 
                 <div className="flex gap-2">
                   <div className="flex-1">

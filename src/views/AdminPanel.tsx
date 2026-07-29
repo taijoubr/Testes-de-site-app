@@ -1288,6 +1288,20 @@ export const AdminPanel: React.FC = () => {
               quotes.filter(q => q.status !== 'aprovado').map(q => (
               <div key={q.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-4">
                 
+                {q.isImprovement && (
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs font-bold text-amber-700 dark:text-amber-300">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span>SOLICITAÇÃO DE MELHORIA DE PROJETO ({q.parentProjectTitle || 'Projeto NCodes'})</span>
+                    </div>
+                    {q.urgency && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-extrabold uppercase text-[10px]">
+                        Urgência: {q.urgency}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-4 border-slate-100 dark:border-slate-800">
                   <div>
                     <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{q.id} • {q.createdAt.split('T')[0]}</span>
