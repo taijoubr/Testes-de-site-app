@@ -23,29 +23,55 @@ import { ServiceContract } from '../types';
 import { useApp } from '../context/AppContext';
 
 interface ContractModalProps {
-  contract: ServiceContract;
+  contract?: ServiceContract;
+  contractId?: string;
   onClose: () => void;
 }
 
-export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose }) => {
-  const { signContract, siteConfig } = useApp();
+export const ContractModal: React.FC<ContractModalProps> = ({ contract, contractId, onClose }) => {
+  const { contracts, signContract, siteConfig } = useApp();
+
+  const activeContract = contract || contracts.find(c => c.id === contractId || c.contractNumber === contractId || c.quoteId === contractId);
+
+  if (!activeContract) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto">
+            <FileSignature className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Contrato Não Encontrado</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            O documento de contrato solicitado ({contractId}) ainda não foi gerado ou está em processamento pela equipe técnica.
+          </p>
+          <button 
+            onClick={onClose}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<'document' | 'history' | 'signature'>('document');
-  const [signerDocument, setSignerDocument] = useState(contract.client.cpfCnpj || '');
-  const [signerName, setSignerName] = useState(contract.client.fullName || '');
+  const [signerDocument, setSignerDocument] = useState(activeContract.client?.cpfCnpj || '');
+  const [signerName, setSignerName] = useState(activeContract.client?.fullName || '');
   const [signing, setSigning] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const isSigned = contract.status === 'assinado' || contract.signature.signed;
+  const isSigned = activeContract.status === 'assinado' || activeContract.signature?.signed;
 
   const handleSign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signerName || !signerDocument) return;
     setSigning(true);
     try {
-      await signContract(contract.id, {
+      await signContract(activeContract.id, {
         signerName,
         signerDocument,
-        signerEmail: contract.client.email
+        signerEmail: activeContract.client?.email
       });
     } catch (err) {
       console.error(err);
@@ -59,7 +85,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
   };
 
   const handleCopyValidation = () => {
-    const valUrl = contract.qrCodeValue || `${window.location.origin}?contractId=${contract.id}`;
+    const valUrl = activeContract.qrCodeValue || `${window.location.origin}?contractId=${activeContract.id}`;
     navigator.clipboard.writeText(valUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
@@ -87,7 +113,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                 </span>
               </div>
               <h2 className="text-lg sm:text-xl font-extrabold text-white mt-1">
-                {contract.contractNumber} — {contract.projectTitle}
+                {activeContract.contractNumber} — {activeContract.projectTitle}
               </h2>
             </div>
           </div>
@@ -145,7 +171,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
               }`}
             >
               <History className="w-4 h-4" />
-              <span>Histórico & Versões ({contract.history.length})</span>
+              <span>Histórico & Versões ({activeContract.history?.length || 0})</span>
             </button>
           </div>
 
@@ -168,22 +194,22 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
               <div className="border-b-2 border-slate-900 dark:border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                    {contract.contractor.companyName}
+                    {activeContract.contractor.companyName}
                   </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-                    CNPJ: {contract.contractor.cnpj} • {contract.contractor.email}
+                    CNPJ: {activeContract.contractor.cnpj} • {activeContract.contractor.email}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {contract.contractor.address}
+                    {activeContract.contractor.address}
                   </p>
                 </div>
 
                 <div className="text-right shrink-0">
                   <div className="inline-block bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-mono font-bold px-3 py-1.5 rounded-lg text-xs uppercase tracking-widest">
-                    {contract.contractNumber}
+                    {activeContract.contractNumber}
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Ref: Orçamento {contract.quoteId}</p>
-                  <p className="text-[10px] text-slate-400">Versão: {contract.version}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Ref: Orçamento {activeContract.quoteId}</p>
+                  <p className="text-[10px] text-slate-400">Versão: {activeContract.version}</p>
                 </div>
               </div>
 
@@ -193,7 +219,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   INSTRUMENTO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS DE DESENVOLVIMENTO DE SOFTWARE E TECNOLOGIA
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-                  Documento padronizado emitido automaticamente por NCodes Technologies em {new Date(contract.createdAt).toLocaleDateString('pt-BR')}
+                  Documento padronizado emitido automaticamente por NCodes Technologies em {new Date(activeContract.createdAt).toLocaleDateString('pt-BR')}
                 </p>
               </div>
 
@@ -205,11 +231,11 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                 
                 <div className="space-y-2 text-xs leading-relaxed">
                   <p>
-                    <strong className="text-slate-900 dark:text-white">CONTRATADA:</strong> <strong>{contract.contractor.companyName}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o nº {contract.contractor.cnpj}, com sede em {contract.contractor.address}, representada neste ato por seu {contract.contractor.legalRepresentative}.
+                    <strong className="text-slate-900 dark:text-white">CONTRATADA:</strong> <strong>{activeContract.contractor.companyName}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o nº {activeContract.contractor.cnpj}, com sede em {activeContract.contractor.address}, representada neste ato por seu {activeContract.contractor.legalRepresentative}.
                   </p>
 
                   <p>
-                    <strong className="text-slate-900 dark:text-white">CONTRATANTE:</strong> <strong>{contract.client.companyName || contract.client.fullName}</strong>, inscrita sob o CPF/CNPJ nº <strong>{contract.client.cpfCnpj || 'Pendente de preenchimento'}</strong>, e-mail {contract.client.email}, telefone {contract.client.phone}, representada por <strong>{contract.client.legalRepresentative || contract.client.fullName}</strong>.
+                    <strong className="text-slate-900 dark:text-white">CONTRATANTE:</strong> <strong>{activeContract.client?.companyName || activeContract.client?.fullName}</strong>, inscrita sob o CPF/CNPJ nº <strong>{activeContract.client?.cpfCnpj || 'Pendente de preenchimento'}</strong>, e-mail {activeContract.client?.email}, telefone {activeContract.client?.phone}, representada por <strong>{activeContract.client?.legalRepresentative || activeContract.client?.fullName}</strong>.
                   </p>
                 </div>
               </div>
@@ -220,7 +246,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA PRIMEIRA — DO OBJETO DO CONTRATO
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {contract.objectClause}
+                  {activeContract.objectClause}
                 </p>
               </div>
 
@@ -230,7 +256,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA SEGUNDA — DO ESCOPO APROVADO E ENTREGÁVEIS
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {contract.scopeClause}
+                  {activeContract.scopeClause}
                 </p>
 
                 <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
@@ -238,7 +264,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                     Funcionalidades e Módulos Inclusos no Projeto:
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {contract.approvedScope.map((item, idx) => (
+                    {activeContract.approvedScope?.map((item, idx) => (
                       <div key={idx} className="flex items-start gap-2 text-xs">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                         <span>{item}</span>
@@ -254,7 +280,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA TERCEIRA — DAS OBRIGAÇÕES DA CONTRATADA (NCODES)
                 </h3>
                 <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  {contract.contractorObligations.map((ob, idx) => (
+                  {activeContract.contractorObligations?.map((ob, idx) => (
                     <li key={idx}>{ob}</li>
                   ))}
                 </ul>
@@ -266,7 +292,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA QUARTA — DAS OBRIGAÇÕES DO CONTRATANTE (CLIENTE)
                 </h3>
                 <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  {contract.clientObligations.map((ob, idx) => (
+                  {activeContract.clientObligations?.map((ob, idx) => (
                     <li key={idx}>{ob}</li>
                   ))}
                 </ul>
@@ -278,7 +304,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA QUINTA — DO PREÇO, PARCELAMENTO E JUROS DE MORA
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  Pelos serviços ora contratados, o CONTRATANTE pagará à CONTRATADA o valor total de <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">R$ {contract.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>, mediante as seguintes condições e parcelas:
+                  Pelos serviços ora contratados, o CONTRATANTE pagará à CONTRATADA o valor total de <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">R$ {activeContract.totalValue?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>, mediante as seguintes condições e parcelas:
                 </p>
 
                 {/* Table of Installments */}
@@ -293,11 +319,11 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {contract.installments.map((inst, idx) => (
+                      {activeContract.installments?.map((inst, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
                           <td className="p-2.5 font-medium">{inst.description}</td>
                           <td className="p-2.5 font-mono">{new Date(inst.dueDate).toLocaleDateString('pt-BR')}</td>
-                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">R$ {inst.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">R$ {inst.amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                           <td className="p-2.5">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
                               inst.status === 'pago' 
@@ -314,7 +340,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                 </div>
 
                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-medium">
-                  <strong>⚠️ Cláusula de Mora e Inadimplência:</strong> {contract.lateFeeClause}
+                  <strong>⚠️ Cláusula de Mora e Inadimplência:</strong> {activeContract.lateFeeClause}
                 </div>
               </div>
 
@@ -324,7 +350,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA SEXTA — DAS ALTERAÇÕES E SOLICITAÇÕES ADICIONAIS
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {contract.changesAndExtraScopeClause}
+                  {activeContract.changesAndExtraScopeClause}
                 </p>
               </div>
 
@@ -334,7 +360,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA SÉTIMA — DO PRAZO E EXECUÇÃO
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {contract.timelineClause} O prazo estimado de entrega do projeto é de <strong>{contract.estimatedDays}</strong>, com início em {new Date(contract.startDate).toLocaleDateString('pt-BR')} e entrega prevista para {new Date(contract.estimatedDeliveryDate).toLocaleDateString('pt-BR')}.
+                  {activeContract.timelineClause} O prazo estimado de entrega do projeto é de <strong>{activeContract.estimatedDays}</strong>, com início em {new Date(activeContract.startDate).toLocaleDateString('pt-BR')} e entrega prevista para {new Date(activeContract.estimatedDeliveryDate).toLocaleDateString('pt-BR')}.
                 </p>
               </div>
 
@@ -344,7 +370,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA OITAVA — DA GARANTIA TÉCNICA
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {contract.warrantyClause}
+                  {activeContract.warrantyClause}
                 </p>
               </div>
 
@@ -354,7 +380,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA NONA — DA RESCISÃO
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {contract.terminationClause}
+                  {activeContract.terminationClause}
                 </p>
               </div>
 
@@ -364,7 +390,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   CLÁUSULA DÉCIMA — DO FORO
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  {contract.jurisdictionClause}
+                  {activeContract.jurisdictionClause}
                 </p>
               </div>
 
@@ -381,8 +407,8 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                       NCodes Technologies Ltda.
                     </div>
                     <div className="border-t border-slate-300 dark:border-slate-700 pt-2">
-                      <p className="font-extrabold text-xs text-slate-900 dark:text-white">{contract.contractor.companyName}</p>
-                      <p className="text-[10px] text-slate-500">CNPJ: {contract.contractor.cnpj}</p>
+                      <p className="font-extrabold text-xs text-slate-900 dark:text-white">{activeContract.contractor.companyName}</p>
+                      <p className="text-[10px] text-slate-500">CNPJ: {activeContract.contractor.cnpj}</p>
                       <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">✓ Assinado Digitalmente pela Diretoria</p>
                     </div>
                   </div>
@@ -390,16 +416,16 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                   {/* Contratante / Cliente */}
                   <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-center space-y-2">
                     <div className="h-10 flex items-center justify-center font-serif text-slate-800 dark:text-slate-200 italic font-bold">
-                      {isSigned ? (contract.signature.signerName || contract.client.fullName) : 'Pendente de Assinatura'}
+                      {isSigned ? (activeContract.signature?.signerName || activeContract.client?.fullName) : 'Pendente de Assinatura'}
                     </div>
                     <div className="border-t border-slate-300 dark:border-slate-700 pt-2">
                       <p className="font-extrabold text-xs text-slate-900 dark:text-white">
-                        {contract.client.companyName || contract.client.fullName}
+                        {activeContract.client?.companyName || activeContract.client?.fullName}
                       </p>
-                      <p className="text-[10px] text-slate-500">CPF/CNPJ: {contract.signature.signerDocument || contract.client.cpfCnpj || '—'}</p>
+                      <p className="text-[10px] text-slate-500">CPF/CNPJ: {activeContract.signature?.signerDocument || activeContract.client?.cpfCnpj || '—'}</p>
                       {isSigned ? (
                         <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
-                          ✓ Aceite em {new Date(contract.signature.signedAt || '').toLocaleString('pt-BR')}
+                          ✓ Aceite em {new Date(activeContract.signature?.signedAt || '').toLocaleString('pt-BR')}
                         </p>
                       ) : (
                         <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-1">
@@ -417,7 +443,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                     <div>
                       <p className="font-bold text-white">Chave de Autenticação Digital SHA-256</p>
                       <p className="font-mono text-[10px] text-slate-400 truncate max-w-xs sm:max-w-md">
-                        {contract.signature.digitalHash || 'SHA256-PENDING-SIGNATURE'}
+                        {activeContract.signature?.digitalHash || 'SHA256-PENDING-SIGNATURE'}
                       </p>
                     </div>
                   </div>
@@ -455,12 +481,12 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                       <span>Contrato Assinado com Sucesso!</span>
                     </div>
                     <div className="space-y-1 text-slate-700 dark:text-slate-300 font-mono text-[11px] pt-1 border-t border-emerald-500/20">
-                      <p><strong>Assinado por:</strong> {contract.signature.signerName}</p>
-                      <p><strong>CPF/CNPJ:</strong> {contract.signature.signerDocument}</p>
-                      <p><strong>Data/Hora:</strong> {contract.signature.signedAt ? new Date(contract.signature.signedAt).toLocaleString('pt-BR') : '—'}</p>
-                      <p><strong>Endereço IP:</strong> {contract.signature.ipAddress || '187.58.122.94'}</p>
-                      <p className="truncate"><strong>Hash SHA-256:</strong> {contract.signature.digitalHash}</p>
-                      <p><strong>Provedor de Integração:</strong> {contract.signature.externalProvider || 'internal'} (Pronto para DocuSign/ClickSign/ZapSign)</p>
+                      <p><strong>Assinado por:</strong> {activeContract.signature?.signerName}</p>
+                      <p><strong>CPF/CNPJ:</strong> {activeContract.signature?.signerDocument}</p>
+                      <p><strong>Data/Hora:</strong> {activeContract.signature?.signedAt ? new Date(activeContract.signature.signedAt).toLocaleString('pt-BR') : '—'}</p>
+                      <p><strong>Endereço IP:</strong> {activeContract.signature?.ipAddress || '187.58.122.94'}</p>
+                      <p className="truncate"><strong>Hash SHA-256:</strong> {activeContract.signature?.digitalHash}</p>
+                      <p><strong>Provedor de Integração:</strong> {activeContract.signature?.externalProvider || 'internal'}</p>
                     </div>
                   </div>
                 ) : (
@@ -494,7 +520,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
                     </div>
 
                     <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[11px] text-blue-800 dark:text-blue-300">
-                      🔒 Ao clicar em <strong>Confirmar Assinatura Digital</strong>, você declara concordo integralmente com os termos e cláusulas deste contrato para o projeto <strong>{contract.projectTitle}</strong>.
+                      🔒 Ao clicar em <strong>Confirmar Assinatura Digital</strong>, você declara concordo integralmente com os termos e cláusulas deste contrato para o projeto <strong>{activeContract.projectTitle}</strong>.
                     </div>
 
                     <button
@@ -520,7 +546,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, onClose 
               </h3>
 
               <div className="space-y-3">
-                {contract.history.map((item, idx) => (
+                {activeContract.history?.map((item, idx) => (
                   <div key={idx} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-extrabold text-blue-600 dark:text-blue-400">{item.action}</span>

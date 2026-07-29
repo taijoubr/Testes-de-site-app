@@ -1224,7 +1224,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const simulatedIp = '187.58.122.94';
     const simulatedDevice = `${navigator.platform} - ${navigator.userAgent.slice(0, 40)}...`;
 
-    const prop = proposals.find(p => p.id === proposalId);
+    let prop = proposals.find(p => p.id === proposalId || p.quoteId === proposalId);
+
+    if (!prop) {
+      const associatedQuote = quotes.find(q => q.id === proposalId || q.proposalId === proposalId);
+      if (associatedQuote) {
+        prop = {
+          id: associatedQuote.proposalId || `PROP-${associatedQuote.id}`,
+          quoteId: associatedQuote.id,
+          title: associatedQuote.projectTitle || associatedQuote.projectType || 'Proposta de Desenvolvimento de Software',
+          clientName: associatedQuote.clientName,
+          company: associatedQuote.company || associatedQuote.clientName,
+          description: associatedQuote.description,
+          scope: associatedQuote.scopeItems || associatedQuote.selectedFeatures || ['Desenvolvimento Web/Mobile', 'Painel Admin', 'API'],
+          totalValue: associatedQuote.offeredValue || 15000,
+          paymentTerms: associatedQuote.paymentTerms || '30% de entrada no aceite + parcelamento',
+          contractText: `INSTRUMENTO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS...`,
+          status: 'pendente',
+          createdAt: associatedQuote.createdAt
+        };
+      }
+    }
+
     if (!prop) return;
 
     try {
@@ -1238,7 +1259,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       // Update proposal in Firestore
-      await setDoc(doc(db, 'proposals', proposalId), {
+      await setDoc(doc(db, 'proposals', prop.id), {
         ...prop,
         status: 'aceito',
         acceptedAt: now,

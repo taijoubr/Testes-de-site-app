@@ -558,21 +558,21 @@ export const ClientPortal: React.FC = () => {
                       )}
 
                       {/* Proposal Link Action */}
-                      {quote.proposalId && associatedProp && (
+                      {(quote.proposalId || quote.offeredValue) && (
                         <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <Sparkles className="w-5 h-5 text-emerald-500 shrink-0" />
                             <div>
-                              <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">Proposta Digital Disponível!</h5>
+                              <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">Proposta Commercial & Contrato Disponível!</h5>
                               <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                                Valor Total: <strong>R$ {associatedProp.totalValue.toLocaleString('pt-BR')}</strong> em {associatedProp.installmentsCount}x.
+                                Valor do Projeto: <strong>R$ {(associatedProp?.totalValue || quote.offeredValue || 15000).toLocaleString('pt-BR')}</strong>
                               </p>
                             </div>
                           </div>
 
                           <button
                             onClick={() => {
-                              setSelectedProposalIdForAcceptance(quote.proposalId);
+                              setSelectedProposalIdForAcceptance(quote.proposalId || quote.id);
                               setActiveView('proposal_accept');
                             }}
                             className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-2 cursor-pointer shrink-0"

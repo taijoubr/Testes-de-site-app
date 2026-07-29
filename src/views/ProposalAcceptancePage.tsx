@@ -19,9 +19,33 @@ import {
 import { useApp } from '../context/AppContext';
 
 export const ProposalAcceptancePage: React.FC = () => {
-  const { proposals, selectedProposalIdForAcceptance, acceptProposal, setActiveView, currentRole } = useApp();
+  const { proposals, quotes, selectedProposalIdForAcceptance, acceptProposal, setActiveView, currentRole } = useApp();
 
-  const proposal = proposals.find(p => p.id === selectedProposalIdForAcceptance) || proposals[0];
+  let proposal = proposals.find(p => p.id === selectedProposalIdForAcceptance || p.quoteId === selectedProposalIdForAcceptance);
+
+  if (!proposal && selectedProposalIdForAcceptance) {
+    const matchingQuote = quotes.find(q => q.id === selectedProposalIdForAcceptance || q.proposalId === selectedProposalIdForAcceptance);
+    if (matchingQuote) {
+      proposal = {
+        id: matchingQuote.proposalId || `PROP-${matchingQuote.id}`,
+        quoteId: matchingQuote.id,
+        title: matchingQuote.projectTitle || matchingQuote.projectType || 'Proposta de Desenvolvimento de Software',
+        clientName: matchingQuote.clientName,
+        company: matchingQuote.company || matchingQuote.clientName,
+        description: matchingQuote.description,
+        scope: matchingQuote.scopeItems || matchingQuote.selectedFeatures || ['Desenvolvimento Web/Mobile', 'Painel Admin', 'API'],
+        totalValue: matchingQuote.offeredValue || 15000,
+        paymentTerms: matchingQuote.paymentTerms || '30% de entrada no aceite + 3 parcelas mensais',
+        contractText: `INSTRUMENTO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS DE TECNOLOGIA\n\nCONTRATADA: NCodes Technologies Ltda\nCONTRATANTE: ${matchingQuote.clientName}\nVALOR TOTAL: R$ ${(matchingQuote.offeredValue || 15000).toLocaleString('pt-BR')}`,
+        status: matchingQuote.status === 'aprovado' ? 'aceito' : 'pendente',
+        createdAt: matchingQuote.createdAt
+      };
+    }
+  }
+
+  if (!proposal) {
+    proposal = proposals[0];
+  }
 
   const [signatureName, setSignatureName] = useState(proposal?.clientName || 'Representante Legal');
   const [accepting, setAccepting] = useState(false);
