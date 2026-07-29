@@ -76,7 +76,59 @@ export const ProposalAcceptancePage: React.FC = () => {
   };
 
   const handleDownloadPdf = () => {
-    window.print();
+    const printElement = document.getElementById('proposal-printable-area');
+    if (!printElement) {
+      window.print();
+      return;
+    }
+
+    try {
+      const printWindow = window.open('', '_blank', 'width=900,height=1000');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+            <head>
+              <title>${proposal.title} - ${proposal.id}</title>
+              <meta charset="utf-8" />
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                @media print {
+                  body { font-family: system-ui, -apple-system, sans-serif; background: #ffffff !important; color: #000000 !important; padding: 15px; }
+                  .no-print { display: none !important; }
+                }
+                body { font-family: system-ui, -apple-system, sans-serif; padding: 30px; background: #ffffff; color: #0f172a; }
+              </style>
+            </head>
+            <body>
+              <div style="max-width: 800px; margin: 0 auto;" class="space-y-6">
+                <div class="border-b-2 border-slate-900 pb-4 flex justify-between items-center">
+                  <div>
+                    <h1 class="text-2xl font-black text-slate-900 uppercase tracking-tight">NCodes Technologies</h1>
+                    <p class="text-xs text-slate-600 font-semibold">Proposta Comercial nº ${proposal.id}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-xs font-bold text-slate-800">Cliente: ${proposal.clientName}</p>
+                    <p class="text-xs text-slate-500">${new Date(proposal.createdAt).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                </div>
+                ${printElement.innerHTML}
+              </div>
+              <script>
+                setTimeout(() => {
+                  window.print();
+                }, 600);
+              </script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      } else {
+        window.print();
+      }
+    } catch {
+      window.print();
+    }
   };
 
   return (
@@ -150,7 +202,7 @@ export const ProposalAcceptancePage: React.FC = () => {
       {/* Contract & Scope Viewer Body */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        <div className="lg:col-span-8 space-y-6">
+        <div id="proposal-printable-area" className="lg:col-span-8 space-y-6">
           
           {/* Executive Overview */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">

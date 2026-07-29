@@ -59,15 +59,60 @@
 }
 
 @media print {
-  .no-print, nav, header, footer {
+  .no-print, nav, header, footer, sidebar, button:not(.keep-print) {
     display: none !important;
   }
-  body {
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Unset fixed overlay bounds so modal content flows naturally into print engine pages */
+  .fixed, .absolute {
+    position: static !important;
+    inset: auto !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+  }
+
+  .overflow-y-auto, [class*="max-h-"] {
+    max-height: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  div {
+    box-shadow: none !important;
+  }
+
+  .print-contract-container, #contract-printable-area, #proposal-printable-area {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    border: none !important;
     background: #ffffff !important;
     color: #000000 !important;
   }
-  div {
-    box-shadow: none !important;
+
+  /* Ensure text colors in dark mode render cleanly for print */
+  .dark, .dark * {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
   }
 }
 

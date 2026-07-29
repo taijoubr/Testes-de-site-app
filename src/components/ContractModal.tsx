@@ -213,7 +213,49 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
   };
 
   const handlePrint = () => {
-    window.print();
+    const printElement = document.getElementById('contract-printable-area');
+    if (!printElement) {
+      window.print();
+      return;
+    }
+
+    try {
+      const printWindow = window.open('', '_blank', 'width=900,height=1000');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+            <head>
+              <title>${activeContract.contractNumber} - ${activeContract.projectTitle}</title>
+              <meta charset="utf-8" />
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                @media print {
+                  body { font-family: system-ui, -apple-system, sans-serif; background: #ffffff !important; color: #000000 !important; padding: 15px; }
+                  .no-print { display: none !important; }
+                }
+                body { font-family: system-ui, -apple-system, sans-serif; padding: 30px; background: #ffffff; color: #0f172a; }
+              </style>
+            </head>
+            <body>
+              <div style="max-width: 800px; margin: 0 auto;">
+                ${printElement.innerHTML}
+              </div>
+              <script>
+                setTimeout(() => {
+                  window.print();
+                }, 600);
+              </script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      } else {
+        window.print();
+      }
+    } catch {
+      window.print();
+    }
   };
 
   const handleCopyValidation = () => {
@@ -320,7 +362,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
         <div className="p-4 sm:p-8 overflow-y-auto space-y-8 text-slate-800 dark:text-slate-200 text-xs sm:text-sm bg-white dark:bg-slate-900">
           
           {activeTab === 'document' && (
-            <div className="print-contract-container space-y-6 max-w-3xl mx-auto bg-white dark:bg-slate-950 p-6 sm:p-10 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div id="contract-printable-area" className="print-contract-container space-y-6 max-w-3xl mx-auto bg-white dark:bg-slate-950 p-6 sm:p-10 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               
               {/* Document Header Branding */}
               <div className="border-b-2 border-slate-900 dark:border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
