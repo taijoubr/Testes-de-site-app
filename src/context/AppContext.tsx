@@ -188,6 +188,7 @@ interface AppContextType {
   updateLeadStage: (leadId: string, stage: LeadCRM['stage']) => void;
   markNotificationAsRead: (id: string) => void;
   clearAllNotifications: () => void;
+  resetTestData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -2559,6 +2560,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications([]);
   };
 
+  const resetTestData = async () => {
+    try {
+      // 1. Delete all contracts
+      const cSnap = await getDocs(collection(db, 'contracts'));
+      for (const d of cSnap.docs) {
+        await deleteDoc(doc(db, 'contracts', d.id));
+      }
+      setContracts([]);
+
+      // 2. Delete all projects
+      const pSnap = await getDocs(collection(db, 'projects'));
+      for (const d of pSnap.docs) {
+        await deleteDoc(doc(db, 'projects', d.id));
+      }
+      setProjects([]);
+
+      // 3. Delete all proposals
+      const propSnap = await getDocs(collection(db, 'proposals'));
+      for (const d of propSnap.docs) {
+        await deleteDoc(doc(db, 'proposals', d.id));
+      }
+      setProposals([]);
+
+      // 4. Delete all quotes
+      const qSnap = await getDocs(collection(db, 'quotes'));
+      for (const d of qSnap.docs) {
+        await deleteDoc(doc(db, 'quotes', d.id));
+      }
+      setQuotes([]);
+
+      // 5. Delete all client subscriptions
+      const subSnap = await getDocs(collection(db, 'clientSubscriptions'));
+      for (const d of subSnap.docs) {
+        await deleteDoc(doc(db, 'clientSubscriptions', d.id));
+      }
+      setSubscriptions([]);
+
+      // 6. Delete test financials
+      const finSnap = await getDocs(collection(db, 'financials'));
+      for (const d of finSnap.docs) {
+        await deleteDoc(doc(db, 'financials', d.id));
+      }
+      setFinancials([]);
+
+      await addNotification(
+        'Reset de Testes Concluído! 🧹',
+        'Todos os projetos, contratos, orçamentos, propostas e mensalidades de teste foram limpos com sucesso.',
+        'project'
+      );
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+    } catch (err) {
+      console.error('Erro ao resetar dados de teste:', err);
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       activeView,
@@ -2649,7 +2705,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createSupportTicket,
       updateLeadStage,
       markNotificationAsRead,
-      clearAllNotifications
+      clearAllNotifications,
+      resetTestData
     }}>
       {children}
     </AppContext.Provider>

@@ -127,8 +127,15 @@ export const AdminPanel: React.FC = () => {
     portfolioProjects,
     addPortfolioProject,
     updatePortfolioProject,
-    deletePortfolioProject
+    deletePortfolioProject,
+    resetTestData
   } = useApp();
+
+  const handleResetTestData = async () => {
+    if (window.confirm('Tem certeza que deseja apagar todos os projetos, contratos, orçamentos e propostas criados para teste? Esta ação limpará os dados de teste.')) {
+      await resetTestData();
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'contracts' | 'subscriptions' | 'projects' | 'financials' | 'clients' | 'crm' | 'team' | 'admin_users' | 'site_settings' | 'services' | 'portfolio'>('dashboard');
 
@@ -904,8 +911,17 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Controls: Logout */}
+          {/* Controls: Reset Test Data & Logout */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleResetTestData}
+              className="py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Resetar e apagar projetos, contratos e orçamentos de teste"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Resetar Dados de Teste</span>
+            </button>
+
             <button
               onClick={logoutAdmin}
               className="py-2 px-3.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
