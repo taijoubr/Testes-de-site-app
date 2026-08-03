@@ -1,5 +1,5 @@
 import React from 'react';
-import { Code2, Github, Instagram, Linkedin, Mail, Phone, MapPin, Heart } from 'lucide-react';
+import { Code2, Github, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const Footer: React.FC = () => {
@@ -156,7 +156,6 @@ export const Footer: React.FC = () => {
           <p>© {new Date().getFullYear()} NCodes Technologies. Todos os direitos reservados.</p>
           <div className="flex items-center gap-1">
             <span>Desenvolvido com excelência técnica por NCodes Tech</span>
-            <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </div>
         </div>
 
