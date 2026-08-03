@@ -8,11 +8,18 @@ import { Resend } from 'resend';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const _filename = typeof __filename !== 'undefined' ? __filename : path.join(process.cwd(), 'server.ts');
+const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_filename);
 
 const app = express();
 const PORT = 3000;
+
+// Enable CORS for PWA Builder testing and external tools
+app.use((_req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
 
 app.use(express.json());
 
@@ -451,6 +458,10 @@ Forneça um objeto JSON válido com a seguinte estrutura exatamente:
 
 // Vite middleware in dev mode / static files in production
 async function startServer() {
+  // Always serve public static assets (manifest.json, sw.js, icons, etc.)
+  const publicPath = path.join(process.cwd(), 'public');
+  app.use(express.static(publicPath));
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -461,7 +472,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (_req, res) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
