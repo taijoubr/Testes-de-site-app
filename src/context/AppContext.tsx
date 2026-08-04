@@ -24,6 +24,8 @@ import {
   QuoteTimelineItem,
   QuoteVersion,
   Proposal, 
+  PaymentConditions,
+  CounterProposal,
   Project, 
   FinancialTransaction, 
   ChatMessage, 
@@ -160,6 +162,8 @@ interface AppContextType {
   approveQuoteByClient: (quoteId: string, customOptions?: { dueDate?: string; monthlyDueDate?: string }) => Promise<void>;
   refuseQuoteByClient: (quoteId: string, reason?: string) => Promise<void>;
   requestQuoteChangesByClient: (quoteId: string, changeRequestText: string) => Promise<void>;
+  submitCounterProposal: (quoteOrPropId: string, counterData: { proposedTotalValue: number; proposedPaymentType?: 'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada'; proposedDownPaymentPercent?: number; proposedDownPaymentValue?: number; proposedInstallmentsCount?: number; notes: string; }) => Promise<void>;
+  respondCounterProposal: (quoteOrPropId: string, action: 'accept' | 'reject', adminNotes?: string, newPaymentTerms?: string) => Promise<void>;
   respondToQuoteRequest: (quoteId: string, responseText: string) => Promise<void>;
   convertQuoteToProject: (quoteId: string, customOptions?: any) => Promise<string | undefined>;
   deleteQuote: (quoteId: string) => Promise<void>;
@@ -1823,6 +1827,193 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const submitCounterProposal = async (
+    quoteOrPropId: string, 
+    counterData: {
+      proposedTotalValue: number;
+      proposedPaymentType?: 'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada';
+      proposedDownPaymentPercent?: number;
+      proposedDownPaymentValue?: number;
+      proposedInstallmentsCount?: number;
+      notes: string;
+    }
+  ) => {
+    let q = quotes.find(item => item.id === quoteOrPropId || item.proposalId === quoteOrPropId);
+    let p = proposals.find(item => item.id === quoteOrPropId || item.quoteId === quoteOrPropId || (q && item.id === q.proposalId));
+
+    if (!q && !p) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+
+    const counterObj: CounterProposal = {
+      id: `CP-${Date.now()}`,
+      createdAt: nowISO,
+      clientName: currentClientUser?.name || p?.clientName || q?.clientName || 'Cliente',
+      clientEmail: currentClientUser?.email || q?.email,
+      proposedTotalValue: counterData.proposedTotalValue,
+      proposedPaymentType: counterData.proposedPaymentType || 'entrada_parcelamento',
+      proposedDownPaymentPercent: counterData.proposedDownPaymentPercent,
+      proposedDownPaymentValue: counterData.proposedDownPaymentValue,
+      proposedInstallmentsCount: counterData.proposedInstallmentsCount,
+      notes: counterData.notes,
+      status: 'pendente'
+    };
+
+    if (q) {
+      const timelineItem = {
+        id: `tl-${Date.now()}`,
+        timestamp: nowISO,
+        dateStr: dateObj.toLocaleDateString('pt-BR'),
+        timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        user: currentClientUser ? `${currentClientUser.name} (Cliente)` : (q.clientName || 'Cliente'),
+        userRole: 'client' as const,
+        statusChangedTo: 'em_negociacao' as QuoteStatus,
+        statusLabel: 'Contraproposta Enviada',
+        notes: `Cliente enviou uma contraproposta de R$ ${counterData.proposedTotalValue.toLocaleString('pt-BR')}. Observação: "${counterData.notes}"`
+      };
+
+      const updatedQuote: QuoteRequest = {
+        ...q,
+        status: 'em_negociacao',
+        counterProposal: counterObj,
+        updatedAt: nowISO,
+        timeline: [...(q.timeline || []), timelineItem]
+      };
+
+      await setDoc(doc(db, 'quotes', q.id), updatedQuote);
+    }
+
+    if (p) {
+      const updatedProp: Proposal = {
+        ...p,
+        status: 'pendente',
+        counterProposal: counterObj
+      };
+      await setDoc(doc(db, 'proposals', p.id), updatedProp);
+    }
+
+    await addNotification(
+      'Contraproposta Recebida!', 
+      `${counterObj.clientName} enviou uma contraproposta no valor de R$ ${counterData.proposedTotalValue.toLocaleString('pt-BR')}.`, 
+      'proposal'
+    );
+  };
+
+  const respondCounterProposal = async (
+    quoteOrPropId: string, 
+    action: 'accept' | 'reject', 
+    adminNotes?: string,
+    newPaymentTerms?: string
+  ) => {
+    let q = quotes.find(item => item.id === quoteOrPropId || item.proposalId === quoteOrPropId);
+    let p = proposals.find(item => item.id === quoteOrPropId || item.quoteId === quoteOrPropId || (q && item.id === q.proposalId));
+
+    if (!q && !p) return;
+
+    const nowISO = new Date().toISOString();
+    const dateObj = new Date();
+
+    const existingCounter = q?.counterProposal || p?.counterProposal;
+    if (!existingCounter) return;
+
+    const updatedCounter: CounterProposal = {
+      ...existingCounter,
+      status: action === 'accept' ? 'aceita' : 'recusada',
+      reviewedAt: nowISO,
+      adminResponse: adminNotes
+    };
+
+    if (action === 'accept') {
+      const newValue = existingCounter.proposedTotalValue;
+      const formattedTerms = newPaymentTerms || (
+        existingCounter.proposedPaymentType === 'vista'
+          ? '100% à vista no aceite digital via Pix/Transferência'
+          : existingCounter.proposedPaymentType === 'parcelado_sem_entrada'
+          ? `Parcelado sem entrada em ${existingCounter.proposedInstallmentsCount || 3}x via Pix/Boleto`
+          : `${existingCounter.proposedDownPaymentPercent || 30}% de entrada no aceite + ${existingCounter.proposedInstallmentsCount || 3} parcelas mensais via Pix/Boleto`
+      );
+
+      if (q) {
+        const timelineItem = {
+          id: `tl-${Date.now()}`,
+          timestamp: nowISO,
+          dateStr: dateObj.toLocaleDateString('pt-BR'),
+          timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          user: currentAdminUser ? `${currentAdminUser.name} (Atendimento)` : 'Equipe NCodes',
+          userRole: 'admin' as const,
+          statusChangedTo: 'proposta_enviada' as QuoteStatus,
+          statusLabel: 'Contraproposta Aceita',
+          notes: `Contraproposta de R$ ${newValue.toLocaleString('pt-BR')} aceita. Novas condições: ${formattedTerms}`
+        };
+
+        const updatedQuote: QuoteRequest = {
+          ...q,
+          offeredValue: newValue,
+          paymentTerms: formattedTerms,
+          status: 'proposta_enviada',
+          counterProposal: updatedCounter,
+          updatedAt: nowISO,
+          timeline: [...(q.timeline || []), timelineItem]
+        };
+        await setDoc(doc(db, 'quotes', q.id), updatedQuote);
+      }
+
+      if (p) {
+        const updatedProp: Proposal = {
+          ...p,
+          totalValue: newValue,
+          paymentTerms: formattedTerms,
+          counterProposal: updatedCounter
+        };
+        await setDoc(doc(db, 'proposals', p.id), updatedProp);
+      }
+
+      await addNotification(
+        'Contraproposta Aceita!', 
+        `A contraproposta de ${q?.clientName || p?.clientName} foi aceita com valor de R$ ${newValue.toLocaleString('pt-BR')}.`, 
+        'proposal'
+      );
+    } else {
+      if (q) {
+        const timelineItem = {
+          id: `tl-${Date.now()}`,
+          timestamp: nowISO,
+          dateStr: dateObj.toLocaleDateString('pt-BR'),
+          timeStr: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          user: currentAdminUser ? `${currentAdminUser.name} (Atendimento)` : 'Equipe NCodes',
+          userRole: 'admin' as const,
+          statusChangedTo: 'proposta_enviada' as QuoteStatus,
+          statusLabel: 'Contraproposta Recusada',
+          notes: `Contraproposta recusada. Nota da equipe: "${adminNotes || 'Mantidas as condições originais.'}"`
+        };
+
+        const updatedQuote: QuoteRequest = {
+          ...q,
+          status: 'proposta_enviada',
+          counterProposal: updatedCounter,
+          updatedAt: nowISO,
+          timeline: [...(q.timeline || []), timelineItem]
+        };
+        await setDoc(doc(db, 'quotes', q.id), updatedQuote);
+      }
+
+      if (p) {
+        const updatedProp: Proposal = {
+          ...p,
+          counterProposal: updatedCounter
+        };
+        await setDoc(doc(db, 'proposals', p.id), updatedProp);
+      }
+
+      await addNotification(
+        'Contraproposta Recusada', 
+        `Contraproposta de ${q?.clientName || p?.clientName} foi recusada e mantidos os termos da proposta.`, 
+        'proposal'
+      );
+    }
+  };
+
   const respondToQuoteRequest = async (quoteId: string, responseText: string) => {
     const q = quotes.find(item => item.id === quoteId);
     if (!q) return;
@@ -2685,6 +2876,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       approveQuoteByClient,
       refuseQuoteByClient,
       requestQuoteChangesByClient,
+      submitCounterProposal,
+      respondCounterProposal,
       respondToQuoteRequest,
       convertQuoteToProject,
       deleteQuote,

@@ -89,6 +89,31 @@ export interface QuoteVersion {
   notes?: string;
 }
 
+export interface PaymentConditions {
+  paymentType: 'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada';
+  downPaymentPercent?: number; // e.g. 30 for 30%
+  downPaymentValue?: number;   // calculated or overridden R$ value
+  installmentsCount?: number;  // e.g. 3 for 3x
+  installmentValue?: number;   // R$ per installment
+  paymentMethod?: string;      // Pix, Boleto, Cartao
+}
+
+export interface CounterProposal {
+  id: string;
+  createdAt: string;
+  clientName: string;
+  clientEmail?: string;
+  proposedTotalValue: number;
+  proposedPaymentType?: 'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada';
+  proposedDownPaymentPercent?: number;
+  proposedDownPaymentValue?: number;
+  proposedInstallmentsCount?: number;
+  notes: string;
+  status: 'pendente' | 'aceita' | 'recusada';
+  reviewedAt?: string;
+  adminResponse?: string;
+}
+
 export interface QuoteRequest {
   id: string;
   clientName: string;
@@ -125,6 +150,8 @@ export interface QuoteRequest {
   recurringMonthlyValue?: number;
   offeredDeadline?: string;
   paymentTerms?: string;
+  paymentConditions?: PaymentConditions;
+  counterProposal?: CounterProposal;
   scopeItems?: string[];
   refusalReason?: string;
   
@@ -164,6 +191,8 @@ export interface Proposal {
   totalValue: number;
   recurringMonthlyValue?: number;
   paymentTerms: string;
+  paymentConditions?: PaymentConditions;
+  counterProposal?: CounterProposal;
   contractText: string;
   status: 'pendente' | 'aceito' | 'rejeitado';
   createdAt: string;

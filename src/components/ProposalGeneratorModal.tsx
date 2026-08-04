@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileSignature, Plus, Trash2, Send, X, DollarSign, Calendar, ShieldCheck } from 'lucide-react';
+import { FileSignature, Plus, Trash2, Send, X, DollarSign, Calendar, ShieldCheck, Calculator, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { QuoteRequest } from '../types';
 
@@ -14,8 +14,43 @@ export const ProposalGeneratorModal: React.FC<ProposalGeneratorModalProps> = ({ 
   const [title, setTitle] = useState(`Proposta Técnica e Comercial - ${quote.company || quote.clientName}`);
   const [totalValue, setTotalValue] = useState(quote.aiAnalysis?.suggestedBudget || 18500);
   const [recurringMonthlyValue, setRecurringMonthlyValue] = useState(1200);
-  const [paymentTerms, setPaymentTerms] = useState('30% de entrada no aceite digital + parcelas mensais via Pix.');
+  const [paymentTerms, setPaymentTerms] = useState('30% de entrada no aceite digital + 3 parcelas mensais via Pix/Boleto');
   const [description, setDescription] = useState(`Desenvolvimento de software sob medida para a empresa ${quote.company || quote.clientName}. ${quote.description}`);
+
+  // Payment Conditions Builder State
+  const [paymentType, setPaymentType] = useState<'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada'>(
+    quote.paymentConditions?.paymentType || 'entrada_parcelamento'
+  );
+  const [downPaymentPercent, setDownPaymentPercent] = useState<number>(
+    quote.paymentConditions?.downPaymentPercent || 30
+  );
+  const [installmentsCount, setInstallmentsCount] = useState<number>(
+    quote.paymentConditions?.installmentsCount || 3
+  );
+  const [paymentMethod, setPaymentMethod] = useState<string>(
+    quote.paymentConditions?.paymentMethod || 'Pix / Boleto ou Cartão de Crédito'
+  );
+
+  const calculateAndApplyPaymentTerms = (
+    pType = paymentType, 
+    pPercent = downPaymentPercent, 
+    pInst = installmentsCount, 
+    pMethod = paymentMethod, 
+    val = totalValue
+  ) => {
+    const totalVal = Number(val) || 0;
+    if (pType === 'vista') {
+      setPaymentTerms(`Pagamento Integral à Vista (100% no aceite digital: R$ ${totalVal.toLocaleString('pt-BR')}) via ${pMethod}`);
+    } else if (pType === 'parcelado_sem_entrada') {
+      const perInst = pInst > 0 ? (totalVal / pInst) : totalVal;
+      setPaymentTerms(`Parcelado sem entrada em ${pInst}x de R$ ${perInst.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} via ${pMethod}`);
+    } else {
+      const entryVal = (totalVal * pPercent) / 100;
+      const remaining = totalVal - entryVal;
+      const perInst = pInst > 0 ? (remaining / pInst) : remaining;
+      setPaymentTerms(`${pPercent}% de entrada no aceite (R$ ${entryVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) + ${pInst} parcelas mensais de R$ ${perInst.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} via ${pMethod}`);
+    }
+  };
 
   const [scopeItems, setScopeItems] = useState<string[]>([
     'Desenvolvimento do aplicativo em Flutter (iOS)',
@@ -57,6 +92,12 @@ export const ProposalGeneratorModal: React.FC<ProposalGeneratorModalProps> = ({ 
       totalValue: Number(totalValue),
       recurringMonthlyValue: Number(recurringMonthlyValue),
       paymentTerms,
+      paymentConditions: {
+        paymentType,
+        downPaymentPercent: paymentType === 'entrada_parcelamento' ? downPaymentPercent : 0,
+        installmentsCount: paymentType !== 'vista' ? installmentsCount : 1,
+        paymentMethod
+      },
       contractText: `CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TECNOLOGIA
 
 CONTRATADA: NCODES TECHNOLOGIES LTDA, inscrita no CNPJ/MF sob o nº 00.000.000/0001-00.
@@ -140,18 +181,107 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
               </div>
             </div>
 
+          {/* Payment Conditions Configurator */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="flex items-center justify-between border-b pb-2 border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-cyan-500" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Forma de Pagamento e Parcelas</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Modelo
+                </label>
+                <select
+                  value={paymentType}
+                  onChange={e => {
+                    const newType = e.target.value as any;
+                    setPaymentType(newType);
+                    calculateAndApplyPaymentTerms(newType, downPaymentPercent, installmentsCount, paymentMethod, totalValue);
+                  }}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs text-slate-900 dark:text-white font-semibold"
+                >
+                  <option value="entrada_parcelamento">Entrada + Parcelamento</option>
+                  <option value="vista">100% à Vista</option>
+                  <option value="parcelado_sem_entrada">Parcelado Sem Entrada</option>
+                </select>
+              </div>
+
+              {paymentType === 'entrada_parcelamento' && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Entrada (%)
+                  </label>
+                  <select
+                    value={downPaymentPercent}
+                    onChange={e => {
+                      const newPercent = Number(e.target.value);
+                      setDownPaymentPercent(newPercent);
+                      calculateAndApplyPaymentTerms(paymentType, newPercent, installmentsCount, paymentMethod, totalValue);
+                    }}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold"
+                  >
+                    <option value={10}>10% de Entrada</option>
+                    <option value={20}>20% de Entrada</option>
+                    <option value={30}>30% de Entrada</option>
+                    <option value={40}>40% de Entrada</option>
+                    <option value={50}>50% de Entrada</option>
+                  </select>
+                </div>
+              )}
+
+              {paymentType !== 'vista' && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Nº de Parcelas
+                  </label>
+                  <select
+                    value={installmentsCount}
+                    onChange={e => {
+                      const newInst = Number(e.target.value);
+                      setInstallmentsCount(newInst);
+                      calculateAndApplyPaymentTerms(paymentType, downPaymentPercent, newInst, paymentMethod, totalValue);
+                    }}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs text-cyan-600 dark:text-cyan-400 font-bold"
+                  >
+                    <option value={1}>1x</option>
+                    <option value={2}>2x</option>
+                    <option value={3}>3x</option>
+                    <option value={4}>4x</option>
+                    <option value={6}>6x</option>
+                    <option value={10}>10x</option>
+                    <option value={12}>12x</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Condições de Pagamento
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Descrição Formatada
+                </label>
+                <button
+                  type="button"
+                  onClick={() => calculateAndApplyPaymentTerms()}
+                  className="text-[10px] text-cyan-500 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Recalcular</span>
+                </button>
+              </div>
               <input
                 type="text"
                 required
                 value={paymentTerms}
                 onChange={e => setPaymentTerms(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
               />
             </div>
+          </div>
           </div>
 
           <div>

@@ -24,7 +24,8 @@ import {
   Mail,
   Copy,
   Check,
-  Info
+  Info,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { QuoteRequest, QuoteStatus, QuoteAttachment } from '../types';
@@ -43,6 +44,7 @@ export const QuoteTrackerModal: React.FC<QuoteTrackerModalProps> = ({ quote, onC
     respondToQuoteRequest, 
     addQuoteAttachment,
     setSelectedProjectId,
+    setSelectedProposalIdForAcceptance,
     setActiveView
   } = useApp();
 
@@ -563,10 +565,22 @@ export const QuoteTrackerModal: React.FC<QuoteTrackerModalProps> = ({ quote, onC
 
                       <button
                         onClick={() => setShowChangeModal(true)}
-                        className="w-full sm:w-auto px-4 py-2.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 font-bold rounded-xl text-xs border border-orange-500/30 transition-colors flex items-center justify-center gap-2"
+                        className="w-full sm:w-auto px-4 py-2.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 font-bold rounded-xl text-xs border border-orange-500/30 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <MessageSquare className="w-4 h-4" />
                         Solicitar Alterações
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedProposalIdForAcceptance(quote.proposalId || quote.id);
+                          setActiveView('proposal_acceptance');
+                          onClose();
+                        }}
+                        className="w-full sm:w-auto px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold rounded-xl text-xs border border-amber-500/30 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Contraproposta
                       </button>
 
                       <button

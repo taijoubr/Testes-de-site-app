@@ -27,7 +27,12 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  FileSignature
+  FileSignature,
+  XCircle,
+  Calculator,
+  Percent,
+  Repeat,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { QuoteRequest, QuoteStatus, QuoteAttachment, Proposal } from '../types';
@@ -49,7 +54,8 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
     setSelectedProposalIdForAcceptance,
     createProposal,
     proposals,
-    setActiveView
+    setActiveView,
+    respondCounterProposal
   } = useApp();
 
   // Find existing proposal associated with this quote if available
@@ -74,6 +80,41 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
   const [paymentTerms, setPaymentTerms] = useState<string>(
     existingProposal?.paymentTerms || quote.paymentTerms || '30% entrada no aceite digital + parcelas via Pix/Boleto ou 12x cartão'
   );
+  
+  // Interactive Payment Conditions Builder State
+  const [paymentType, setPaymentType] = useState<'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada'>(
+    quote.paymentConditions?.paymentType || 'entrada_parcelamento'
+  );
+  const [downPaymentPercent, setDownPaymentPercent] = useState<number>(
+    quote.paymentConditions?.downPaymentPercent || 30
+  );
+  const [installmentsCount, setInstallmentsCount] = useState<number>(
+    quote.paymentConditions?.installmentsCount || 3
+  );
+  const [paymentMethod, setPaymentMethod] = useState<string>(
+    quote.paymentConditions?.paymentMethod || 'Pix / Boleto ou Cartão de Crédito'
+  );
+
+  const calculateAndApplyPaymentTerms = (
+    pType = paymentType, 
+    pPercent = downPaymentPercent, 
+    pInst = installmentsCount, 
+    pMethod = paymentMethod, 
+    valStr = offeredValue
+  ) => {
+    const totalVal = parseFloat(valStr) || 0;
+    if (pType === 'vista') {
+      setPaymentTerms(`Pagamento Integral à Vista (100% no aceite digital: R$ ${totalVal.toLocaleString('pt-BR')}) via ${pMethod}`);
+    } else if (pType === 'parcelado_sem_entrada') {
+      const perInst = pInst > 0 ? (totalVal / pInst) : totalVal;
+      setPaymentTerms(`Parcelado sem entrada em ${pInst}x de R$ ${perInst.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} via ${pMethod}`);
+    } else {
+      const entryVal = (totalVal * pPercent) / 100;
+      const remaining = totalVal - entryVal;
+      const perInst = pInst > 0 ? (remaining / pInst) : remaining;
+      setPaymentTerms(`${pPercent}% de entrada no aceite (R$ ${entryVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) + ${pInst} parcelas mensais de R$ ${perInst.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} via ${pMethod}`);
+    }
+  };
   const [assignedTo, setAssignedTo] = useState<string>(quote.assignedTo || 'usr-1');
   
   const [scopeItems, setScopeItems] = useState<string[]>(
@@ -547,6 +588,80 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
           {activeTab === 'edit_offer' && (
             <form onSubmit={handleSaveAndGenerateProposal} className="space-y-5 bg-slate-900/80 p-5 rounded-b-2xl border border-t-0 border-slate-800">
               
+              {/* Counter-Proposal Pending Banner */}
+              {(() => {
+                const counterProp = quote.counterProposal || existingProposal?.counterProposal;
+                if (!counterProp || counterProp.status !== 'pendente') return null;
+
+                return (
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-bold text-sm text-amber-400">
+                        <Clock className="w-4.5 h-4.5" />
+                        <span>Contraproposta do Cliente Recebida!</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                        Aguardando Análise
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Valor Original</span>
+                        <span className="font-bold text-slate-300">R$ {Number(offeredValue).toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div>
+                        <span className="text-amber-400 block text-[10px] uppercase font-bold">Valor Proposto pelo Cliente</span>
+                        <span className="font-black text-amber-300 text-sm">R$ {counterProp.proposedTotalValue.toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Condição Solicitada</span>
+                        <span className="font-bold text-slate-200">
+                          {counterProp.proposedPaymentType === 'vista'
+                            ? '100% à vista'
+                            : counterProp.proposedPaymentType === 'parcelado_sem_entrada'
+                            ? `Parcelado sem entrada (${counterProp.proposedInstallmentsCount || 3}x)`
+                            : `Entrada ${counterProp.proposedDownPaymentPercent || 30}% + ${counterProp.proposedInstallmentsCount || 3}x`
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    {counterProp.notes && (
+                      <p className="text-xs text-slate-300 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/80 italic">
+                        "{counterProp.notes}"
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setOfferedValue(String(counterProp.proposedTotalValue));
+                          await respondCounterProposal(quote.id, 'accept', 'Contraproposta aceita conforme solicitado pelo cliente.');
+                        }}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Aceitar Contraproposta (R$ {counterProp.proposedTotalValue.toLocaleString('pt-BR')})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const reason = prompt('Informe a justificativa/motivo para recusar a contraproposta:') || 'Condições do escopo mantidas conforme proposta original.';
+                          await respondCounterProposal(quote.id, 'reject', reason);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-rose-600/20 border border-rose-500/30 text-rose-300 hover:bg-rose-600/30 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>Recusar / Manter Proposta Original</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="flex items-center justify-between border-b pb-3 border-slate-800">
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -637,37 +752,147 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Interactive Payment Conditions Builder */}
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between border-b pb-2 border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Configurador de Condições de Pagamento</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">Flexibilidade para o orçamento</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Modelo de Cobrança
+                    </label>
+                    <select
+                      value={paymentType}
+                      onChange={e => {
+                        const newType = e.target.value as any;
+                        setPaymentType(newType);
+                        calculateAndApplyPaymentTerms(newType, downPaymentPercent, installmentsCount, paymentMethod, offeredValue);
+                      }}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-cyan-400 font-semibold"
+                    >
+                      <option value="entrada_parcelamento">Entrada + Parcelas (Padrão)</option>
+                      <option value="vista">Pagamento Integral à Vista (100%)</option>
+                      <option value="parcelado_sem_entrada">Parcelado Sem Entrada</option>
+                    </select>
+                  </div>
+
+                  {paymentType === 'entrada_parcelamento' && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                        % da Entrada (Sinal)
+                      </label>
+                      <select
+                        value={downPaymentPercent}
+                        onChange={e => {
+                          const newPercent = Number(e.target.value);
+                          setDownPaymentPercent(newPercent);
+                          calculateAndApplyPaymentTerms(paymentType, newPercent, installmentsCount, paymentMethod, offeredValue);
+                        }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-emerald-400 focus:outline-none focus:border-cyan-400 font-bold"
+                      >
+                        <option value={10}>10% de Entrada</option>
+                        <option value={20}>20% de Entrada</option>
+                        <option value={30}>30% de Entrada (Recomendado)</option>
+                        <option value={40}>40% de Entrada</option>
+                        <option value={50}>50% de Entrada</option>
+                        <option value={0}>Sem Entrada (0%)</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {paymentType !== 'vista' && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                        Parcelas do Saldo
+                      </label>
+                      <select
+                        value={installmentsCount}
+                        onChange={e => {
+                          const newInst = Number(e.target.value);
+                          setInstallmentsCount(newInst);
+                          calculateAndApplyPaymentTerms(paymentType, downPaymentPercent, newInst, paymentMethod, offeredValue);
+                        }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-cyan-400 focus:outline-none focus:border-cyan-400 font-bold"
+                      >
+                        <option value={1}>1x (À Vista no término)</option>
+                        <option value={2}>2 parcelas mensais</option>
+                        <option value={3}>3 parcelas mensais</option>
+                        <option value={4}>4 parcelas mensais</option>
+                        <option value={5}>5 parcelas mensais</option>
+                        <option value={6}>6 parcelas mensais</option>
+                        <option value={10}>10 parcelas mensais</option>
+                        <option value={12}>12 parcelas no Cartão</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Meio de Pagamento
+                    </label>
+                    <select
+                      value={paymentMethod}
+                      onChange={e => {
+                        const newMethod = e.target.value;
+                        setPaymentMethod(newMethod);
+                        calculateAndApplyPaymentTerms(paymentType, downPaymentPercent, installmentsCount, newMethod, offeredValue);
+                      }}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-cyan-400 font-semibold"
+                    >
+                      <option value="Pix Copia e Cola / Chave CNPJ">Pix (Desconto Instantâneo)</option>
+                      <option value="Pix / Boleto Bancário">Pix / Boleto Bancário</option>
+                      <option value="Cartão de Crédito em até 12x">Cartão de Crédito (até 12x)</option>
+                      <option value="Pix, Boleto ou Cartão de Crédito">Todas as Formas (Pix/Boleto/Cartão)</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Formas e Condições de Pagamento *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-300">
+                      Texto Descritivo das Condições de Pagamento (Formato Final no PDF / Proposta) *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => calculateAndApplyPaymentTerms()}
+                      className="text-[10px] text-cyan-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Recalcular Texto</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     required
                     value={paymentTerms}
                     onChange={e => setPaymentTerms(e.target.value)}
-                    placeholder="Ex: 30% entrada no aceite digital + 2 parcelas mensais via Pix ou 12x cartão"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                    placeholder="Ex: 30% entrada no aceite digital + 3 parcelas mensais via Pix"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-cyan-400"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Engenheiro / Atendimento Responsável
-                  </label>
-                  <select
-                    value={assignedTo}
-                    onChange={e => setAssignedTo(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                  >
-                    {TEAM_MEMBERS.map(member => (
-                      <option key={member.id} value={member.id}>
-                        {member.name} ({member.role.toUpperCase()})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Engenheiro / Atendimento Responsável
+                </label>
+                <select
+                  value={assignedTo}
+                  onChange={e => setAssignedTo(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                >
+                  {TEAM_MEMBERS.map(member => (
+                    <option key={member.id} value={member.id}>
+                      {member.name} ({member.role.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Scope Items Builder */}

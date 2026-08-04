@@ -14,12 +14,16 @@ import {
   ArrowRight,
   ArrowLeft,
   FileText,
-  Printer
+  Printer,
+  RefreshCw,
+  Calculator,
+  Send,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const ProposalAcceptancePage: React.FC = () => {
-  const { proposals, quotes, selectedProposalIdForAcceptance, acceptProposal, setActiveView, setSelectedContractId, currentRole } = useApp();
+  const { proposals, quotes, selectedProposalIdForAcceptance, acceptProposal, submitCounterProposal, setActiveView, setSelectedContractId, currentRole } = useApp();
 
   let proposal = proposals.find(p => p.id === selectedProposalIdForAcceptance || p.quoteId === selectedProposalIdForAcceptance);
 
@@ -54,6 +58,30 @@ export const ProposalAcceptancePage: React.FC = () => {
   const [manualMonthlyDueDate, setManualMonthlyDueDate] = useState<string>('Dia 10 de cada mês');
   const [accepting, setAccepting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Counter-Proposal State
+  const [counterModalOpen, setCounterModalOpen] = useState(false);
+  const [proposedTotalValue, setProposedTotalValue] = useState<number>(proposal?.totalValue || 15000);
+  const [proposedPaymentType, setProposedPaymentType] = useState<'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada'>('entrada_parcelamento');
+  const [proposedDownPaymentPercent, setProposedDownPaymentPercent] = useState<number>(30);
+  const [proposedInstallmentsCount, setProposedInstallmentsCount] = useState<number>(3);
+  const [counterNotes, setCounterNotes] = useState<string>('');
+  const [submittingCounter, setSubmittingCounter] = useState(false);
+
+  const handleSubmitCounterProposal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proposal) return;
+    setSubmittingCounter(true);
+    await submitCounterProposal(proposal.id, {
+      proposedTotalValue: Number(proposedTotalValue),
+      proposedPaymentType,
+      proposedDownPaymentPercent,
+      proposedInstallmentsCount,
+      notes: counterNotes.trim()
+    });
+    setSubmittingCounter(false);
+    setCounterModalOpen(false);
+  };
 
   if (!proposal) {
     return (
@@ -356,6 +384,29 @@ export const ProposalAcceptancePage: React.FC = () => {
                   <FileSignature className="w-4 h-4" />
                   <span>ACEITAR PROPOSTA</span>
                 </button>
+
+                {proposal.counterProposal && proposal.counterProposal.status === 'pendente' ? (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-1 text-center">
+                    <div className="flex items-center justify-center gap-1.5 font-bold text-xs">
+                      <Clock className="w-4 h-4 text-amber-400" />
+                      <span>Contraproposta enviada e em análise</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      R$ {proposal.counterProposal.proposedTotalValue.toLocaleString('pt-BR')} solicitados. Responderemos em breve.
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setProposedTotalValue(proposal.totalValue);
+                      setCounterModalOpen(true);
+                    }}
+                    className="w-full py-3 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center justify-center gap-2 border border-amber-500/30 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Fazer uma Contraproposta / Negociar Condição</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -364,6 +415,143 @@ export const ProposalAcceptancePage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Counter Proposal Modal */}
+      {counterModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold">
+                  <Calculator className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Enviar Contraproposta</h3>
+                  <p className="text-xs text-slate-500">Ajuste o valor ou as parcelas desejadas para análise</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCounterModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitCounterProposal} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Valor Total Proposto (R$)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="100"
+                    required
+                    value={proposedTotalValue}
+                    onChange={e => setProposedTotalValue(Number(e.target.value))}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-8 p-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Valor original da proposta: R$ {proposal.totalValue.toLocaleString('pt-BR')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Forma de Pagamento
+                  </label>
+                  <select
+                    value={proposedPaymentType}
+                    onChange={e => setProposedPaymentType(e.target.value as any)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-slate-800 dark:text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="entrada_parcelamento">Entrada + Parcelas</option>
+                    <option value="vista">100% à Vista</option>
+                    <option value="parcelado_sem_entrada">Parcelado Sem Entrada</option>
+                  </select>
+                </div>
+
+                {proposedPaymentType === 'entrada_parcelamento' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Entrada (%) Desejada
+                    </label>
+                    <select
+                      value={proposedDownPaymentPercent}
+                      onChange={e => setProposedDownPaymentPercent(Number(e.target.value))}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs font-bold text-amber-600 dark:text-amber-400 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value={10}>10% de Entrada</option>
+                      <option value={20}>20% de Entrada</option>
+                      <option value={30}>30% de Entrada</option>
+                      <option value={40}>40% de Entrada</option>
+                      <option value={50}>50% de Entrada</option>
+                    </select>
+                  </div>
+                )}
+
+                {proposedPaymentType !== 'vista' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Nº de Parcelas
+                    </label>
+                    <select
+                      value={proposedInstallmentsCount}
+                      onChange={e => setProposedInstallmentsCount(Number(e.target.value))}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs font-bold text-cyan-600 dark:text-cyan-400 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value={1}>1x</option>
+                      <option value={2}>2x</option>
+                      <option value={3}>3x</option>
+                      <option value={4}>4x</option>
+                      <option value={6}>6x</option>
+                      <option value={10}>10x</option>
+                      <option value={12}>12x</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Observações ou Justificativa (Opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={counterNotes}
+                  onChange={e => setCounterNotes(e.target.value)}
+                  placeholder="Ex: Gostaria de parcelar em mais vezes para alinhar com o nosso fluxo de caixa..."
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCounterModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingCounter}
+                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-md"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{submittingCounter ? 'Enviando...' : 'Enviar para Análise'}</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
 
       {/* Acceptance Modal Confirmation */}
       {modalOpen && (
