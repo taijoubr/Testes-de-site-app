@@ -620,10 +620,22 @@ export const AdminPanel: React.FC = () => {
   const [copiedSubPixId, setCopiedSubPixId] = useState<string | null>(null);
   const [deleteSubConfirmData, setDeleteSubConfirmData] = useState<{ id: string; name: string } | null>(null);
 
-  // Subscription Calculations
-  const totalMRR = subscriptions.filter(s => s.status === 'ativo').reduce((acc, curr) => acc + curr.monthlyValue, 0);
-  const totalInadimplenciaMRR = subscriptions.filter(s => s.status === 'inadimplente').reduce((acc, curr) => acc + curr.monthlyValue, 0);
-  const activeSubsCount = subscriptions.filter(s => s.status === 'ativo').length;
+  // Subscription Calculations - Only include subscriptions that are not linked to an unfinalized project
+  const activeSubscriptionsList = useMemo(() => {
+    return subscriptions.filter(sub => {
+      if (sub.projectId) {
+        const prj = projects.find(p => p.id === sub.projectId);
+        if (prj && prj.status !== 'concluido') {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [subscriptions, projects]);
+
+  const totalMRR = activeSubscriptionsList.filter(s => s.status === 'ativo').reduce((acc, curr) => acc + curr.monthlyValue, 0);
+  const totalInadimplenciaMRR = activeSubscriptionsList.filter(s => s.status === 'inadimplente').reduce((acc, curr) => acc + curr.monthlyValue, 0);
+  const activeSubsCount = activeSubscriptionsList.filter(s => s.status === 'ativo').length;
 
   const handleCreateSubscription = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1003,7 +1015,7 @@ export const AdminPanel: React.FC = () => {
             }`}
           >
             <Repeat className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Mensalidades ({subscriptions.length})</span>
+            <span>Mensalidades ({activeSubscriptionsList.length})</span>
           </button>
 
           <button
@@ -1512,7 +1524,9 @@ export const AdminPanel: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {proposals.filter(p => p.status === 'aceito').map(prop => {
-                  const alreadyLinked = subscriptions.some(s => s.proposalId === prop.id || s.clientName === prop.clientName);
+                  const linkedPrj = projects.find(prj => prj.proposalId === prop.id || prj.title.includes(prop.title) || prj.clientName === prop.clientName);
+                  const isProjectConcluido = linkedPrj ? linkedPrj.status === 'concluido' : false;
+                  const alreadyLinked = activeSubscriptionsList.some(s => s.proposalId === prop.id || s.clientName === prop.clientName);
                   return (
                     <div key={prop.id} className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
                       <div className="flex items-start justify-between">
@@ -1548,17 +1562,24 @@ export const AdminPanel: React.FC = () => {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleLinkProposalToSub(prop)}
-                        className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                          alreadyLinked
-                            ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                        }`}
-                      >
-                        <Repeat className="w-3.5 h-3.5" />
-                        <span>{alreadyLinked ? 'Alterar Mensalidade / Cobrança Vinculada' : 'Vincular Mensalidade ao Cliente'}</span>
-                      </button>
+                      {linkedPrj && !isProjectConcluido ? (
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-semibold flex items-center gap-2">
+                          <Clock className="w-4 h-4 shrink-0 text-amber-500" />
+                          <span>Projeto em Andamento — A mensalidade será ativada automaticamente quando você Finalizar o Projeto no painel de Projetos.</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleLinkProposalToSub(prop)}
+                          className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            alreadyLinked
+                              ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                          }`}
+                        >
+                          <Repeat className="w-3.5 h-3.5" />
+                          <span>{alreadyLinked ? 'Alterar Mensalidade / Cobrança Vinculada' : 'Vincular Mensalidade ao Cliente'}</span>
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -1572,7 +1593,7 @@ export const AdminPanel: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Contratos de Mensalidades Cadastradas ({subscriptions.length})
+                  Contratos de Mensalidades Cadastradas ({activeSubscriptionsList.length})
                 </h3>
                 <p className="text-xs text-slate-500">
                   Gerencie valores, dias de vencimento, formas de pagamento ou altere entre mensalidade recorrente e valor único.
@@ -1618,7 +1639,7 @@ export const AdminPanel: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {subscriptions
+                  {activeSubscriptionsList
                     .filter(s => {
                       const matchSearch = s.clientName.toLowerCase().includes(subSearch.toLowerCase()) ||
                                           s.serviceName.toLowerCase().includes(subSearch.toLowerCase());
@@ -2207,7 +2228,7 @@ export const AdminPanel: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {subscriptions
+                    {activeSubscriptionsList
                       .filter(s => {
                         const matchSearch = s.clientName.toLowerCase().includes(subSearch.toLowerCase()) ||
                                             s.serviceName.toLowerCase().includes(subSearch.toLowerCase());

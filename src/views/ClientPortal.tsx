@@ -954,29 +954,40 @@ export const ClientPortal: React.FC = () => {
             
             {/* Active Subscriptions / Monthly Fees Card */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">
-                    <Repeat className="w-4 h-4 text-emerald-500" />
-                    <span>Meus Planos & Mensalidades Contratadas</span>
-                  </div>
-                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Assinaturas e Serviços Recorrentes</h3>
-                  <p className="text-xs text-slate-500 mt-1">Acompanhe seus contratos de sustentação, manutenção contínua e licenças ativas.</p>
-                </div>
+              {(() => {
+                const activeClientSubs = subscriptions.filter(s => {
+                  if (s.projectId) {
+                    const prj = projects.find(p => p.id === s.projectId);
+                    if (prj && prj.status !== 'concluido') return false;
+                  }
+                  return true;
+                });
 
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Recorrente</span>
-                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                    R$ {subscriptions.filter(s => s.status === 'ativo').reduce((acc, curr) => acc + curr.monthlyValue, 0).toLocaleString('pt-BR')}/mês
-                  </span>
-                </div>
-              </div>
+                return (
+                  <>
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">
+                          <Repeat className="w-4 h-4 text-emerald-500" />
+                          <span>Meus Planos & Mensalidades Contratadas</span>
+                        </div>
+                        <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Assinaturas e Serviços Recorrentes</h3>
+                        <p className="text-xs text-slate-500 mt-1">Acompanhe seus contratos de sustentação, manutenção contínua e licenças ativas.</p>
+                      </div>
 
-              {subscriptions.length === 0 ? (
-                <p className="text-xs text-slate-500 italic py-4 text-center">Nenhum plano mensal atrelado à sua conta no momento.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {subscriptions.map(sub => (
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Recorrente</span>
+                        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                          R$ {activeClientSubs.filter(s => s.status === 'ativo').reduce((acc, curr) => acc + curr.monthlyValue, 0).toLocaleString('pt-BR')}/mês
+                        </span>
+                      </div>
+                    </div>
+
+                    {activeClientSubs.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic py-4 text-center">Nenhum plano mensal atrelado à sua conta no momento.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {activeClientSubs.map(sub => (
                     <div key={sub.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -1023,6 +1034,9 @@ export const ClientPortal: React.FC = () => {
                   ))}
                 </div>
               )}
+            </>
+          );
+        })()}
             </div>
 
             {/* Financial Transactions & Invoices List */}

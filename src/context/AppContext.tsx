@@ -2565,6 +2565,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       for (const d of subSnap.docs) {
         await deleteDoc(doc(db, 'clientSubscriptions', d.id));
       }
+      const legacySubSnap = await getDocs(collection(db, 'subscriptions'));
+      for (const d of legacySubSnap.docs) {
+        await deleteDoc(doc(db, 'subscriptions', d.id));
+      }
       setSubscriptions([]);
 
       // 6. Delete test financials
