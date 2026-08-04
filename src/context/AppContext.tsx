@@ -1433,39 +1433,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await saveDoc('financials', newFinancial.id, newFinancial);
 
-      // Automatically instantiate or link Client Subscription for recurring monthly fee or single value agreement
-      const existingSubForProp = subscriptions.find(s => s.proposalId === proposalId || (s.clientName === prop.clientName && s.serviceName.includes(prop.title)));
+      // Store monthly subscription value on project (will be instantiated into ClientSubscription only when project is finalized)
       const subValue = prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? prop.recurringMonthlyValue : Math.round(prop.totalValue / 12);
-      const subId = existingSubForProp ? existingSubForProp.id : `SUB-PROP-${Date.now()}`;
-      const today = new Date();
-      const nextDue = new Date(today.getFullYear(), today.getMonth() + 1, 10).toISOString().split('T')[0];
-      const defaultPix = `00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-426614174000520400005303986540${subValue}.005802BR5920NCodes Technologies6009SAO PAULO62070503***6304`;
-
-      const autoSub: ClientSubscription = {
-        ...(existingSubForProp || {}),
-        id: subId,
-        clientName: prop.clientName,
-        clientEmail: `${prop.clientName.toLowerCase().replace(/\s+/g, '')}@cliente.com.br`,
-        serviceName: `Contrato de Sustentação & Suporte - ${prop.title}`,
-        monthlyValue: subValue,
-        billingCycleDay: 10,
-        status: 'ativo',
-        startDate: today.toISOString().split('T')[0],
-        nextDueDate: nextDue,
-        paymentMethod: 'pix',
-        notes: `Vinculado automaticamente ao Aceite Digital da Proposta ${proposalId}. Valor total do projeto: R$ ${prop.totalValue.toLocaleString('pt-BR')}.`,
-        pixCopyPaste: defaultPix,
-        proposalId,
-        projectId: newProjectId,
-        ...(prop.quoteId ? { quoteId: prop.quoteId } : {}),
-        billingType: prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? 'recorrente' : 'valor_unico',
-        oneTimeTotalValue: prop.totalValue
-      };
-
-      newProject.subscriptionId = subId;
+      newProject.recurringMonthlyValue = subValue;
 
       await saveDoc('projects', newProjectId, newProject);
-      await saveDoc('clientSubscriptions', subId, autoSub);
 
       // Add Lead conversion in CRM
       const newLead: LeadCRM = {
