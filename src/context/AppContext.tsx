@@ -2153,11 +2153,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await saveDoc('clientSubscriptions', subId, newSub);
 
-      // Prevent generating duplicate financial installment transactions if one already exists
+      // Check if a subscription/pro-rata transaction already exists for this subscription
       const existingFin = financials.find(f => 
-        f.projectId === prj.id || 
         f.subscriptionId === subId || 
-        (f.clientName === prj.clientName && f.title.includes(prj.title) && f.status === 'pendente')
+        (f.clientName === prj.clientName && f.title.includes('Pro-rata')) ||
+        (f.clientName === prj.clientName && f.title.includes('Mensalidade') && f.status === 'pendente' && f.category.includes('Sustentação'))
       );
 
       if (!existingFin) {

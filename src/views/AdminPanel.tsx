@@ -1673,8 +1673,16 @@ export const AdminPanel: React.FC = () => {
                         </td>
 
                         <td className="py-3 px-3 font-black text-slate-900 dark:text-white">
-                          R$ {sub.monthlyValue.toLocaleString('pt-BR')}
-                          <span className="text-[10px] text-slate-400 font-normal block uppercase">{sub.paymentMethod}</span>
+                          <div>
+                            <span>R$ {sub.monthlyValue.toLocaleString('pt-BR')}<span className="text-[10px] text-slate-400 font-normal">/mês</span></span>
+                            <span className="text-[10px] text-slate-400 font-normal block uppercase">{sub.paymentMethod}</span>
+                            {sub.notes && sub.notes.includes('50% pro-rata') && (
+                              <div className="mt-1 p-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>1ª Cobrança: R$ {(sub.monthlyValue * 0.5).toLocaleString('pt-BR')} (50% Pro-rata Mês Atual)</span>
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-300">
@@ -2230,8 +2238,16 @@ export const AdminPanel: React.FC = () => {
                           </td>
 
                           <td className="py-3 px-3 font-extrabold text-slate-900 dark:text-white">
-                            R$ {sub.monthlyValue.toLocaleString('pt-BR')}
-                            <span className="text-[10px] text-slate-400 font-normal block uppercase">{sub.paymentMethod}</span>
+                            <div>
+                              <span>R$ {sub.monthlyValue.toLocaleString('pt-BR')}<span className="text-[10px] text-slate-400 font-normal">/mês</span></span>
+                              <span className="text-[10px] text-slate-400 font-normal block uppercase">{sub.paymentMethod}</span>
+                              {sub.notes && sub.notes.includes('50% pro-rata') && (
+                                <div className="mt-1 p-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                                  <span>1ª Cobrança: R$ {(sub.monthlyValue * 0.5).toLocaleString('pt-BR')} (Pro-rata Mês Atual)</span>
+                                </div>
+                              )}
+                            </div>
                           </td>
 
                           <td className="py-3 px-3 font-bold text-slate-700 dark:text-slate-300">
