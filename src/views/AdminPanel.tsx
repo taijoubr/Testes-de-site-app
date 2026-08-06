@@ -5373,22 +5373,48 @@ export const AdminPanel: React.FC = () => {
         const vCompanyLower = viewingClient.company ? viewingClient.company.toLowerCase().trim() : null;
         const vEmailLower = (viewingClient.email || '').toLowerCase().trim();
 
+        const safeVal = (val: any): number => {
+          const num = Number(val);
+          return isNaN(num) ? 0 : num;
+        };
+
+        const safeDate = (dt: any): string => {
+          if (!dt) return 'Recente';
+          try {
+            if (typeof dt === 'object' && dt !== null && 'seconds' in dt) {
+              return new Date(dt.seconds * 1000).toLocaleDateString('pt-BR');
+            }
+            const d = new Date(dt);
+            if (isNaN(d.getTime())) return 'Recente';
+            return d.toLocaleDateString('pt-BR');
+          } catch {
+            return 'Recente';
+          }
+        };
+
         const vPrjs = projects.filter(p => {
+          if (!p) return false;
           const pName = (p.clientName || '').toLowerCase().trim();
           if (!pName) return false;
-          return (vNameLower && pName === vNameLower) || (vCompanyLower && pName === vCompanyLower);
+          return (vNameLower && pName === vNameLower) || 
+                 (vCompanyLower && pName === vCompanyLower) ||
+                 (vNameLower && (pName.includes(vNameLower) || vNameLower.includes(pName)));
         });
 
         const vSubs = subscriptions.filter(s => {
+          if (!s) return false;
           const sName = (s.clientName || '').toLowerCase().trim();
           if (!sName) return false;
-          return (vNameLower && sName === vNameLower) || (vCompanyLower && sName === vCompanyLower);
+          return (vNameLower && sName === vNameLower) || 
+                 (vCompanyLower && sName === vCompanyLower) ||
+                 (vNameLower && (sName.includes(vNameLower) || vNameLower.includes(sName)));
         });
 
         const vQuotes = quotes.filter(q => {
+          if (!q) return false;
           const qName = (q.clientName || '').toLowerCase().trim();
           const qEmail = (q.email || '').toLowerCase().trim();
-          return (vNameLower && qName && qName === vNameLower) || 
+          return (vNameLower && qName && (qName === vNameLower || qName.includes(vNameLower) || vNameLower.includes(qName))) || 
                  (vEmailLower && qEmail && qEmail === vEmailLower);
         });
 
@@ -5404,25 +5430,26 @@ export const AdminPanel: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-extrabold text-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 uppercase">
                     {viewingClient.avatar ? (
-                      <img src={viewingClient.avatar} alt={viewingClient.name} className="w-full h-full rounded-2xl object-cover" />
+                      <img src={viewingClient.avatar} alt={viewingClient.name || 'Cliente'} className="w-full h-full rounded-2xl object-cover" />
                     ) : (
                       (viewingClient.name || 'C').charAt(0)
                     )}
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                      {viewingClient.name}
+                      {viewingClient.name || 'Cliente sem nome'}
                     </h3>
                     <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
                       {viewingClient.company || 'Pessoa Física'}
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      {viewingClient.email} • {viewingClient.phone || 'Sem telefone'}
+                      {viewingClient.email || 'Sem e-mail'} • {viewingClient.phone || 'Sem telefone'}
                     </p>
                   </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => setViewingClient(null)}
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg cursor-pointer"
                 >
@@ -5442,7 +5469,7 @@ export const AdminPanel: React.FC = () => {
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Data de Cadastro</span>
                   <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                    {viewingClient.createdAt ? new Date(viewingClient.createdAt).toLocaleDateString('pt-BR') : 'Recente'}
+                    {safeDate(viewingClient.createdAt)}
                   </p>
                 </div>
 
@@ -5489,17 +5516,17 @@ export const AdminPanel: React.FC = () => {
                           <div key={proj.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-blue-500/20 space-y-2 text-xs">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-extrabold text-slate-900 dark:text-white">{proj.title}</p>
+                                <p className="font-extrabold text-slate-900 dark:text-white">{proj.title || 'Projeto sem título'}</p>
                                 <p className="text-[10px] text-slate-500">
-                                  {proj.id} • Valor: R$ {proj.totalValue.toLocaleString('pt-BR')} • {proj.completedHours || 0}h / {proj.estimatedHours || 160}h
+                                  {proj.id} • Valor: R$ {safeVal(proj.totalValue).toLocaleString('pt-BR')} • {proj.completedHours || 0}h / {proj.estimatedHours || 160}h
                                 </p>
                               </div>
                               <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase">
-                                {proj.status.replace('_', ' ')} ({proj.progressPercentage}%)
+                                {(proj.status || 'em_andamento').replace('_', ' ')} ({proj.progressPercentage || 0}%)
                               </span>
                             </div>
                             <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                              <div className="h-full bg-blue-500" style={{ width: `${proj.progressPercentage}%` }} />
+                              <div className="h-full bg-blue-500" style={{ width: `${proj.progressPercentage || 0}%` }} />
                             </div>
                           </div>
                         ))}
@@ -5516,9 +5543,9 @@ export const AdminPanel: React.FC = () => {
                           <div key={proj.id} className="p-3.5 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/30 space-y-1.5 text-xs">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-extrabold text-slate-900 dark:text-white">{proj.title}</p>
+                                <p className="font-extrabold text-slate-900 dark:text-white">{proj.title || 'Projeto sem título'}</p>
                                 <p className="text-[10px] text-slate-500">
-                                  {proj.id} • Entregue • Valor Final: R$ {proj.totalValue.toLocaleString('pt-BR')}
+                                  {proj.id} • Entregue • Valor Final: R$ {safeVal(proj.totalValue).toLocaleString('pt-BR')}
                                 </p>
                               </div>
                               <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold text-[10px] flex items-center gap-1">
@@ -5528,7 +5555,7 @@ export const AdminPanel: React.FC = () => {
                             </div>
                             {proj.recurringMonthlyValue && proj.recurringMonthlyValue > 0 && (
                               <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                                📌 Mensalidade Pós-Entrega: R$ {proj.recurringMonthlyValue.toLocaleString('pt-BR')}/mês
+                                📌 Mensalidade Pós-Entrega: R$ {safeVal(proj.recurringMonthlyValue).toLocaleString('pt-BR')}/mês
                               </p>
                             )}
                           </div>
@@ -5554,15 +5581,15 @@ export const AdminPanel: React.FC = () => {
                     {vSubs.map(sub => (
                       <div key={sub.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
                         <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{sub.serviceName}</p>
+                          <p className="font-bold text-slate-900 dark:text-white">{sub.serviceName || 'Mensalidade'}</p>
                           <p className="text-[10px] text-slate-500">
-                            R$ {sub.monthlyValue.toLocaleString('pt-BR')}/mês • Vencimento: Dia {sub.billingCycleDay}
+                            R$ {safeVal(sub.monthlyValue).toLocaleString('pt-BR')}/mês • Vencimento: Dia {sub.billingCycleDay || 10}
                           </p>
                         </div>
                         <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
                           sub.status === 'ativo' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
                         }`}>
-                          {sub.status}
+                          {sub.status || 'ativo'}
                         </span>
                       </div>
                     ))}
@@ -5589,7 +5616,7 @@ export const AdminPanel: React.FC = () => {
                           <p className="text-[10px] text-slate-500">{(quote.description || '').slice(0, 60)}...</p>
                         </div>
                         <span className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px]">
-                          {quote.status}
+                          {quote.status || 'Pendente'}
                         </span>
                       </div>
                     ))}
@@ -5597,31 +5624,31 @@ export const AdminPanel: React.FC = () => {
                 )}
               </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(`Tem certeza que deseja excluir permanentemente o cliente "${viewingClient.name}" do servidor?\n\nO cadastro será totalmente removido da base de dados. Caso o cliente queira utilizar o portal novamente, precisará se cadastrar do zero.`)) {
-                    deleteClientUser(viewingClient.id);
-                    setViewingClient(null);
-                  }
-                }}
-                className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Excluir do Servidor</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewingClient(null)}
-                className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs cursor-pointer hover:bg-slate-800"
-              >
-                Fechar
-              </button>
-            </div>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Tem certeza que deseja excluir permanentemente o cliente "${viewingClient.name}" do servidor?\n\nO cadastro será totalmente removido da base de dados. Caso o cliente queira utilizar o portal novamente, precisará se cadastrar do zero.`)) {
+                      deleteClientUser(viewingClient.id);
+                      setViewingClient(null);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Excluir do Servidor</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingClient(null)}
+                  className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs cursor-pointer hover:bg-slate-800"
+                >
+                  Fechar
+                </button>
+              </div>
 
+            </div>
           </div>
-        </div>
         );
       })()}
 
