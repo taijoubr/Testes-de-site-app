@@ -64,6 +64,8 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
   const [activeTab, setActiveTab] = useState<'edit_offer' | 'status' | 'request_info' | 'messages'>('edit_offer');
   const [showClientDetails, setShowClientDetails] = useState(true);
 
+  const isImprovementQuote = Boolean(quote.parentProjectId || quote.quoteType === 'melhoria' || quote.quoteType === 'solicitacao_melhoria' || quote.category === 'melhoria');
+
   // Proposal Edit Form State
   const [proposalTitle, setProposalTitle] = useState<string>(
     existingProposal?.title || (quote.projectTitle ? `Proposta Comercial - ${quote.projectTitle}` : `Proposta Comercial - ${quote.company || quote.clientName}`)
@@ -71,8 +73,11 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
   const [offeredValue, setOfferedValue] = useState<string>(
     existingProposal ? String(existingProposal.totalValue) : (quote.offeredValue ? String(quote.offeredValue) : (quote.aiAnalysis?.suggestedBudget ? String(quote.aiAnalysis.suggestedBudget) : '18500'))
   );
+  const [hasMonthlyFee, setHasMonthlyFee] = useState<boolean>(
+    existingProposal?.recurringMonthlyValue && existingProposal.recurringMonthlyValue > 0 ? true : false
+  );
   const [recurringMonthlyValue, setRecurringMonthlyValue] = useState<string>(
-    existingProposal?.recurringMonthlyValue ? String(existingProposal.recurringMonthlyValue) : '1200'
+    existingProposal?.recurringMonthlyValue ? String(existingProposal.recurringMonthlyValue) : '0'
   );
   const [offeredDeadline, setOfferedDeadline] = useState<string>(
     quote.offeredDeadline || quote.deadline || '30 dias úteis'
@@ -197,7 +202,7 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
 
     const assignedMember = TEAM_MEMBERS.find(m => m.id === assignedTo);
     const numericValue = offeredValue ? parseFloat(offeredValue) : (quote.aiAnalysis?.suggestedBudget || 18500);
-    const numericMonthly = recurringMonthlyValue ? parseFloat(recurringMonthlyValue) : 0;
+    const numericMonthly = hasMonthlyFee ? (recurringMonthlyValue ? parseFloat(recurringMonthlyValue) : 0) : 0;
 
     const currentPayConditions = {
       paymentType,
@@ -731,21 +736,66 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Mensalidade Recorrente (R$/mês)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">R$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={recurringMonthlyValue}
-                      onChange={e => setRecurringMonthlyValue(e.target.value)}
-                      placeholder="1200.00"
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 p-2.5 text-xs font-bold text-cyan-400 focus:outline-none focus:border-cyan-400"
-                    />
+                <div className="col-span-1 sm:col-span-2 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold text-slate-200 block">
+                        {isImprovementQuote ? 'Haverá Aumento de Mensalidade para este Cliente?' : 'Cobrança de Mensalidade Recorrente?'}
+                      </span>
+                      <p className="text-[10px] text-slate-400">
+                        {isImprovementQuote
+                          ? 'Melhorias não possuem mensalidade própria por padrão. Ative apenas se houver reajuste/aumento na mensalidade do cliente.'
+                          : 'Define se o contrato prevê taxa mensal recorrente de suporte, servidor e infraestrutura.'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHasMonthlyFee(false);
+                          setRecurringMonthlyValue('0');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          !hasMonthlyFee ? 'bg-slate-800 text-white shadow-sm border border-slate-700' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Não (Sem Mensalidade)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHasMonthlyFee(true);
+                          if (!recurringMonthlyValue || parseFloat(recurringMonthlyValue) === 0) {
+                            setRecurringMonthlyValue('200');
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          hasMonthlyFee ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Sim (Informar Valor)
+                      </button>
+                    </div>
                   </div>
+
+                  {hasMonthlyFee && (
+                    <div className="pt-2 animate-in fade-in duration-150">
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        {isImprovementQuote ? 'Valor do Aumento na Mensalidade (R$/mês)' : 'Valor da Mensalidade Recorrente (R$/mês)'}
+                      </label>
+                      <div className="relative max-w-xs">
+                        <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">R$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={recurringMonthlyValue}
+                          onChange={e => setRecurringMonthlyValue(e.target.value)}
+                          placeholder="200.00"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 p-2.5 text-xs font-bold text-cyan-400 focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>

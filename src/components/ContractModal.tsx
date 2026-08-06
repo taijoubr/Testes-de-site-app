@@ -519,7 +519,9 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, contract
                     <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
                       <span className="text-slate-600 dark:text-slate-400 font-bold block text-[11px] mb-0.5">Valor Mensal Inicial Acordado:</span>
                       <strong className="text-blue-700 dark:text-blue-400 font-extrabold text-sm">
-                        R$ {(activeContract.recurringMonthlyValue || 1200).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / mês
+                        {activeContract.recurringMonthlyValue && activeContract.recurringMonthlyValue > 0
+                          ? `R$ ${activeContract.recurringMonthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / mês`
+                          : 'Isento (Sem Mensalidade Recorrente)'}
                       </strong>
                     </div>
                     <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">

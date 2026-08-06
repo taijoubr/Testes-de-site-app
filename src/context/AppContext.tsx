@@ -1074,7 +1074,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Generate Installments with manual due date support
     const userDueDate = customData?.dueDate || customData?.installmentDueDate || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const userMonthlyDueDate = customData?.monthlyDueDate || 'Dia 10 de cada mês';
-    const recMonthlyVal = customData?.recurringMonthlyValue ?? proposal?.recurringMonthlyValue ?? quote?.recurringMonthlyValue ?? 1200;
+    const recMonthlyVal = customData?.recurringMonthlyValue ?? proposal?.recurringMonthlyValue ?? quote?.recurringMonthlyValue ?? 0;
 
     let inst1Date = userDueDate;
     let inst2Date = new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -1528,7 +1528,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await generateProjectPaymentFinancials(newProjectId, prop.title, prop.clientName, prop.totalValue, propPayCond, prop.paymentTerms);
 
       // Store monthly subscription value on project (will be instantiated into ClientSubscription only when project is finalized)
-      const subValue = prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? prop.recurringMonthlyValue : Math.round(prop.totalValue / 12);
+      const subValue = prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? prop.recurringMonthlyValue : 0;
       newProject.recurringMonthlyValue = subValue;
 
       await saveDoc('projects', newProjectId, newProject);
@@ -2222,7 +2222,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       proposalId: q.proposalId,
       contractId: autoContract.id,
       contractNumber: autoContract.contractNumber,
-      recurringMonthlyValue: q.recurringMonthlyValue || 1200
+      recurringMonthlyValue: q.recurringMonthlyValue || 0
     };
 
     try {
@@ -2349,15 +2349,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const compDate = completionDateInput ? new Date(completionDateInput + 'T12:00:00') : new Date();
     const dayOfMonth = compDate.getDate();
 
-    let monthlyValue = customMonthlyValue || prj.recurringMonthlyValue || 0;
-    if (!monthlyValue && prj.proposalId) {
+    let monthlyValue = customMonthlyValue !== undefined ? customMonthlyValue : (prj.recurringMonthlyValue || 0);
+    if (monthlyValue === 0 && prj.proposalId) {
       const prop = proposals.find(p => p.id === prj.proposalId);
       if (prop?.recurringMonthlyValue) {
         monthlyValue = prop.recurringMonthlyValue;
       }
     }
+
+    // Case 1: Finalizing project/improvement with 0 monthly fee
     if (!monthlyValue || monthlyValue <= 0) {
-      monthlyValue = 1200;
+      const ruleAppliedText = 'Projeto/Melhoria concluído com sucesso sem alteração ou cobrança de mensalidade adicional.';
+      const updatedTasks = prj.tasks.map(t => ({ ...t, completed: true }));
+      const updatedProject: Project = {
+        ...prj,
+        status: 'concluido',
+        progressPercentage: 100,
+        recurringMonthlyValue: 0,
+        completedAt: compDate.toISOString(),
+        billingRuleApplied: ruleAppliedText,
+        tasks: updatedTasks
+      };
+
+      try {
+        await saveDoc('projects', projectId, updatedProject);
+        setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
+        return { success: true, ruleApplied: ruleAppliedText };
+      } catch (err) {
+        console.error('Erro ao finalizar projeto sem mensalidade:', err);
+        return { success: false, ruleApplied: 'Erro ao salvar encerramento do projeto.' };
+      }
     }
 
     const isFirstHalf = dayOfMonth <= 15;
@@ -2391,7 +2412,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      await setDoc(doc(db, 'projects', projectId), updatedProject);
+      // Check if subscription already exists for this project or client
+      const clientExistingSub = subscriptions.find(s => 
+        s.id === prj.subscriptionId || 
+        s.projectId === prj.id || 
+        (prj.proposalId && s.proposalId === prj.proposalId) ||
+        (s.clientName.toLowerCase() === prj.clientName.toLowerCase() && s.status === 'ativo')
+      );
+
+      const isImprovementPrj = Boolean(prj.category?.toLowerCase().includes('melhoria') || prj.title?.toLowerCase().includes('melhoria'));
+
+      // Case 2: Improvement with monthly increase on an existing client subscription
+      if (clientExistingSub && isImprovementPrj) {
+        const newMonthlyTotal = clientExistingSub.monthlyValue + monthlyValue;
+        const increaseRuleText = `Melhoria concluída. Reajuste de +R$ ${monthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês aplicado à mensalidade atual do cliente (Novo total: R$ ${newMonthlyTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês).`;
+        
+        updatedProject.billingRuleApplied = increaseRuleText;
+        await saveDoc('projects', projectId, updatedProject);
+
+        const updatedSub: ClientSubscription = {
+          ...clientExistingSub,
+          monthlyValue: newMonthlyTotal,
+          notes: `${clientExistingSub.notes || ''}\n[${new Date().toLocaleDateString('pt-BR')}] +R$ ${monthlyValue.toLocaleString('pt-BR')}/mês (Melhoria: ${prj.title})`
+        };
+
+        await saveDoc('clientSubscriptions', clientExistingSub.id, updatedSub);
+
+        setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
+        setSubscriptions(prev => prev.map(s => s.id === clientExistingSub.id ? updatedSub : s));
+
+        return { success: true, ruleApplied: increaseRuleText };
+      }
+
+      // Case 3: Create or update standard subscription
+      await saveDoc('projects', projectId, updatedProject);
 
       // Check if subscription already exists for this project, proposal, or client service
       const existingSub = subscriptions.find(s => 

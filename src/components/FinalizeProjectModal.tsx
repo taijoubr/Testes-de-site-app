@@ -25,14 +25,14 @@ export const FinalizeProjectModal: React.FC<FinalizeProjectModalProps> = ({ proj
     new Date().toISOString().split('T')[0]
   );
   const [monthlyValue, setMonthlyValue] = useState<string>(
-    String(project.recurringMonthlyValue || 1200)
+    String(project.recurringMonthlyValue || 0)
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
   // Calculate rule dynamically for preview
-  const numMonthlyValue = parseFloat(monthlyValue) || 1200;
+  const numMonthlyValue = parseFloat(monthlyValue) || 0;
   const selectedDateObj = completionDate ? new Date(completionDate + 'T12:00:00') : new Date();
   const dayOfMonth = selectedDateObj.getDate();
   const isFirstHalf = dayOfMonth <= 15;
@@ -148,40 +148,52 @@ export const FinalizeProjectModal: React.FC<FinalizeProjectModalProps> = ({ proj
               </div>
 
               {/* Dynamic Billing Rule Preview Banner */}
-              <div className={`p-4 rounded-2xl border transition-all ${
-                isFirstHalf 
-                  ? 'bg-blue-950/40 border-blue-500/40 text-blue-200' 
-                  : 'bg-purple-950/40 border-purple-500/40 text-purple-200'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Repeat className="w-4 h-4 shrink-0" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider">
-                    {isFirstHalf 
-                      ? `Regra: Conclusão até o Dia 15 (Dia ${dayOfMonth})` 
-                      : `Regra: Conclusão após o Dia 15 (Dia ${dayOfMonth})`}
-                  </h4>
+              {numMonthlyValue === 0 ? (
+                <div className="p-4 rounded-2xl border bg-emerald-950/30 border-emerald-500/30 text-emerald-300">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">Isento de Mensalidade</h4>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-300">
+                    Este projeto/melhoria será finalizado sem cobrança ou criação de nova assinatura mensal recorrente.
+                  </p>
                 </div>
+              ) : (
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  isFirstHalf 
+                    ? 'bg-blue-950/40 border-blue-500/40 text-blue-200' 
+                    : 'bg-purple-950/40 border-purple-500/40 text-purple-200'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Repeat className="w-4 h-4 shrink-0" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">
+                      {isFirstHalf 
+                        ? `Regra: Conclusão até o Dia 15 (Dia ${dayOfMonth})` 
+                        : `Regra: Conclusão após o Dia 15 (Dia ${dayOfMonth})`}
+                    </h4>
+                  </div>
 
-                {isFirstHalf ? (
-                  <div className="text-xs space-y-1.5 leading-relaxed">
-                    <p>
-                      📌 Como o projeto foi finalizado na 1ª quinzena (dia <strong>{dayOfMonth}</strong>), será gerada uma cobrança de <strong>50% (R$ {firstChargeHalfValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</strong> pro-rata para o mês atual.
-                    </p>
-                    <p className="text-slate-300">
-                      🗓️ A partir de 10 de <strong>{nextMonthName}</strong>, a mensalidade será cobrada em seu valor integral de <strong>R$ {numMonthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-xs space-y-1.5 leading-relaxed">
-                    <p>
-                      📌 Como o projeto foi finalizado após o dia 15 (dia <strong>{dayOfMonth}</strong>), o cliente fica <strong>isento</strong> de cobrança no mês atual.
-                    </p>
-                    <p className="text-slate-300">
-                      🗓️ A primeira mensalidade de <strong>R$ {numMonthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> iniciará somente em 10 de <strong>{nextMonthName}</strong>.
-                    </p>
-                  </div>
-                )}
-              </div>
+                  {isFirstHalf ? (
+                    <div className="text-xs space-y-1.5 leading-relaxed">
+                      <p>
+                        📌 Como o projeto foi finalizado na 1ª quinzena (dia <strong>{dayOfMonth}</strong>), será gerada uma cobrança de <strong>50% (R$ {firstChargeHalfValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</strong> pro-rata para o mês atual.
+                      </p>
+                      <p className="text-slate-300">
+                        🗓️ A partir de 10 de <strong>{nextMonthName}</strong>, a mensalidade será cobrada em seu valor integral de <strong>R$ {numMonthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-xs space-y-1.5 leading-relaxed">
+                      <p>
+                        📌 Como o projeto foi finalizado após o dia 15 (dia <strong>{dayOfMonth}</strong>), o cliente fica <strong>isento</strong> de cobrança no mês atual.
+                      </p>
+                      <p className="text-slate-300">
+                        🗓️ A primeira mensalidade de <strong>R$ {numMonthlyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> iniciará somente em 10 de <strong>{nextMonthName}</strong>.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-800">

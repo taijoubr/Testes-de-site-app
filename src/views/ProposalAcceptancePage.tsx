@@ -309,9 +309,16 @@ export const ProposalAcceptancePage: React.FC = () => {
               <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
                 R$ {proposal.totalValue.toLocaleString('pt-BR')}
               </p>
-              {Boolean(proposal.recurringMonthlyValue && proposal.recurringMonthlyValue > 0) && (
-                <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-1.5">
-                  + R$ {proposal.recurringMonthlyValue?.toLocaleString('pt-BR')}/mês (Suporte e Infra)
+              {Boolean(proposal.recurringMonthlyValue && proposal.recurringMonthlyValue > 0) ? (
+                <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-1.5 flex items-center gap-1">
+                  <span>+ R$ {proposal.recurringMonthlyValue?.toLocaleString('pt-BR')}/mês</span>
+                  <span className="text-[10px] text-slate-500 font-normal">
+                    ({proposal.title.toLowerCase().includes('melhoria') ? 'Aumento na Mensalidade Atual' : 'Suporte e Infraestrutura'})
+                  </span>
+                </p>
+              ) : (
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-1.5">
+                  ✓ Sem cobrança de mensalidade recorrente
                 </p>
               )}
             </div>
