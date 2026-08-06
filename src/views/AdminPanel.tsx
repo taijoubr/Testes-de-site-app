@@ -4720,24 +4720,34 @@ export const AdminPanel: React.FC = () => {
 
       {/* New Admin User Modal */}
       {showNewAdminModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
             
-            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center">
-                <UserPlus className="w-5 h-5" />
+            <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center shrink-0">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    Incluir Administrador
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Cadastrar novo usuário com permissão de login
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  Incluir Administrador
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Cadastrar novo usuário com permissão de login
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewAdminModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 font-bold text-lg rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
+                title="Fechar"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleCreateAdminUser} className="space-y-4">
+            <form onSubmit={handleCreateAdminUser} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -4838,25 +4848,27 @@ export const AdminPanel: React.FC = () => {
 
       {/* New Client Subscription Modal */}
       {showNewSubModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Repeat className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Repeat className="w-5 h-5 text-emerald-500 shrink-0" />
                   <span>Cadastrar Nova Mensalidade Recorrente</span>
                 </h3>
                 <p className="text-xs text-slate-500">Contrato de serviço contínuo com cobrança automática recorrente.</p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowNewSubModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 font-bold text-lg rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
+                title="Fechar"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubscription} className="space-y-4">
+            <form onSubmit={handleCreateSubscription} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {/* Vínculo (Cliente vs Empresa) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -5110,7 +5122,7 @@ export const AdminPanel: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowNewSubModal(false)}
@@ -5133,30 +5145,32 @@ export const AdminPanel: React.FC = () => {
 
       {/* MODAL EXCLUSIVO PARA ALTERAR MENSALIDADE DO CLIENTE */}
       {showEditSubModal && editingSub && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div>
                 <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
                   <Settings className="w-4 h-4 text-blue-500" />
                   <span>Painel Restrito • Alteração de Mensalidade</span>
                 </div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
                   Alterar Valores de {editingSub.clientName}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setShowEditSubModal(false);
                   setEditingSub(null);
                 }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 font-bold text-lg rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
+                title="Fechar"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditSub} className="space-y-4">
+            <form onSubmit={handleSaveEditSub} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -5336,30 +5350,32 @@ export const AdminPanel: React.FC = () => {
 
       {/* MODAL: CADASTRAR / EDITAR CLIENTE */}
       {showAddClientModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div>
                 <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
                   <UserPlus className="w-4 h-4 text-blue-500" />
                   <span>{editingClient ? 'Editar Cadastro de Cliente' : 'Novo Cadastro de Cliente'}</span>
                 </div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
                   {editingClient ? editingClient.name : 'Incluir Cliente no Sistema'}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setShowAddClientModal(false);
                   setEditingClient(null);
                 }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 font-bold text-lg rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
+                title="Fechar"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveClient} className="space-y-4">
+            <form onSubmit={handleSaveClient} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -5770,23 +5786,24 @@ export const AdminPanel: React.FC = () => {
 
       {/* New Financial Modal */}
       {showFinModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-emerald-500" />
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-500 shrink-0" />
                 <span>Novo Lançamento Financeiro</span>
               </h2>
               <button
                 type="button"
                 onClick={() => setShowFinModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 font-bold text-lg rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
+                title="Fechar"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateFinancial} className="space-y-3.5">
+            <form onSubmit={handleCreateFinancial} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-3.5">
               {/* Entity Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -7075,12 +7092,12 @@ export const AdminPanel: React.FC = () => {
 
       {/* New CRM Lead Modal */}
       {isNewLeadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-6 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-500/20">
-                  <Users className="w-6 h-6" />
+                <div className="p-2.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-500/20 shrink-0">
+                  <Users className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Cadastrar Novo Lead</h3>
@@ -7088,14 +7105,16 @@ export const AdminPanel: React.FC = () => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsNewLeadModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
+                title="Fechar"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateLead} className="space-y-4">
+            <form onSubmit={handleCreateLead} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nome do Contato *</label>
                 <input

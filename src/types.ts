@@ -357,32 +357,64 @@ export interface Project {
   billingRuleApplied?: string;
 }
 
-export type FinancialStatus = 'pago' | 'pendente' | 'atrasado' | 'cancelado' | 'reembolsado';
+export type FinancialStatus = 'pago' | 'pendente' | 'atrasado' | 'cancelado' | 'reembolsado' | 'em_conciliacao' | 'divergente';
 
-export type SubscriptionStatus = 'ativo' | 'inadimplente' | 'suspenso' | 'cancelado';
+export type SubscriptionStatus = 'ativo' | 'inadimplente' | 'suspenso' | 'cancelado' | 'aguardando' | 'em_negociacao' | 'renovacao_pendente';
+
+export interface FinancialAuditLog {
+  id: string;
+  timestamp: string;
+  user: string;
+  userRole?: string;
+  action: string;
+  details: string;
+  targetType: 'transaction' | 'subscription' | 'installment' | 'reconciliation' | 'automation';
+  targetId: string;
+  ipAddress?: string;
+  previousValue?: any;
+  newValue?: any;
+}
+
+export interface SubscriptionAdjustment {
+  id: string;
+  date: string;
+  user: string;
+  oldValue: number;
+  newValue: number;
+  reason: string;
+}
 
 export interface ClientSubscription {
   id: string;
   clientName: string;
+  clientId?: string;
   clientEmail?: string;
+  clientPhone?: string;
+  clientCpfCnpj?: string;
   serviceName: string;
   monthlyValue: number;
   billingCycleDay: number;
   status: SubscriptionStatus;
   startDate: string;
   nextDueDate: string;
+  lastPaymentDate?: string;
   paymentMethod: 'pix' | 'cartao' | 'boleto' | 'transferencia';
   notes?: string;
-  lastPaymentDate?: string;
   pixCopyPaste?: string;
   proposalId?: string;
   quoteId?: string;
   projectId?: string;
+  contractId?: string;
+  contractNumber?: string;
   billingType?: 'recorrente' | 'valor_unico';
   oneTimeTotalValue?: number;
   entityType?: 'empresa' | 'cliente';
   category?: string;
+  costCenter?: string;
   entryType?: 'receita' | 'despesa';
+  autoSuspendDays?: number;
+  adjustmentsHistory?: SubscriptionAdjustment[];
+  auditLogs?: FinancialAuditLog[];
 }
 
 export interface FinancialTransaction {
@@ -390,17 +422,70 @@ export interface FinancialTransaction {
   title: string;
   type: 'receita' | 'despesa';
   category: string;
+  subcategory?: string;
+  costCenter?: 'Operacional' | 'Marketing' | 'Infraestrutura Cloud' | 'Pessoal' | 'Impostos' | 'P&D' | 'Vendas' | 'Comissões' | 'Outros';
   amount: number;
   dueDate: string;
   paymentDate?: string;
   status: FinancialStatus;
   paymentMethod: 'pix' | 'cartao' | 'transferencia' | 'dinheiro' | 'boleto';
   clientName?: string;
+  clientId?: string;
+  clientCpfCnpj?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  supplierName?: string;
   projectId?: string;
+  contractId?: string;
+  contractNumber?: string;
   subscriptionId?: string;
   invoiceUrl?: string;
+  receiptUrl?: string;
   isRecurring?: boolean;
   entityType?: 'empresa' | 'cliente';
+  notes?: string;
+  invoiceNumber?: string;
+  
+  // Parcelamento
+  isInstallment?: boolean;
+  installmentCurrent?: number;
+  installmentTotal?: number;
+  parentInstallmentId?: string;
+  
+  // Renegociação & Encargos
+  penaltyFee?: number;
+  interestFee?: number;
+  discountValue?: number;
+  
+  // Conciliação
+  reconciled?: boolean;
+  reconciledAt?: string;
+  reconciledBy?: string;
+  reconciliationNotes?: string;
+  
+  // Audit Trail & Logs
+  createdUser?: string;
+  auditLogs?: FinancialAuditLog[];
+}
+
+export interface FinancialAutomationRule {
+  id: string;
+  title: string;
+  trigger: 'days_before_due' | 'on_due_date' | 'days_after_due' | 'suspend_service_after_days';
+  daysCount: number;
+  channel: 'whatsapp' | 'email' | 'system';
+  enabled: boolean;
+  messageTemplate: string;
+}
+
+export interface FinancialInsight {
+  id: string;
+  type: 'positive' | 'warning' | 'critical' | 'info';
+  title: string;
+  description: string;
+  metric: string;
+  actionText?: string;
+  actionModule?: string;
 }
 
 export interface ChatAttachment {
