@@ -189,6 +189,8 @@ interface AppContextType {
   
   sendChatMessage: (text: string, projectId?: string, attachments?: { name: string; type: string; url: string }[], isAudio?: boolean) => void;
   createSupportTicket: (title: string, category: string, priority: SupportTicket['priority']) => void;
+  addLead: (leadData: Omit<LeadCRM, 'id'>) => Promise<void>;
+  deleteLead: (leadId: string) => Promise<void>;
   updateLeadStage: (leadId: string, stage: LeadCRM['stage']) => void;
   markNotificationAsRead: (id: string) => void;
   clearAllNotifications: () => void;
@@ -2851,6 +2853,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addLead = async (leadData: Omit<LeadCRM, 'id'>) => {
+    const newId = `lead-${Date.now()}`;
+    const newLead: LeadCRM = {
+      ...leadData,
+      id: newId
+    };
+    try {
+      await saveDoc('leads', newId, newLead);
+      await addNotification('Novo Lead Criado', `Lead ${newLead.name} (${newLead.company}) adicionado ao CRM.`, 'quote');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `leads/${newId}`);
+    }
+  };
+
+  const deleteLead = async (leadId: string) => {
+    try {
+      await deleteDoc(doc(db, 'leads', leadId));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `leads/${leadId}`);
+    }
+  };
+
   const updateLeadStage = async (leadId: string, stage: LeadCRM['stage']) => {
     const lead = leads.find(l => l.id === leadId);
     if (!lead) return;
@@ -2960,6 +2984,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setNotifications([]);
 
+      // 11. Delete test client users
+      const clSnap = await getDocs(collection(db, 'clientUsers'));
+      for (const d of clSnap.docs) {
+        await deleteDoc(doc(db, 'clientUsers', d.id));
+      }
+      setClientUsers([]);
+
       await addNotification(
         'Reset de Testes Concluído! 🧹',
         'Todos os projetos, contratos, orçamentos, propostas, tickets e movimentações de teste foram removidos do painel e do portal do cliente com sucesso.',
@@ -3061,6 +3092,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       manualSettleSubscription,
       sendChatMessage,
       createSupportTicket,
+      addLead,
+      deleteLead,
       updateLeadStage,
       markNotificationAsRead,
       clearAllNotifications,

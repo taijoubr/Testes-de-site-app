@@ -95,6 +95,9 @@ export const AdminPanel: React.FC = () => {
     generateContractForQuote,
     deleteContract,
     leads, 
+    addLead,
+    deleteLead,
+    updateLeadStage,
     updateQuoteStatus, 
     deleteQuote,
     deleteProposal,
@@ -106,7 +109,6 @@ export const AdminPanel: React.FC = () => {
     deleteProject,
     addFinancialTransaction,
     updateFinancialStatus,
-    updateLeadStage,
     currentUser,
     isAdminAuthenticated,
     currentAdminUser,
@@ -165,6 +167,39 @@ export const AdminPanel: React.FC = () => {
   const [portfolioYear, setPortfolioYear] = useState('2025');
   const [portfolioFilterCategory, setPortfolioFilterCategory] = useState('Todos');
   const [deletePortfolioConfirmId, setDeletePortfolioConfirmId] = useState<string | null>(null);
+
+  // CRM Lead States
+  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadCompany, setNewLeadCompany] = useState('');
+  const [newLeadEmail, setNewLeadEmail] = useState('');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [newLeadValue, setNewLeadValue] = useState<number>(15000);
+  const [newLeadStage, setNewLeadStage] = useState<LeadCRM['stage']>('prospeccao');
+
+  const handleCreateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLeadName.trim()) {
+      alert('Por favor, informe o nome do lead.');
+      return;
+    }
+    await addLead({
+      name: newLeadName.trim(),
+      company: newLeadCompany.trim() || 'Empresa Cliente',
+      email: newLeadEmail.trim() || 'contato@cliente.com',
+      phone: newLeadPhone.trim() || '(11) 99999-9999',
+      value: Number(newLeadValue) || 0,
+      stage: newLeadStage,
+      notes: 'Lead cadastrado no CRM.'
+    });
+    setNewLeadName('');
+    setNewLeadCompany('');
+    setNewLeadEmail('');
+    setNewLeadPhone('');
+    setNewLeadValue(15000);
+    setNewLeadStage('prospeccao');
+    setIsNewLeadModalOpen(false);
+  };
 
   const handleOpenNewPortfolioModal = () => {
     setEditingPortfolio(null);
@@ -1027,16 +1062,48 @@ export const AdminPanel: React.FC = () => {
   const totalExpenses = financials.filter(f => f.type === 'despesa' && f.status === 'pago').reduce((acc, curr) => acc + curr.amount, 0);
   const netProfit = totalRevenue - totalExpenses;
 
-  // Chart data
-  const chartData = [
-    { month: 'Jan', Receitas: 18500, Despesas: 4200 },
-    { month: 'Fev', Receitas: 24000, Despesas: 5100 },
-    { month: 'Mar', Receitas: 31000, Despesas: 6800 },
-    { month: 'Abr', Receitas: 28000, Despesas: 5900 },
-    { month: 'Mai', Receitas: 42000, Despesas: 8100 },
-    { month: 'Jun', Receitas: 38000, Despesas: 7400 },
-    { month: 'Jul', Receitas: totalRevenue, Despesas: totalExpenses }
-  ];
+  // Dynamic 6-month chart data calculated directly from actual financial transactions
+  const chartData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' });
+      const capitalized = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1).replace('.', '');
+      return {
+        label: capitalized,
+        monthIndex: d.getMonth(),
+        year: d.getFullYear()
+      };
+    });
+
+    return months.map(m => {
+      const monthTx = financials.filter(f => {
+        if (!f || !f.dueDate) return false;
+        let dt: Date | null = null;
+        if (typeof f.dueDate === 'object' && f.dueDate !== null && 'seconds' in f.dueDate) {
+          dt = new Date((f.dueDate as any).seconds * 1000);
+        } else {
+          dt = new Date(f.dueDate);
+        }
+        if (!dt || isNaN(dt.getTime())) return false;
+        return dt.getMonth() === m.monthIndex && dt.getFullYear() === m.year;
+      });
+
+      const receitas = monthTx
+        .filter(f => f.type === 'receita' && f.status === 'pago')
+        .reduce((sum, curr) => sum + (Number(curr.amount) || 0), 0);
+
+      const despesas = monthTx
+        .filter(f => f.type === 'despesa' && f.status === 'pago')
+        .reduce((sum, curr) => sum + (Number(curr.amount) || 0), 0);
+
+      return {
+        month: m.label,
+        Receitas: receitas,
+        Despesas: despesas
+      };
+    });
+  }, [financials]);
 
   const handleCreateFinancial = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3176,29 +3243,78 @@ export const AdminPanel: React.FC = () => {
       {/* TAB 5: CRM PIPELINE */}
       {activeTab === 'crm' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Funil de Vendas CRM</h2>
-            <p className="text-xs text-slate-500">Acompanhe seus leads desde a prospecção até o fechamento do contrato.</p>
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Funil de Vendas CRM</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-extrabold">
+                  {leads.length} {leads.length === 1 ? 'Lead' : 'Leads'}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">Acompanhe seus leads desde a prospecção até o fechamento do contrato.</p>
+            </div>
+            <button
+              onClick={() => setIsNewLeadModalOpen(true)}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Lead</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {(['prospeccao', 'qualificacao', 'proposta', 'fechamento', 'ganho'] as LeadCRM['stage'][]).map(stage => {
               const stageLeads = leads.filter(l => l.stage === stage);
+              const stageLabels: Record<string, string> = {
+                prospeccao: 'Prospecção',
+                qualificacao: 'Qualificação',
+                proposta: 'Proposta',
+                fechamento: 'Fechamento',
+                ganho: 'Ganho'
+              };
               return (
                 <div key={stage} className="bg-slate-100 dark:bg-slate-900/60 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between border-b pb-2 border-slate-200 dark:border-slate-800">
-                    <span className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300">{stage}</span>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600">{stageLeads.length}</span>
+                    <span className="text-xs font-extrabold uppercase text-slate-700 dark:text-slate-300">{stageLabels[stage]}</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">{stageLeads.length}</span>
                   </div>
 
                   <div className="space-y-3">
-                    {stageLeads.map(lead => (
-                      <div key={lead.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-2">
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-white">{lead.name}</h4>
-                        <p className="text-[10px] text-slate-500">{lead.company}</p>
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">R$ {lead.value.toLocaleString('pt-BR')}</p>
+                    {stageLeads.length === 0 ? (
+                      <div className="p-4 text-center text-slate-400 dark:text-slate-600 text-xs italic border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                        Nenhum lead
                       </div>
-                    ))}
+                    ) : (
+                      stageLeads.map(lead => (
+                        <div key={lead.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight">{lead.name}</h4>
+                            <button
+                              onClick={() => deleteLead(lead.id)}
+                              className="text-slate-400 hover:text-rose-500 transition-colors p-0.5 cursor-pointer shrink-0"
+                              title="Excluir Lead"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{lead.company}</p>
+                          <div className="flex items-center justify-between pt-1 gap-1">
+                            <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">R$ {(lead.value || 0).toLocaleString('pt-BR')}</p>
+                            <select
+                              value={lead.stage}
+                              onChange={(e) => updateLeadStage(lead.id, e.target.value as any)}
+                              className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg px-2 py-1 font-bold border-0 cursor-pointer"
+                            >
+                              <option value="prospeccao">Prospecção</option>
+                              <option value="qualificacao">Qualificação</option>
+                              <option value="proposta">Proposta</option>
+                              <option value="fechamento">Fechamento</option>
+                              <option value="ganho">Ganho</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               );
@@ -6953,6 +7069,123 @@ export const AdminPanel: React.FC = () => {
                 <span>Confirmar Exclusão</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* New CRM Lead Modal */}
+      {isNewLeadModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-6 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-500/20">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Cadastrar Novo Lead</h3>
+                  <p className="text-xs text-slate-500">Adicione uma oportunidade ao Funil de Vendas</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsNewLeadModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateLead} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nome do Contato *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Roberto Alves"
+                  value={newLeadName}
+                  onChange={e => setNewLeadName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Empresa / Negócio</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Alves Tech Solutions"
+                    value={newLeadCompany}
+                    onChange={e => setNewLeadCompany(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">E-mail de Contato</label>
+                  <input
+                    type="email"
+                    placeholder="roberto@alvestech.com"
+                    value={newLeadEmail}
+                    onChange={e => setNewLeadEmail(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Telefone / WhatsApp</label>
+                  <input
+                    type="text"
+                    placeholder="(11) 98888-7777"
+                    value={newLeadPhone}
+                    onChange={e => setNewLeadPhone(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Valor Estimado (R$)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="15000"
+                    value={newLeadValue}
+                    onChange={e => setNewLeadValue(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Estágio Inicial</label>
+                  <select
+                    value={newLeadStage}
+                    onChange={e => setNewLeadStage(e.target.value as any)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                  >
+                    <option value="prospeccao">Prospecção</option>
+                    <option value="qualificacao">Qualificação</option>
+                    <option value="proposta">Proposta</option>
+                    <option value="fechamento">Fechamento</option>
+                    <option value="ganho">Ganho</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsNewLeadModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Cadastrar Lead</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
