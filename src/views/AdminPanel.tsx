@@ -537,14 +537,12 @@ export const AdminPanel: React.FC = () => {
     });
   }, [contractGroups, contractClientSearch]);
 
-  // Completed Projects Client Separation States
+  // Projects Client Separation States
   const [selectedCompletedClientKey, setSelectedCompletedClientKey] = useState<string | null>(null);
   const [completedClientSearch, setCompletedClientSearch] = useState('');
 
-  // Group completed projects by client
-  const completedProjectGroups = useMemo(() => {
-    const completedProjects = projects.filter(p => p.status === 'concluido');
-
+  // Group projects by client (for all statuses: em_andamento, concluido, todos)
+  const projectGroups = useMemo(() => {
     const groupsMap = new Map<string, {
       key: string;
       clientName: string;
@@ -556,7 +554,7 @@ export const AdminPanel: React.FC = () => {
       totalCompletedHours: number;
     }>();
 
-    completedProjects.forEach(p => {
+    projects.forEach(p => {
       const pClientLower = (p.clientName || '').toLowerCase().trim();
 
       const matchedUser = clientUsers.find(u => {
@@ -595,7 +593,7 @@ export const AdminPanel: React.FC = () => {
       group.totalCompletedHours += p.completedHours || 0;
     });
 
-    // Register all clientUsers so clients with 0 completed projects can also appear
+    // Register all clientUsers so clients with 0 projects can also appear if needed
     clientUsers.forEach(u => {
       const key = `client-${u.id}`;
       if (!groupsMap.has(key)) {
@@ -627,33 +625,46 @@ export const AdminPanel: React.FC = () => {
       }
     });
 
-    return Array.from(groupsMap.values()).sort((a, b) => {
-      if (a.projects.length > 0 && b.projects.length === 0) return -1;
-      if (a.projects.length === 0 && b.projects.length > 0) return 1;
-      return a.clientName.localeCompare(b.clientName);
-    });
+    return Array.from(groupsMap.values());
   }, [projects, clientUsers]);
 
-  const filteredCompletedGroups = useMemo(() => {
+  const filteredProjectGroups = useMemo(() => {
     const search = completedClientSearch.toLowerCase().trim();
-    if (!search) return completedProjectGroups;
 
-    return completedProjectGroups.filter(g => {
+    return projectGroups.map(g => {
+      const filteredProjects = g.projects.filter(p => {
+        if (projectStatusFilter === 'em_andamento') return p.status !== 'concluido';
+        if (projectStatusFilter === 'concluido') return p.status === 'concluido';
+        return true;
+      });
+
+      const totalCompletedHours = filteredProjects.reduce((acc, p) => acc + (p.completedHours || 0), 0);
+
+      return {
+        ...g,
+        filteredProjects,
+        totalCompletedHours
+      };
+    }).filter(g => {
+      if (g.filteredProjects.length === 0) return false;
+
+      if (!search) return true;
+
       const matchClient = (
         g.clientName.toLowerCase().includes(search) ||
         (g.companyName && g.companyName.toLowerCase().includes(search)) ||
         (g.email && g.email.toLowerCase().includes(search))
       );
 
-      const matchProject = g.projects.some(p => 
+      const matchProject = g.filteredProjects.some(p => 
         p.title.toLowerCase().includes(search) ||
         p.category.toLowerCase().includes(search) ||
         p.id.toLowerCase().includes(search)
       );
 
       return matchClient || matchProject;
-    });
-  }, [completedProjectGroups, completedClientSearch]);
+    }).sort((a, b) => b.filteredProjects.length - a.filteredProjects.length || a.clientName.localeCompare(b.clientName));
+  }, [projectGroups, completedClientSearch, projectStatusFilter]);
 
   // Edit Subscription Modal States
   const [editingSub, setEditingSub] = useState<ClientSubscription | null>(null);
@@ -2635,196 +2646,190 @@ export const AdminPanel: React.FC = () => {
               </div>
             );
 
-            // SPECIAL VIEW: IF FILTER IS "concluido", SHOW PROJECTS SEPARATED BY CLIENT
-            if (projectStatusFilter === 'concluido') {
-              if (selectedCompletedClientKey === null) {
-                return (
-                  <div className="space-y-6">
-                    {/* Search and info bar */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                      <div className="relative w-full sm:w-96">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          placeholder="Buscar cliente ou projeto finalizado..."
-                          value={completedClientSearch}
-                          onChange={(e) => setCompletedClientSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Clique em um cliente para visualizar os seus projetos finalizados.
-                      </div>
-                    </div>
-
-                    {filteredCompletedGroups.length === 0 ? (
-                      <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
-                          <FolderGit2 className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum cliente com projetos finalizados encontrado</h3>
-                        <p className="text-xs text-slate-500 max-w-md mx-auto">
-                          Não foram encontrados registros para o termo buscado.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredCompletedGroups.map(group => (
-                          <div
-                            key={group.key}
-                            onClick={() => setSelectedCompletedClientKey(group.key)}
-                            className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-5 group relative overflow-hidden"
-                          >
-                            <div className="flex items-center gap-4">
-                              {group.avatar ? (
-                                <img
-                                  src={group.avatar}
-                                  alt={group.clientName}
-                                  className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500/30"
-                                />
-                              ) : (
-                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-xl shadow-inner shrink-0">
-                                  {group.clientName.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-
-                              <div className="flex-1 min-w-0">
-                                <h3 className="text-base font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                  {group.clientName}
-                                </h3>
-                                <p className="text-xs text-slate-500 font-medium truncate">{group.companyName}</p>
-                                <p className="text-[11px] text-slate-400 truncate">{group.email}</p>
-                              </div>
-                            </div>
-
-                            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                {group.projects.length} Projeto(s) Finalizado(s)
-                              </span>
-                              <span className="text-[11px] font-medium text-slate-400">
-                                {group.totalCompletedHours}h executadas
-                              </span>
-                            </div>
-
-                            <div className="pt-2 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
-                              <span>Visualizar Projetos Finalizados</span>
-                              <ChevronRight className="w-4 h-4" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // Client drill-down for completed projects
-              const activeGroup = completedProjectGroups.find(g => g.key === selectedCompletedClientKey);
-
-              if (!activeGroup) {
-                return (
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4">
-                    <p className="text-sm text-slate-500">Cliente não encontrado.</p>
-                    <button
-                      onClick={() => setSelectedCompletedClientKey(null)}
-                      className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold"
-                    >
-                      Voltar para Lista de Clientes
-                    </button>
-                  </div>
-                );
-              }
-
+            // CLIENT SEPARATION VIEW (ALL FILTERS: em_andamento, concluido, todos)
+            if (selectedCompletedClientKey === null) {
               return (
                 <div className="space-y-6">
-                  {/* Top Bar for Selected Client */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={() => setSelectedCompletedClientKey(null)}
-                        className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
-                        title="Voltar para Clientes"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </button>
-
-                      {activeGroup.avatar ? (
-                        <img
-                          src={activeGroup.avatar}
-                          alt={activeGroup.clientName}
-                          className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500/30 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-lg shrink-0">
-                          {activeGroup.clientName.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
-                            {activeGroup.clientName}
-                          </h3>
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                            {activeGroup.projects.length} Projeto(s) Finalizado(s)
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 font-medium">
-                          {activeGroup.companyName} • {activeGroup.email} • {activeGroup.phone}
-                        </p>
-                      </div>
+                  {/* Search and info bar */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div className="relative w-full sm:w-96">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Buscar cliente ou projeto..."
+                        value={completedClientSearch}
+                        onChange={(e) => setCompletedClientSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white font-medium"
+                      />
                     </div>
-
-                    <button
-                      onClick={() => setSelectedCompletedClientKey(null)}
-                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
-                    >
-                      ← Ver Outros Clientes
-                    </button>
+                    <div className="text-xs text-slate-500 font-medium">
+                      Clique em um cliente para visualizar os seus projetos ({projectStatusFilter === 'em_andamento' ? 'em andamento' : projectStatusFilter === 'concluido' ? 'finalizados' : 'todos'}).
+                    </div>
                   </div>
 
-                  {/* Render projects of activeGroup */}
-                  {activeGroup.projects.length === 0 ? (
+                  {filteredProjectGroups.length === 0 ? (
                     <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                      <FolderGit2 className="w-8 h-8 text-slate-400 mx-auto" />
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Nenhum projeto finalizado para este cliente</h4>
-                      <p className="text-xs text-slate-500">Este cliente ainda não possui projetos com status concluído.</p>
+                      <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
+                        <FolderGit2 className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                        {projectStatusFilter === 'em_andamento' 
+                          ? 'Nenhum cliente com projeto em andamento' 
+                          : projectStatusFilter === 'concluido' 
+                          ? 'Nenhum cliente com projeto finalizado' 
+                          : 'Nenhum projeto encontrado'}
+                      </h3>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">
+                        Não foram encontrados registros para os filtros selecionados.
+                      </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {activeGroup.projects.map(p => renderProjectCard(p))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredProjectGroups.map(group => (
+                        <div
+                          key={group.key}
+                          onClick={() => setSelectedCompletedClientKey(group.key)}
+                          className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-5 group relative overflow-hidden"
+                        >
+                          <div className="flex items-center gap-4">
+                            {group.avatar ? (
+                              <img
+                                src={group.avatar}
+                                alt={group.clientName}
+                                className="w-14 h-14 rounded-2xl object-cover border-2 border-blue-500/30"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-extrabold text-xl shadow-inner shrink-0">
+                                {group.clientName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-extrabold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                {group.clientName}
+                              </h3>
+                              <p className="text-xs text-slate-500 font-medium truncate">{group.companyName}</p>
+                              <p className="text-[11px] text-slate-400 truncate">{group.email}</p>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                            <span className={`px-3 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${
+                              projectStatusFilter === 'em_andamento'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                : projectStatusFilter === 'concluido'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                            }`}>
+                              {projectStatusFilter === 'em_andamento' && <Clock className="w-3.5 h-3.5 text-blue-500" />}
+                              {projectStatusFilter === 'concluido' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                              {group.filteredProjects.length} Projeto(s) {projectStatusFilter === 'em_andamento' ? 'em Andamento' : projectStatusFilter === 'concluido' ? 'Finalizado(s)' : ''}
+                            </span>
+                            <span className="text-[11px] font-medium text-slate-400">
+                              {group.totalCompletedHours}h executadas
+                            </span>
+                          </div>
+
+                          <div className="pt-2 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
+                            <span>Visualizar Projetos do Cliente</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               );
             }
 
-            // STANDARD VIEW (em_andamento or todos)
-            const filteredProjects = projects.filter(p => {
+            // Client drill-down view for selected client
+            const activeGroup = projectGroups.find(g => g.key === selectedCompletedClientKey);
+            const clientProjects = activeGroup ? activeGroup.projects.filter(p => {
               if (projectStatusFilter === 'em_andamento') return p.status !== 'concluido';
+              if (projectStatusFilter === 'concluido') return p.status === 'concluido';
               return true;
-            });
+            }) : [];
 
-            if (filteredProjects.length === 0) {
+            if (!activeGroup) {
               return (
-                <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
-                    <FolderGit2 className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum projeto encontrado nesta categoria</h3>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    {projectStatusFilter === 'em_andamento'
-                      ? 'Todos os projetos foram finalizados ou ainda não há novos projetos em andamento.'
-                      : 'Nenhum projeto cadastrado no sistema.'}
-                  </p>
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4">
+                  <p className="text-sm text-slate-500">Cliente não encontrado.</p>
+                  <button
+                    onClick={() => setSelectedCompletedClientKey(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Voltar para Lista de Clientes
+                  </button>
                 </div>
               );
             }
 
             return (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {filteredProjects.map(p => renderProjectCard(p))}
+              <div className="space-y-6">
+                {/* Top Bar for Selected Client */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setSelectedCompletedClientKey(null)}
+                      className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
+                      title="Voltar para Lista de Clientes"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+
+                    {activeGroup.avatar ? (
+                      <img
+                        src={activeGroup.avatar}
+                        alt={activeGroup.clientName}
+                        className="w-12 h-12 rounded-2xl object-cover border-2 border-blue-500/30 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-extrabold text-lg shrink-0">
+                        {activeGroup.clientName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                          {activeGroup.clientName}
+                        </h3>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          projectStatusFilter === 'em_andamento'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            : projectStatusFilter === 'concluido'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
+                        }`}>
+                          {clientProjects.length} Projeto(s) {projectStatusFilter === 'em_andamento' ? 'em Andamento' : projectStatusFilter === 'concluido' ? 'Finalizado(s)' : ''}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">
+                        {activeGroup.companyName} • {activeGroup.email} • {activeGroup.phone}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedCompletedClientKey(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
+                  >
+                    ← Ver Outros Clientes
+                  </button>
+                </div>
+
+                {/* Render projects of activeGroup */}
+                {clientProjects.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
+                    <FolderGit2 className="w-8 h-8 text-slate-400 mx-auto" />
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Nenhum projeto encontrado para este cliente</h4>
+                    <p className="text-xs text-slate-500">Este cliente não possui projetos com o filtro selecionado.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {clientProjects.map(p => renderProjectCard(p))}
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -2852,24 +2857,6 @@ export const AdminPanel: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setShowBillingAutomationModal(true)}
-                  className="px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-500/20 cursor-pointer transition-all"
-                  title="Disparar e configurar réguas de cobrança e automação"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Automação & Cobrança</span>
-                </button>
-
-                <button
-                  onClick={() => setShowAuditModal(true)}
-                  className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700 transition-all"
-                  title="Audit de saúde financeira e logs de transações"
-                >
-                  <ShieldCheck className="w-4 h-4 text-slate-500" />
-                  <span>Auditoria</span>
-                </button>
-
                 <button
                   onClick={() => setShowNewSubModal(true)}
                   className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
@@ -2932,12 +2919,7 @@ export const AdminPanel: React.FC = () => {
             <FinancialDashboard
               subscriptions={subscriptions}
               financials={financials}
-              projects={projects}
-              onNavigateTab={(tab) => setFinSubTab(tab)}
-              onOpenBillingModal={() => setShowBillingAutomationModal(true)}
-              onOpenAuditModal={() => setShowAuditModal(true)}
-              onNewTransaction={() => setShowFinModal(true)}
-              onNewSubscription={() => setShowNewSubModal(true)}
+              onNavigateToTab={(tab) => setFinSubTab(tab)}
             />
           )}
 

@@ -22,47 +22,84 @@ import {
 } from 'lucide-react';
 
 interface FinancialTransactionsProps {
-  financials: FinancialTransaction[];
-  searchTerm: string;
-  onOpenNewTransactionModal: () => void;
-  onMarkAsPaid: (transaction: FinancialTransaction) => void;
-  onDeleteTransaction: (id: string) => void;
-  onViewAuditLogs: (transaction: FinancialTransaction) => void;
-  selectedIds: string[];
-  onToggleSelect: (id: string) => void;
-  onToggleSelectAll: () => void;
+  financials?: FinancialTransaction[];
+  searchTerm?: string;
+  onOpenNewTransactionModal?: () => void;
+  onNewTransaction?: () => void;
+  onMarkAsPaid?: (transaction: FinancialTransaction) => void;
+  onSettleTransaction?: (transaction: FinancialTransaction) => void;
+  onDeleteTransaction?: (id: string) => void;
+  onViewAuditLogs?: (transaction: FinancialTransaction) => void;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
-  financials,
-  searchTerm,
+  financials = [],
+  searchTerm = '',
   onOpenNewTransactionModal,
+  onNewTransaction,
   onMarkAsPaid,
+  onSettleTransaction,
   onDeleteTransaction,
   onViewAuditLogs,
-  selectedIds,
+  selectedIds = [],
   onToggleSelect,
   onToggleSelectAll
 }) => {
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [categoryFilter, setCategoryFilter] = useState<string>('todas');
+  const [localSearch, setLocalSearch] = useState<string>('');
+  const [localSelectedIds, setLocalSelectedIds] = useState<string[]>([]);
+
+  const activeSearch = searchTerm || localSearch;
+  const activeSelectedIds = selectedIds.length > 0 ? selectedIds : localSelectedIds;
+
+  const handleOpenNew = onOpenNewTransactionModal || onNewTransaction || (() => {});
+  const handleMarkPaid = onMarkAsPaid || onSettleTransaction || (() => {});
 
   const categories = Array.from(new Set(financials.map(f => f.category || 'Geral')));
 
   const filtered = financials.filter(f => {
     const matchesStatus = statusFilter === 'todos' || f.status === statusFilter;
     const matchesCategory = categoryFilter === 'todas' || f.category === categoryFilter;
-    const matchesSearch = 
-      f.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (f.clientName && f.clientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (f.supplierName && f.supplierName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (f.category && f.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (f.invoiceNumber && f.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+    const searchLower = activeSearch.toLowerCase().trim();
+    const matchesSearch = !searchLower ||
+      (f.title && f.title.toLowerCase().includes(searchLower)) ||
+      (f.clientName && f.clientName.toLowerCase().includes(searchLower)) ||
+      (f.supplierName && f.supplierName.toLowerCase().includes(searchLower)) ||
+      (f.category && f.category.toLowerCase().includes(searchLower)) ||
+      (f.invoiceNumber && f.invoiceNumber.toLowerCase().includes(searchLower));
 
     return matchesStatus && matchesCategory && matchesSearch;
   });
 
-  const allSelected = filtered.length > 0 && filtered.every(f => selectedIds.includes(f.id));
+  const handleToggleSelect = (id: string) => {
+    if (onToggleSelect) {
+      onToggleSelect(id);
+    } else {
+      setLocalSelectedIds(prev => 
+        prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+      );
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (onToggleSelectAll) {
+      onToggleSelectAll();
+    } else {
+      const allFilteredIds = filtered.map(f => f.id);
+      const isAllSelected = allFilteredIds.every(id => localSelectedIds.includes(id));
+      if (isAllSelected) {
+        setLocalSelectedIds([]);
+      } else {
+        setLocalSelectedIds(allFilteredIds);
+      }
+    }
+  };
+
+  const allSelected = filtered.length > 0 && filtered.every(f => activeSelectedIds.includes(f.id));
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg space-y-5 animate-in fade-in duration-200">
@@ -105,7 +142,7 @@ export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
           </select>
 
           <button
-            onClick={onOpenNewTransactionModal}
+            onClick={handleOpenNew}
             className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
           >
             <span>+ Lançamento</span>
@@ -119,7 +156,7 @@ export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-500 uppercase font-black tracking-wider">
               <th className="py-3 px-3 rounded-l-xl w-10">
-                <button onClick={onToggleSelectAll} className="cursor-pointer">
+                <button onClick={handleToggleSelectAll} className="cursor-pointer">
                   {allSelected ? <CheckSquare className="w-4 h-4 text-emerald-500" /> : <Square className="w-4 h-4" />}
                 </button>
               </th>
@@ -141,7 +178,7 @@ export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
               </tr>
             ) : (
               filtered.map((item) => {
-                const isSelected = selectedIds.includes(item.id);
+                const isSelected = activeSelectedIds.includes(item.id);
                 const isReceita = item.type === 'receita';
                 const isPaid = item.status === 'pago';
                 const isOverdue = item.status === 'atrasado';
@@ -154,13 +191,13 @@ export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
                     }`}
                   >
                     <td className="py-3.5 px-3">
-                      <button onClick={() => onToggleSelect(item.id)} className="cursor-pointer">
+                      <button onClick={() => handleToggleSelect(item.id)} className="cursor-pointer">
                         {isSelected ? <CheckSquare className="w-4 h-4 text-emerald-500" /> : <Square className="w-4 h-4 text-slate-400" />}
                       </button>
                     </td>
 
                     <td className="py-3.5 px-3 font-bold text-slate-700 dark:text-slate-300">
-                      <div>{new Date(item.dueDate).toLocaleDateString('pt-BR')}</div>
+                      <div>{item.dueDate ? new Date(item.dueDate).toLocaleDateString('pt-BR') : '-'}</div>
                       {item.paymentDate && (
                         <div className="text-[10px] text-emerald-600 font-normal">
                           Pago em {new Date(item.paymentDate).toLocaleDateString('pt-BR')}
@@ -193,7 +230,7 @@ export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
                     <td className={`py-3.5 px-3 text-right font-black text-sm ${
                       isReceita ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}>
-                      {isReceita ? '+' : '-'} R$ {item.amount.toLocaleString('pt-BR')}
+                      {isReceita ? '+' : '-'} R$ {item.amount ? item.amount.toLocaleString('pt-BR') : '0'}
                     </td>
 
                     <td className="py-3.5 px-3 text-center">
@@ -210,7 +247,7 @@ export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
                       <div className="flex items-center justify-center gap-1">
                         {!isPaid && (
                           <button
-                            onClick={() => onMarkAsPaid(item)}
+                            onClick={() => handleMarkPaid(item)}
                             className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] cursor-pointer"
                             title="Dar Baixa (Marcar como Pago)"
                           >
@@ -218,21 +255,25 @@ export const FinancialTransactions: React.FC<FinancialTransactionsProps> = ({
                           </button>
                         )}
 
-                        <button
-                          onClick={() => onViewAuditLogs(item)}
-                          className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
-                          title="Ver Histórico de Auditoria"
-                        >
-                          <ShieldAlert className="w-3.5 h-3.5" />
-                        </button>
+                        {onViewAuditLogs && (
+                          <button
+                            onClick={() => onViewAuditLogs(item)}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                            title="Ver Histórico de Auditoria"
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
-                        <button
-                          onClick={() => onDeleteTransaction(item.id)}
-                          className="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500/20 cursor-pointer"
-                          title="Excluir Lançamento"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {onDeleteTransaction && (
+                          <button
+                            onClick={() => onDeleteTransaction(item.id)}
+                            className="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500/20 cursor-pointer"
+                            title="Excluir Lançamento"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

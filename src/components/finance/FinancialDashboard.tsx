@@ -108,15 +108,67 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
 
-  // Monthly Comparison Mock Graph Data
-  const monthlyData = [
-    { month: 'Mar', receita: 18500, despesa: 6200, mrr: 8200, lucro: 12300 },
-    { month: 'Abr', receita: 21000, despesa: 7100, mrr: 9400, lucro: 13900 },
-    { month: 'Mai', receita: 24500, despesa: 8400, mrr: 10500, lucro: 16100 },
-    { month: 'Jun', receita: 22800, despesa: 7900, mrr: 11200, lucro: 14900 },
-    { month: 'Jul', receita: 27900, despesa: 8900, mrr: 11800, lucro: 19000 },
-    { month: 'Ago', receita: totalReceitaPrevista || 31200, despesa: totalDespesaTotal || 9400, mrr: mrrTotal || 12200, lucro: (totalReceitaPrevista - totalDespesaTotal) || 21800 }
-  ];
+  // Dynamic Monthly Comparison Graph Data based on real system transactions and active subscriptions
+  const monthlyData = React.useMemo(() => {
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const now = new Date();
+    const result = [];
+
+    // Generate last 6 months (5 months ago up to current month)
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+      const monthLabel = monthNames[monthIdx];
+
+      // Sum revenues and expenses for this specific month & year
+      let receita = 0;
+      let despesa = 0;
+
+      financials.forEach(f => {
+        const dateStr = f.paymentDate || f.dueDate;
+        if (dateStr) {
+          const dateObj = new Date(dateStr);
+          if (!isNaN(dateObj.getTime()) && dateObj.getFullYear() === year && dateObj.getMonth() === monthIdx) {
+            if (f.type === 'receita') {
+              receita += f.amount || 0;
+            } else if (f.type === 'despesa') {
+              despesa += f.amount || 0;
+            }
+          }
+        }
+      });
+
+      // Calculate active MRR for this month
+      const lastDayOfMonth = new Date(year, monthIdx + 1, 0);
+      let mrrForMonth = 0;
+
+      subscriptions.forEach(sub => {
+        if (sub.status === 'ativo') {
+          if (!sub.startDate) {
+            mrrForMonth += sub.monthlyValue || 0;
+          } else {
+            const subStartDate = new Date(sub.startDate);
+            if (isNaN(subStartDate.getTime()) || subStartDate <= lastDayOfMonth) {
+              mrrForMonth += sub.monthlyValue || 0;
+            }
+          }
+        }
+      });
+
+      const lucro = receita - despesa;
+
+      result.push({
+        month: monthLabel,
+        receita,
+        despesa,
+        mrr: mrrForMonth,
+        lucro
+      });
+    }
+
+    return result;
+  }, [financials, subscriptions]);
 
   // Category Breakdown Data
   const categoryMap: Record<string, { receita: number; despesa: number }> = {};
