@@ -152,7 +152,7 @@ export const ClientPortal: React.FC = () => {
   const [customFeature, setCustomFeature] = useState('');
   const [references, setReferences] = useState('');
   const [deadline, setDeadline] = useState('Até 30 dias');
-  const [budgetRange, setBudgetRange] = useState('R$ 8.000 a R$ 15.000');
+  const [budgetRange, setBudgetRange] = useState('A definir pela equipe');
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
 
@@ -935,6 +935,68 @@ export const ClientPortal: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Project Payment & Invoices Block */}
+                {(() => {
+                  const activeProjFins = financials.filter(f => f.projectId === activeProject.id || (f.clientName === activeProject.clientName && f.category.includes('Desenvolvimento')));
+                  return (
+                    <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Pagamento & Cobranças do Projeto:</h4>
+                        <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400">
+                          {activeProjFins.length} lançamento(s) vinculado(s)
+                        </span>
+                      </div>
+
+                      {activeProjFins.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {activeProjFins.map(f => (
+                            <div key={f.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                    f.status === 'pago' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                                  }`}>
+                                    {f.status === 'pago' ? 'Pago' : 'Aguardando Pagamento'}
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-900 dark:text-white">{f.title}</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 mt-1">
+                                  Vencimento: {f.dueDate ? new Date(f.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'N/D'} • Forma: {f.paymentMethod.toUpperCase()}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                <span className="text-base font-extrabold text-slate-900 dark:text-white">
+                                  R$ {f.amount.toLocaleString('pt-BR')}
+                                </span>
+
+                                {f.status === 'pendente' ? (
+                                  <button
+                                    onClick={() => setPixModalOpen(true)}
+                                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-1 cursor-pointer transition-all"
+                                  >
+                                    <QrCode className="w-3.5 h-3.5" />
+                                    <span>Pagar via Pix</span>
+                                  </button>
+                                ) : (
+                                  <span className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>Confirmado</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 text-center">
+                          Nenhum lançamento financeiro pendente para este projeto no momento.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
               </div>
             ) : (
               <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-3">
@@ -1386,49 +1448,30 @@ export const ClientPortal: React.FC = () => {
                 )}
               </div>
 
-              {/* SECTION 3: Estimativas de Prazos e Investimento */}
+              {/* SECTION 3: Estimativa de Prazo de Entrega */}
               <div className="space-y-4 pt-2">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                   <span className="w-6 h-6 rounded-lg bg-blue-600/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
                     3
                   </span>
-                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Estimativas de Prazos e Investimento</h4>
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Estimativa de Prazo de Entrega</h4>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Prazo de Entrega Desejado *
-                    </label>
-                    <select
-                      value={deadline}
-                      onChange={e => setDeadline(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white cursor-pointer"
-                    >
-                      <option value="15 dias (Urgente)">15 dias (Urgente)</option>
-                      <option value="Até 30 dias">Até 30 dias</option>
-                      <option value="Até 45 dias">Até 45 dias</option>
-                      <option value="Até 60 dias">Até 60 dias</option>
-                      <option value="A combinar">A combinar</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Faixa de Investimento Prevista *
-                    </label>
-                    <select
-                      value={budgetRange}
-                      onChange={e => setBudgetRange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white cursor-pointer"
-                    >
-                      <option value="Ainda não definida">Ainda não definida</option>
-                      <option value="R$ 3.000 a R$ 8.000">R$ 3.000 a R$ 8.000</option>
-                      <option value="R$ 8.000 a R$ 15.000">R$ 8.000 a R$ 15.000</option>
-                      <option value="R$ 15.000 a R$ 30.000">R$ 15.000 a R$ 30.000</option>
-                      <option value="Acima de R$ 30.000">Acima de R$ 30.000</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Prazo de Entrega Desejado *
+                  </label>
+                  <select
+                    value={deadline}
+                    onChange={e => setDeadline(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white cursor-pointer"
+                  >
+                    <option value="15 dias (Urgente)">15 dias (Urgente)</option>
+                    <option value="Até 30 dias">Até 30 dias</option>
+                    <option value="Até 45 dias">Até 45 dias</option>
+                    <option value="Até 60 dias">Até 60 dias</option>
+                    <option value="A combinar">A combinar</option>
+                  </select>
                 </div>
 
                 <div>

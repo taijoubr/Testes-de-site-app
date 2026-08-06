@@ -2011,6 +2011,47 @@ export const AdminPanel: React.FC = () => {
                   <span className="text-slate-400">{p.files.length} arquivo(s) no repositório do projeto</span>
                 </div>
 
+                {/* Project Payment Breakdown */}
+                {(() => {
+                  const prjFins = financials.filter(f => f.projectId === p.id || (f.clientName === p.clientName && f.category.includes('Desenvolvimento')));
+                  return (
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">
+                          💰 Faturamento & Cobranças do Projeto ({prjFins.length})
+                        </span>
+                      </div>
+                      {prjFins.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {prjFins.map(f => (
+                            <div key={f.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                              <div>
+                                <p className="font-extrabold text-slate-900 dark:text-white truncate max-w-[180px]">{f.title}</p>
+                                <p className="text-[10px] text-slate-400">Vencimento: {f.dueDate ? new Date(f.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'N/D'}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="font-extrabold text-emerald-600 dark:text-emerald-400">R$ {f.amount.toLocaleString('pt-BR')}</p>
+                                <button
+                                  onClick={() => updateFinancialStatus(f.id, f.status === 'pago' ? 'pendente' : 'pago')}
+                                  className={`mt-1 px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all ${
+                                    f.status === 'pago' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20'
+                                  }`}
+                                >
+                                  {f.status === 'pago' ? '✓ Pago' : '⏳ Dar Baixa'}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-500">
+                          Nenhum lançamento financeiro gerado para este projeto.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Recurring Monthly Fee & Finalization Control */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">

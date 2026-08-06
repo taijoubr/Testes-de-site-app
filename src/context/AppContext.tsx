@@ -1318,6 +1318,108 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const generateProjectPaymentFinancials = async (
+    projectId: string,
+    title: string,
+    clientName: string,
+    totalValue: number,
+    paymentConditions?: PaymentConditions,
+    paymentTermsText?: string
+  ) => {
+    let pType = paymentConditions?.paymentType;
+    let pPercent = paymentConditions?.downPaymentPercent;
+    let pInst = paymentConditions?.installmentsCount;
+
+    // Smart fallback if paymentConditions is missing or undefined: check paymentTerms string
+    if (!pType && paymentTermsText) {
+      const lower = paymentTermsText.toLowerCase();
+      if (lower.includes('à vista') || lower.includes('a vista') || lower.includes('100%') || lower.includes('integral')) {
+        pType = 'vista';
+      } else if (lower.includes('sem entrada')) {
+        pType = 'parcelado_sem_entrada';
+      }
+    }
+
+    pType = pType || 'entrada_parcelamento';
+    pPercent = pPercent !== undefined ? pPercent : (pType === 'vista' ? 100 : 30);
+    pInst = pInst !== undefined ? pInst : 3;
+
+    const today = new Date();
+
+    if (pType === 'vista') {
+      const fin: FinancialTransaction = {
+        id: `FIN-${Date.now()}-1`,
+        title: `Pagamento Integral à Vista (100%) - ${title}`,
+        type: 'receita',
+        category: 'Desenvolvimento de Software',
+        amount: Math.round(totalValue),
+        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'pendente',
+        paymentMethod: 'pix',
+        clientName,
+        projectId
+      };
+      await saveDoc('financials', fin.id, fin);
+    } else if (pType === 'parcelado_sem_entrada') {
+      const instVal = pInst > 0 ? Math.round(totalValue / pInst) : totalValue;
+      for (let i = 1; i <= pInst; i++) {
+        const dueDate = new Date(today.getTime() + ((i - 1) * 30 + 5) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const fin: FinancialTransaction = {
+          id: `FIN-${Date.now()}-${i}`,
+          title: `Parcela ${i}/${pInst} - ${title}`,
+          type: 'receita',
+          category: 'Desenvolvimento de Software',
+          amount: instVal,
+          dueDate,
+          status: 'pendente',
+          paymentMethod: 'pix',
+          clientName,
+          projectId
+        };
+        await saveDoc('financials', fin.id, fin);
+      }
+    } else {
+      // entrada_parcelamento (default)
+      const entryAmount = Math.round(totalValue * (pPercent / 100));
+      if (entryAmount > 0) {
+        const entryFin: FinancialTransaction = {
+          id: `FIN-${Date.now()}-0`,
+          title: `Entrada (${pPercent}%) - ${title}`,
+          type: 'receita',
+          category: 'Desenvolvimento de Software',
+          amount: entryAmount,
+          dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: 'pendente',
+          paymentMethod: 'pix',
+          clientName,
+          projectId
+        };
+        await saveDoc('financials', entryFin.id, entryFin);
+      }
+
+      const remaining = totalValue - entryAmount;
+      if (pInst > 0 && remaining > 0) {
+        const instVal = Math.round(remaining / pInst);
+        for (let i = 1; i <= pInst; i++) {
+          const dueDate = new Date(today.getTime() + (i * 30 + 5) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const fin: FinancialTransaction = {
+            id: `FIN-${Date.now()}-${i}`,
+            title: `Parcela ${i}/${pInst} - ${title}`,
+            type: 'receita',
+            category: 'Desenvolvimento de Software',
+            amount: instVal,
+            dueDate,
+            status: 'pendente',
+            paymentMethod: 'pix',
+            clientName,
+            projectId
+          };
+          await saveDoc('financials', fin.id, fin);
+        }
+      }
+    }
+  };
+
   // Digital Acceptance Flow
   const acceptProposal = async (proposalId: string, signatureName: string, customOptions?: { dueDate?: string; monthlyDueDate?: string }) => {
     const now = new Date().toISOString();
@@ -1339,6 +1441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           scope: associatedQuote.scopeItems || associatedQuote.selectedFeatures || ['Desenvolvimento Web/Mobile', 'Painel Admin', 'API'],
           totalValue: associatedQuote.offeredValue || 15000,
           paymentTerms: associatedQuote.paymentTerms || '30% de entrada no aceite + parcelamento',
+          paymentConditions: associatedQuote.paymentConditions,
           contractText: `INSTRUMENTO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS...`,
           status: 'pendente',
           createdAt: associatedQuote.createdAt
@@ -1420,22 +1523,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await saveDoc('projects', newProjectId, newProject);
 
-      // Automatically create initial entry invoice (30% entry fee) in Firestore
-      const entryAmount = Math.round(prop.totalValue * 0.3);
-      const newFinancial: FinancialTransaction = {
-        id: `FIN-${Date.now()}`,
-        title: `Entrada 30% - ${prop.title}`,
-        type: 'receita',
-        category: 'Desenvolvimento de Software',
-        amount: entryAmount,
-        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        status: 'pendente',
-        paymentMethod: 'pix',
-        clientName: prop.clientName,
-        projectId: newProjectId
-      };
-
-      await saveDoc('financials', newFinancial.id, newFinancial);
+      // Automatically create project payment invoices according to payment conditions
+      const propPayCond = prop.paymentConditions || (prop.quoteId ? quotes.find(q => q.id === prop.quoteId)?.paymentConditions : undefined);
+      await generateProjectPaymentFinancials(newProjectId, prop.title, prop.clientName, prop.totalValue, propPayCond, prop.paymentTerms);
 
       // Store monthly subscription value on project (will be instantiated into ClientSubscription only when project is finalized)
       const subValue = prop.recurringMonthlyValue && prop.recurringMonthlyValue > 0 ? prop.recurringMonthlyValue : Math.round(prop.totalValue / 12);
@@ -2121,6 +2211,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       await saveDoc('projects', newProjectId, newProject);
+
+      // Automatically generate project financial transactions
+      await generateProjectPaymentFinancials(newProjectId, newProject.title, q.clientName, q.offeredValue || 15000, q.paymentConditions);
 
       // Update quote with convertedProjectId and contract
       const updatedQuote = {

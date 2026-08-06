@@ -384,50 +384,24 @@ export const QuoteWizardModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Prazo Desejado e Faixa de Investimento */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                {/* Prazo Desejado */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                    Prazo Desejado *
-                  </label>
-                  <div className="relative">
-                    <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                    <select
-                      value={deadline}
-                      onChange={e => setDeadline(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
-                    >
-                      <option value="O quanto antes">O quanto antes</option>
-                      <option value="Até 30 dias">Até 30 dias</option>
-                      <option value="Até 60 dias">Até 60 dias</option>
-                      <option value="Sem prazo definido">Sem prazo definido</option>
-                    </select>
-                  </div>
+              {/* Prazo Desejado */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                  Prazo Desejado *
+                </label>
+                <div className="relative">
+                  <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <select
+                    value={deadline}
+                    onChange={e => setDeadline(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+                  >
+                    <option value="O quanto antes">O quanto antes</option>
+                    <option value="Até 30 dias">Até 30 dias</option>
+                    <option value="Até 60 dias">Até 60 dias</option>
+                    <option value="Sem prazo definido">Sem prazo definido</option>
+                  </select>
                 </div>
-
-                {/* Faixa de Investimento */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                    Faixa de Investimento *
-                  </label>
-                  <div className="relative">
-                    <DollarSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                    <select
-                      value={budgetRange}
-                      onChange={e => setBudgetRange(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
-                    >
-                      <option value="Ainda não definida">Ainda não definida</option>
-                      <option value="Até R$ 2.000">Até R$ 2.000</option>
-                      <option value="R$ 2.000 a R$ 5.000">R$ 2.000 a R$ 5.000</option>
-                      <option value="R$ 5.000 a R$ 10.000">R$ 5.000 a R$ 10.000</option>
-                      <option value="Acima de R$ 10.000">Acima de R$ 10.000</option>
-                    </select>
-                  </div>
-                </div>
-
               </div>
 
               {/* Informações Adicionais */}

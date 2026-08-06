@@ -83,16 +83,18 @@ export const AdminQuoteManagementModal: React.FC<AdminQuoteManagementModalProps>
   
   // Interactive Payment Conditions Builder State
   const [paymentType, setPaymentType] = useState<'entrada_parcelamento' | 'vista' | 'parcelado_sem_entrada'>(
-    quote.paymentConditions?.paymentType || 'entrada_parcelamento'
+    existingProposal?.paymentConditions?.paymentType || quote.paymentConditions?.paymentType || 'entrada_parcelamento'
   );
   const [downPaymentPercent, setDownPaymentPercent] = useState<number>(
-    quote.paymentConditions?.downPaymentPercent || 30
+    existingProposal?.paymentConditions?.downPaymentPercent !== undefined
+      ? existingProposal.paymentConditions.downPaymentPercent
+      : (quote.paymentConditions?.downPaymentPercent !== undefined ? quote.paymentConditions.downPaymentPercent : 30)
   );
   const [installmentsCount, setInstallmentsCount] = useState<number>(
-    quote.paymentConditions?.installmentsCount || 3
+    existingProposal?.paymentConditions?.installmentsCount || quote.paymentConditions?.installmentsCount || 3
   );
   const [paymentMethod, setPaymentMethod] = useState<string>(
-    quote.paymentConditions?.paymentMethod || 'Pix / Boleto ou Cartão de Crédito'
+    existingProposal?.paymentConditions?.paymentMethod || quote.paymentConditions?.paymentMethod || 'Pix / Boleto ou Cartão de Crédito'
   );
 
   const calculateAndApplyPaymentTerms = (
@@ -197,6 +199,13 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
     const numericValue = offeredValue ? parseFloat(offeredValue) : (quote.aiAnalysis?.suggestedBudget || 18500);
     const numericMonthly = recurringMonthlyValue ? parseFloat(recurringMonthlyValue) : 0;
 
+    const currentPayConditions = {
+      paymentType,
+      downPaymentPercent: paymentType === 'entrada_parcelamento' ? downPaymentPercent : (paymentType === 'vista' ? 100 : 0),
+      installmentsCount: paymentType !== 'vista' ? installmentsCount : 1,
+      paymentMethod
+    };
+
     // 1. Update quote details in system
     await updateQuoteDetails(
       quote.id,
@@ -204,6 +213,7 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
         offeredValue: numericValue,
         offeredDeadline,
         paymentTerms,
+        paymentConditions: currentPayConditions,
         assignedTo,
         assignedToName: assignedMember ? assignedMember.name : 'Engenheiro NCodes',
         assignedToRole: assignedMember ? assignedMember.role : 'admin',
@@ -230,6 +240,7 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
       totalValue: numericValue,
       recurringMonthlyValue: numericMonthly,
       paymentTerms,
+      paymentConditions: currentPayConditions,
       contractText
     });
 

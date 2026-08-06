@@ -94,7 +94,7 @@ export const ProposalGeneratorModal: React.FC<ProposalGeneratorModalProps> = ({ 
       paymentTerms,
       paymentConditions: {
         paymentType,
-        downPaymentPercent: paymentType === 'entrada_parcelamento' ? downPaymentPercent : 0,
+        downPaymentPercent: paymentType === 'entrada_parcelamento' ? downPaymentPercent : (paymentType === 'vista' ? 100 : 0),
         installmentsCount: paymentType !== 'vista' ? installmentsCount : 1,
         paymentMethod
       },
