@@ -356,6 +356,260 @@ export const AdminPanel: React.FC = () => {
     paymentDate: string;
   } | null>(null);
 
+  // Contracts Client Separation States
+  const [selectedContractClientKey, setSelectedContractClientKey] = useState<string | null>(null);
+  const [contractClientSearch, setContractClientSearch] = useState('');
+
+  // Group contracts by client
+  const contractGroups = useMemo(() => {
+    const groupsMap = new Map<string, {
+      key: string;
+      clientName: string;
+      companyName?: string;
+      email?: string;
+      cpfCnpj?: string;
+      phone?: string;
+      avatar?: string;
+      contracts: typeof contracts;
+      totalValue: number;
+      signedCount: number;
+      pendingCount: number;
+    }>();
+
+    contracts.forEach(contract => {
+      const cEmail = (contract.client.email || '').toLowerCase().trim();
+      const cCompany = (contract.client.companyName || '').toLowerCase().trim();
+      const cName = (contract.client.fullName || '').toLowerCase().trim();
+
+      const matchedUser = clientUsers.find(u => {
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uCompany = (u.company || '').toLowerCase().trim();
+        const uName = (u.name || '').toLowerCase().trim();
+
+        return (cEmail && uEmail && cEmail === uEmail) ||
+               (cCompany && uCompany && cCompany === uCompany) ||
+               (cName && uName && cName === uName);
+      });
+
+      const key = matchedUser 
+        ? `client-${matchedUser.id}` 
+        : (cEmail || cCompany || cName || `contract-${contract.id}`);
+
+      const displayName = matchedUser?.name || contract.client.fullName || contract.client.companyName || 'Cliente sem nome';
+      const displayCompany = matchedUser?.company || (contract.client.companyName !== contract.client.fullName ? contract.client.companyName : '') || 'Pessoa Física';
+      const displayEmail = matchedUser?.email || contract.client.email || 'Sem e-mail';
+      const displayPhone = matchedUser?.phone || contract.client.phone || 'Sem telefone';
+      const displayCpfCnpj = contract.client.cpfCnpj || 'Não informado';
+      const displayAvatar = matchedUser?.avatar;
+
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
+          key,
+          clientName: displayName,
+          companyName: displayCompany,
+          email: displayEmail,
+          cpfCnpj: displayCpfCnpj,
+          phone: displayPhone,
+          avatar: displayAvatar,
+          contracts: [],
+          totalValue: 0,
+          signedCount: 0,
+          pendingCount: 0
+        });
+      }
+
+      const group = groupsMap.get(key)!;
+      group.contracts.push(contract);
+      group.totalValue += contract.totalValue || 0;
+      if (contract.status === 'assinado') {
+        group.signedCount += 1;
+      } else {
+        group.pendingCount += 1;
+      }
+    });
+
+    // Include registered clientUsers so all clients appear
+    clientUsers.forEach(u => {
+      const key = `client-${u.id}`;
+      if (!groupsMap.has(key)) {
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uCompany = (u.company || '').toLowerCase().trim();
+        const uName = (u.name || '').toLowerCase().trim();
+
+        const existingGroup = Array.from(groupsMap.values()).find(g => {
+          const gEmail = (g.email || '').toLowerCase().trim();
+          const gCompany = (g.companyName || '').toLowerCase().trim();
+          const gName = (g.clientName || '').toLowerCase().trim();
+          return (uEmail && gEmail && uEmail === gEmail) ||
+                 (uCompany && gCompany && uCompany === gCompany) ||
+                 (uName && gName && uName === gName);
+        });
+
+        if (!existingGroup) {
+          groupsMap.set(key, {
+            key,
+            clientName: u.name,
+            companyName: u.company || 'Pessoa Física',
+            email: u.email,
+            cpfCnpj: 'Não informado',
+            phone: u.phone || 'Sem telefone',
+            avatar: u.avatar,
+            contracts: [],
+            totalValue: 0,
+            signedCount: 0,
+            pendingCount: 0
+          });
+        }
+      }
+    });
+
+    return Array.from(groupsMap.values()).sort((a, b) => {
+      if (a.contracts.length > 0 && b.contracts.length === 0) return -1;
+      if (a.contracts.length === 0 && b.contracts.length > 0) return 1;
+      return a.clientName.localeCompare(b.clientName);
+    });
+  }, [contracts, clientUsers]);
+
+  const filteredContractGroups = useMemo(() => {
+    const search = contractClientSearch.toLowerCase().trim();
+    if (!search) return contractGroups;
+
+    return contractGroups.filter(g => {
+      const matchClient = (
+        g.clientName.toLowerCase().includes(search) ||
+        (g.companyName && g.companyName.toLowerCase().includes(search)) ||
+        (g.email && g.email.toLowerCase().includes(search)) ||
+        (g.cpfCnpj && g.cpfCnpj.toLowerCase().includes(search))
+      );
+
+      const matchContract = g.contracts.some(c => 
+        c.contractNumber.toLowerCase().includes(search) ||
+        c.projectTitle.toLowerCase().includes(search) ||
+        c.category.toLowerCase().includes(search)
+      );
+
+      return matchClient || matchContract;
+    });
+  }, [contractGroups, contractClientSearch]);
+
+  // Completed Projects Client Separation States
+  const [selectedCompletedClientKey, setSelectedCompletedClientKey] = useState<string | null>(null);
+  const [completedClientSearch, setCompletedClientSearch] = useState('');
+
+  // Group completed projects by client
+  const completedProjectGroups = useMemo(() => {
+    const completedProjects = projects.filter(p => p.status === 'concluido');
+
+    const groupsMap = new Map<string, {
+      key: string;
+      clientName: string;
+      companyName?: string;
+      email?: string;
+      phone?: string;
+      avatar?: string;
+      projects: typeof projects;
+      totalCompletedHours: number;
+    }>();
+
+    completedProjects.forEach(p => {
+      const pClientLower = (p.clientName || '').toLowerCase().trim();
+
+      const matchedUser = clientUsers.find(u => {
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uCompany = (u.company || '').toLowerCase().trim();
+        const uName = (u.name || '').toLowerCase().trim();
+
+        return (pClientLower && (pClientLower === uName || pClientLower === uCompany || pClientLower === uEmail));
+      });
+
+      const key = matchedUser 
+        ? `client-${matchedUser.id}` 
+        : (pClientLower || `project-${p.id}`);
+
+      const displayName = matchedUser?.name || p.clientName || 'Cliente sem nome';
+      const displayCompany = matchedUser?.company || 'Pessoa Física';
+      const displayEmail = matchedUser?.email || 'Sem e-mail';
+      const displayPhone = matchedUser?.phone || 'Sem telefone';
+      const displayAvatar = matchedUser?.avatar;
+
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
+          key,
+          clientName: displayName,
+          companyName: displayCompany,
+          email: displayEmail,
+          phone: displayPhone,
+          avatar: displayAvatar,
+          projects: [],
+          totalCompletedHours: 0
+        });
+      }
+
+      const group = groupsMap.get(key)!;
+      group.projects.push(p);
+      group.totalCompletedHours += p.completedHours || 0;
+    });
+
+    // Register all clientUsers so clients with 0 completed projects can also appear
+    clientUsers.forEach(u => {
+      const key = `client-${u.id}`;
+      if (!groupsMap.has(key)) {
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uCompany = (u.company || '').toLowerCase().trim();
+        const uName = (u.name || '').toLowerCase().trim();
+
+        const existingGroup = Array.from(groupsMap.values()).find(g => {
+          const gEmail = (g.email || '').toLowerCase().trim();
+          const gCompany = (g.companyName || '').toLowerCase().trim();
+          const gName = (g.clientName || '').toLowerCase().trim();
+          return (uEmail && gEmail && uEmail === gEmail) ||
+                 (uCompany && gCompany && uCompany === gCompany) ||
+                 (uName && gName && uName === gName);
+        });
+
+        if (!existingGroup) {
+          groupsMap.set(key, {
+            key,
+            clientName: u.name,
+            companyName: u.company || 'Pessoa Física',
+            email: u.email,
+            phone: u.phone || 'Sem telefone',
+            avatar: u.avatar,
+            projects: [],
+            totalCompletedHours: 0
+          });
+        }
+      }
+    });
+
+    return Array.from(groupsMap.values()).sort((a, b) => {
+      if (a.projects.length > 0 && b.projects.length === 0) return -1;
+      if (a.projects.length === 0 && b.projects.length > 0) return 1;
+      return a.clientName.localeCompare(b.clientName);
+    });
+  }, [projects, clientUsers]);
+
+  const filteredCompletedGroups = useMemo(() => {
+    const search = completedClientSearch.toLowerCase().trim();
+    if (!search) return completedProjectGroups;
+
+    return completedProjectGroups.filter(g => {
+      const matchClient = (
+        g.clientName.toLowerCase().includes(search) ||
+        (g.companyName && g.companyName.toLowerCase().includes(search)) ||
+        (g.email && g.email.toLowerCase().includes(search))
+      );
+
+      const matchProject = g.projects.some(p => 
+        p.title.toLowerCase().includes(search) ||
+        p.category.toLowerCase().includes(search) ||
+        p.id.toLowerCase().includes(search)
+      );
+
+      return matchClient || matchProject;
+    });
+  }, [completedProjectGroups, completedClientSearch]);
+
   // Edit Subscription Modal States
   const [editingSub, setEditingSub] = useState<ClientSubscription | null>(null);
   const [showEditSubModal, setShowEditSubModal] = useState(false);
@@ -1787,131 +2041,300 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: PROJECTS KANBAN & CHECKLIST */}
       {/* TAB: CONTRACTS MANAGEMENT */}
       {activeTab === 'contracts' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
-                <FileSignature className="w-4 h-4 text-blue-500" />
-                <span>Módulo de Geração Automática de Contratos</span>
-              </div>
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                Contratos de Prestação de Serviços (NCodes Standard)
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Instrumentos gerados automaticamente após aceite de orçamento/proposta com vínculo direto ao projeto.
-              </p>
-            </div>
+          
+          {selectedContractClientKey === null ? (
+            /* VIEW 1: CLIENTS LIST FOR CONTRACTS */
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
+                    <FileSignature className="w-4 h-4 text-blue-500" />
+                    <span>Módulo de Gestão de Contratos por Cliente</span>
+                  </div>
+                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    Contratos de Prestação de Serviços
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Selecione um cliente abaixo para visualizar, gerenciar e assinar seus contratos digitais.
+                  </p>
+                </div>
 
-            <div className="flex items-center gap-3">
-              <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                Total de Contratos: {contracts.length}
-              </span>
-            </div>
-          </div>
-
-          {contracts.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm">
-              <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
-                <FileSignature className="w-8 h-8" />
+                <div className="flex items-center gap-3">
+                  <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    Total de Contratos: {contracts.length}
+                  </span>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Nenhum Contrato no Sistema</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Assim que um cliente aceita uma proposta ou orçamento, um contrato é emitido e vinculado ao projeto de forma imediata.
-              </p>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por cliente, empresa, e-mail ou número de contrato..."
+                  value={contractClientSearch}
+                  onChange={(e) => setContractClientSearch(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all shadow-sm"
+                />
+              </div>
+
+              {/* Clients Grid */}
+              {filteredContractGroups.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+                    <Users className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Nenhum Cliente Encontrado</h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Não foram encontrados clientes ou contratos para a busca inserida.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {filteredContractGroups.map((group) => {
+                    const hasContracts = group.contracts.length > 0;
+
+                    return (
+                      <div
+                        key={group.key}
+                        onClick={() => setSelectedContractClientKey(group.key)}
+                        className={`bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-xl hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all cursor-pointer flex flex-col justify-between group space-y-4 ${
+                          hasContracts ? 'ring-1 ring-blue-500/10' : 'opacity-80'
+                        }`}
+                      >
+                        <div className="space-y-3.5">
+                          {/* Header info */}
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md uppercase">
+                              {group.avatar ? (
+                                <img src={group.avatar} alt={group.clientName} className="w-full h-full rounded-2xl object-cover" />
+                              ) : (
+                                (group.clientName || 'C').charAt(0)
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                {group.clientName}
+                              </h3>
+                              <p className="text-xs font-bold text-blue-600 dark:text-blue-400 truncate">
+                                {group.companyName}
+                              </p>
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {group.email}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Stats Badges */}
+                          <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                              <FileSignature className="w-4 h-4 text-blue-500 shrink-0" />
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase block leading-none">Contratos</span>
+                                <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs">
+                                  {group.contracts.length} {group.contracts.length === 1 ? 'contrato' : 'contratos'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <div>
+                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block leading-none">Valor Total</span>
+                                <span className="font-extrabold text-emerald-700 dark:text-emerald-300 text-xs">
+                                  R$ {group.totalValue.toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status pill summary */}
+                          {hasContracts && (
+                            <div className="flex items-center gap-2 text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                ✓ {group.signedCount} Assinado(s)
+                              </span>
+                              {group.pendingCount > 0 && (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                  ⏱️ {group.pendingCount} Pendente(s)
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Link */}
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                          <span>Visualizar Contratos ({group.contracts.length})</span>
+                          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {contracts.map(contract => (
-                <div key={contract.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5 flex flex-col justify-between">
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
-                          {contract.contractNumber} • {contract.category}
-                        </span>
-                        <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
-                          {contract.projectTitle}
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          Cliente: <strong>{contract.client.companyName || contract.client.fullName}</strong>
-                        </p>
-                      </div>
+            /* VIEW 2: CONTRACTS FOR SELECTED CLIENT */
+            (() => {
+              const activeGroup = contractGroups.find(g => g.key === selectedContractClientKey);
 
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
-                        contract.status === 'assinado' 
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                      }`}>
-                        {contract.status === 'assinado' ? '✓ Assinado Digitalmente' : 'Aguardando Assinatura'}
-                      </span>
-                    </div>
+              return (
+                <div className="space-y-6">
+                  {/* Top Navigation & Client Info Header */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-5">
+                    <button
+                      onClick={() => setSelectedContractClientKey(null)}
+                      className="inline-flex items-center gap-2 text-xs font-extrabold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer bg-blue-50 dark:bg-blue-950/60 px-3.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Voltar para Lista de Clientes</span>
+                    </button>
 
-                    <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Contratante / CNPJ:</span>
-                        <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate block">
-                          {contract.client.cpfCnpj || 'Não informado'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Valor do Contrato:</span>
-                        <span className="font-extrabold text-emerald-600 dark:text-emerald-400 block">
-                          R$ {contract.totalValue.toLocaleString('pt-BR')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Entrada / Condição:</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-                          R$ {contract.entryValue.toLocaleString('pt-BR')} ({contract.installmentsCount}x)
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Prazo de Entrega:</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-                          {contract.estimatedDays}
-                        </span>
-                      </div>
-                    </div>
+                    {activeGroup && (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-xl flex items-center justify-center shrink-0 shadow-md uppercase">
+                            {activeGroup.avatar ? (
+                              <img src={activeGroup.avatar} alt={activeGroup.clientName} className="w-full h-full rounded-2xl object-cover" />
+                            ) : (
+                              (activeGroup.clientName || 'C').charAt(0)
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
+                              Contratos do Cliente
+                            </span>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                              {activeGroup.clientName}
+                            </h2>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                              {activeGroup.companyName} • {activeGroup.email} • {activeGroup.phone}
+                            </p>
+                          </div>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase text-slate-400">Escopo & Funcionalidades:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {contract.contractedFeatures.slice(0, 5).map((f, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-medium">
-                            {f}
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="px-3 py-1.5 rounded-xl bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-extrabold border border-blue-200 dark:border-blue-800">
+                            {activeGroup.contracts.length} Contrato(s)
                           </span>
-                        ))}
+                          <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold border border-emerald-200 dark:border-emerald-800">
+                            Total: R$ {activeGroup.totalValue.toLocaleString('pt-BR')}
+                          </span>
+                        </div>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Contracts Grid for Selected Client */}
+                  {!activeGroup || activeGroup.contracts.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm">
+                      <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+                        <FileSignature className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">Nenhum Contrato para este Cliente</h3>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">
+                        Este cliente ainda não possui contratos gerados. Assim que um orçamento for aceito, o contrato será emitido automaticamente.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {activeGroup.contracts.map(contract => (
+                        <div key={contract.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5 flex flex-col justify-between">
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
+                              <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                                  {contract.contractNumber} • {contract.category}
+                                </span>
+                                <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
+                                  {contract.projectTitle}
+                                </h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                  Cliente: <strong>{contract.client.companyName || contract.client.fullName}</strong>
+                                </p>
+                              </div>
 
-                  <div className="pt-2 flex items-center gap-3 border-t border-slate-100 dark:border-slate-800">
-                    <button
-                      onClick={() => setSelectedContractId(contract.id)}
-                      className="flex-1 py-2.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
-                    >
-                      <FileSignature className="w-4 h-4" />
-                      <span>Abrir / Assinar Contrato (PDF)</span>
-                    </button>
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
+                                contract.status === 'assinado' 
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                              }`}>
+                                {contract.status === 'assinado' ? '✓ Assinado Digitalmente' : 'Aguardando Assinatura'}
+                              </span>
+                            </div>
 
-                    <button
-                      onClick={() => {
-                        if (confirm(`Deseja realmente remover o contrato ${contract.contractNumber}?`)) {
-                          deleteContract(contract.id);
-                        }
-                      }}
-                      title="Excluir Contrato"
-                      className="p-2.5 rounded-2xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-800 transition-all cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                            <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-bold block">Contratante / CNPJ:</span>
+                                <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate block">
+                                  {contract.client.cpfCnpj || 'Não informado'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-bold block">Valor do Contrato:</span>
+                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                                  R$ {contract.totalValue.toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-bold block">Entrada / Condição:</span>
+                                <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                                  R$ {contract.entryValue.toLocaleString('pt-BR')} ({contract.installmentsCount}x)
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-bold block">Prazo de Entrega:</span>
+                                <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                                  {contract.estimatedDays}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-bold uppercase text-slate-400">Escopo & Funcionalidades:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {contract.contractedFeatures.slice(0, 5).map((f, i) => (
+                                  <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-medium">
+                                    {f}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 flex items-center gap-3 border-t border-slate-100 dark:border-slate-800">
+                            <button
+                              onClick={() => setSelectedContractId(contract.id)}
+                              className="flex-1 py-2.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                            >
+                              <FileSignature className="w-4 h-4" />
+                              <span>Abrir / Assinar Contrato (PDF)</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                if (confirm(`Deseja realmente remover o contrato ${contract.contractNumber}?`)) {
+                                  deleteContract(contract.id);
+                                }
+                              }}
+                              title="Excluir Contrato"
+                              className="p-2.5 rounded-2xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-800 transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })()
           )}
         </div>
       )}
@@ -1920,13 +2343,16 @@ export const AdminPanel: React.FC = () => {
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Gestão de Projetos em Andamento</h2>
-              <p className="text-xs text-slate-500">Acompanhe apenas projetos ativos em desenvolvimento. Ao finalizar, o projeto migra para o Detalhamento do Cliente.</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Gestão de Projetos</h2>
+              <p className="text-xs text-slate-500">Acompanhe projetos em andamento ou consulte projetos finalizados organizados por cliente.</p>
             </div>
 
             <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl shrink-0">
               <button
-                onClick={() => setProjectStatusFilter('em_andamento')}
+                onClick={() => {
+                  setProjectStatusFilter('em_andamento');
+                  setSelectedCompletedClientKey(null);
+                }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   projectStatusFilter === 'em_andamento'
                     ? 'bg-blue-600 text-white shadow-md'
@@ -1936,7 +2362,10 @@ export const AdminPanel: React.FC = () => {
                 ⚡ Em Andamento ({projects.filter(p => p.status !== 'concluido').length})
               </button>
               <button
-                onClick={() => setProjectStatusFilter('concluido')}
+                onClick={() => {
+                  setProjectStatusFilter('concluido');
+                  setSelectedCompletedClientKey(null);
+                }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   projectStatusFilter === 'concluido'
                     ? 'bg-emerald-600 text-white shadow-md'
@@ -1946,7 +2375,10 @@ export const AdminPanel: React.FC = () => {
                 ✓ Finalizados ({projects.filter(p => p.status === 'concluido').length})
               </button>
               <button
-                onClick={() => setProjectStatusFilter('todos')}
+                onClick={() => {
+                  setProjectStatusFilter('todos');
+                  setSelectedCompletedClientKey(null);
+                }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   projectStatusFilter === 'todos'
                     ? 'bg-slate-700 text-white shadow-md'
@@ -1958,32 +2390,10 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
+          {/* PROJECT RENDERING LOGIC */}
           {(() => {
-            const filteredProjects = projects.filter(p => {
-              if (projectStatusFilter === 'em_andamento') return p.status !== 'concluido';
-              if (projectStatusFilter === 'concluido') return p.status === 'concluido';
-              return true;
-            });
-
-            if (filteredProjects.length === 0) {
-              return (
-                <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
-                    <FolderGit2 className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum projeto encontrado nesta categoria</h3>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    {projectStatusFilter === 'em_andamento'
-                      ? 'Todos os projetos foram finalizados ou ainda não há novos projetos em andamento.'
-                      : 'Projetos finalizados e entregues podem ser consultados diretamente no Detalhamento de cada Cliente.'}
-                  </p>
-                </div>
-              );
-            }
-
-            return (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {filteredProjects.map(p => (
+            // Helper function to render individual project card
+            const renderProjectCard = (p: typeof projects[0]) => (
               <div key={p.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
                 
                 <div className="flex items-start justify-between">
@@ -2144,12 +2554,203 @@ export const AdminPanel: React.FC = () => {
                 </div>
 
               </div>
-            ))}
-          </div>
-        );
-      })()}
-    </div>
-  )}
+            );
+
+            // SPECIAL VIEW: IF FILTER IS "concluido", SHOW PROJECTS SEPARATED BY CLIENT
+            if (projectStatusFilter === 'concluido') {
+              if (selectedCompletedClientKey === null) {
+                return (
+                  <div className="space-y-6">
+                    {/* Search and info bar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                      <div className="relative w-full sm:w-96">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Buscar cliente ou projeto finalizado..."
+                          value={completedClientSearch}
+                          onChange={(e) => setCompletedClientSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Clique em um cliente para visualizar os seus projetos finalizados.
+                      </div>
+                    </div>
+
+                    {filteredCompletedGroups.length === 0 ? (
+                      <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
+                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
+                          <FolderGit2 className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum cliente com projetos finalizados encontrado</h3>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                          Não foram encontrados registros para o termo buscado.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredCompletedGroups.map(group => (
+                          <div
+                            key={group.key}
+                            onClick={() => setSelectedCompletedClientKey(group.key)}
+                            className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-5 group relative overflow-hidden"
+                          >
+                            <div className="flex items-center gap-4">
+                              {group.avatar ? (
+                                <img
+                                  src={group.avatar}
+                                  alt={group.clientName}
+                                  className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500/30"
+                                />
+                              ) : (
+                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-xl shadow-inner shrink-0">
+                                  {group.clientName.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-base font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                  {group.clientName}
+                                </h3>
+                                <p className="text-xs text-slate-500 font-medium truncate">{group.companyName}</p>
+                                <p className="text-[11px] text-slate-400 truncate">{group.email}</p>
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                {group.projects.length} Projeto(s) Finalizado(s)
+                              </span>
+                              <span className="text-[11px] font-medium text-slate-400">
+                                {group.totalCompletedHours}h executadas
+                              </span>
+                            </div>
+
+                            <div className="pt-2 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
+                              <span>Visualizar Projetos Finalizados</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // Client drill-down for completed projects
+              const activeGroup = completedProjectGroups.find(g => g.key === selectedCompletedClientKey);
+
+              if (!activeGroup) {
+                return (
+                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4">
+                    <p className="text-sm text-slate-500">Cliente não encontrado.</p>
+                    <button
+                      onClick={() => setSelectedCompletedClientKey(null)}
+                      className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold"
+                    >
+                      Voltar para Lista de Clientes
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {/* Top Bar for Selected Client */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => setSelectedCompletedClientKey(null)}
+                        className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
+                        title="Voltar para Clientes"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
+
+                      {activeGroup.avatar ? (
+                        <img
+                          src={activeGroup.avatar}
+                          alt={activeGroup.clientName}
+                          className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500/30 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-lg shrink-0">
+                          {activeGroup.clientName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                            {activeGroup.clientName}
+                          </h3>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                            {activeGroup.projects.length} Projeto(s) Finalizado(s)
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {activeGroup.companyName} • {activeGroup.email} • {activeGroup.phone}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedCompletedClientKey(null)}
+                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
+                    >
+                      ← Ver Outros Clientes
+                    </button>
+                  </div>
+
+                  {/* Render projects of activeGroup */}
+                  {activeGroup.projects.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
+                      <FolderGit2 className="w-8 h-8 text-slate-400 mx-auto" />
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Nenhum projeto finalizado para este cliente</h4>
+                      <p className="text-xs text-slate-500">Este cliente ainda não possui projetos com status concluído.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {activeGroup.projects.map(p => renderProjectCard(p))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // STANDARD VIEW (em_andamento or todos)
+            const filteredProjects = projects.filter(p => {
+              if (projectStatusFilter === 'em_andamento') return p.status !== 'concluido';
+              return true;
+            });
+
+            if (filteredProjects.length === 0) {
+              return (
+                <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
+                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
+                    <FolderGit2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum projeto encontrado nesta categoria</h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    {projectStatusFilter === 'em_andamento'
+                      ? 'Todos os projetos foram finalizados ou ainda não há novos projetos em andamento.'
+                      : 'Nenhum projeto cadastrado no sistema.'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {filteredProjects.map(p => renderProjectCard(p))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* TAB 4: FINANCIAL MANAGEMENT & CLIENT SUBSCRIPTIONS */}
       {activeTab === 'financials' && (
@@ -2872,16 +3473,39 @@ export const AdminPanel: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                     {clientUsers
-                      .filter(c => 
-                        c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                        c.email.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                        (c.company && c.company.toLowerCase().includes(clientSearch.toLowerCase())) ||
-                        (c.city && c.city.toLowerCase().includes(clientSearch.toLowerCase()))
-                      )
+                      .filter(c => {
+                        const search = (clientSearch || '').toLowerCase().trim();
+                        if (!search) return true;
+                        return (
+                          (c.name || '').toLowerCase().includes(search) ||
+                          (c.email || '').toLowerCase().includes(search) ||
+                          (c.company && c.company.toLowerCase().includes(search)) ||
+                          (c.city && c.city.toLowerCase().includes(search))
+                        );
+                      })
                       .map((client) => {
-                        const clientProjects = projects.filter(p => p.clientName.toLowerCase() === client.name.toLowerCase() || p.clientName.toLowerCase() === client.company.toLowerCase());
-                        const clientSubs = subscriptions.filter(s => s.clientName.toLowerCase() === client.name.toLowerCase() || s.clientName.toLowerCase() === client.company.toLowerCase());
-                        const clientQuotes = quotes.filter(q => q.clientName.toLowerCase() === client.name.toLowerCase() || q.email.toLowerCase() === client.email.toLowerCase());
+                        const cNameLower = (client.name || '').toLowerCase().trim();
+                        const cCompanyLower = client.company ? client.company.toLowerCase().trim() : null;
+                        const cEmailLower = (client.email || '').toLowerCase().trim();
+
+                        const clientProjects = projects.filter(p => {
+                          const pName = (p.clientName || '').toLowerCase().trim();
+                          if (!pName) return false;
+                          return (cNameLower && pName === cNameLower) || (cCompanyLower && pName === cCompanyLower);
+                        });
+
+                        const clientSubs = subscriptions.filter(s => {
+                          const sName = (s.clientName || '').toLowerCase().trim();
+                          if (!sName) return false;
+                          return (cNameLower && sName === cNameLower) || (cCompanyLower && sName === cCompanyLower);
+                        });
+
+                        const clientQuotes = quotes.filter(q => {
+                          const qName = (q.clientName || '').toLowerCase().trim();
+                          const qEmail = (q.email || '').toLowerCase().trim();
+                          return (cNameLower && qName && qName === cNameLower) || 
+                                 (cEmailLower && qEmail && qEmail === cEmailLower);
+                        });
 
                         return (
                           <tr key={client.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
@@ -4744,99 +5368,116 @@ export const AdminPanel: React.FC = () => {
       )}
 
       {/* MODAL: DETALHES DO CLIENTE */}
-      {viewingClient && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-extrabold text-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 uppercase">
-                  {viewingClient.avatar ? (
-                    <img src={viewingClient.avatar} alt={viewingClient.name} className="w-full h-full rounded-2xl object-cover" />
-                  ) : (
-                    viewingClient.name.charAt(0)
-                  )}
+      {viewingClient && (() => {
+        const vNameLower = (viewingClient.name || '').toLowerCase().trim();
+        const vCompanyLower = viewingClient.company ? viewingClient.company.toLowerCase().trim() : null;
+        const vEmailLower = (viewingClient.email || '').toLowerCase().trim();
+
+        const vPrjs = projects.filter(p => {
+          const pName = (p.clientName || '').toLowerCase().trim();
+          if (!pName) return false;
+          return (vNameLower && pName === vNameLower) || (vCompanyLower && pName === vCompanyLower);
+        });
+
+        const vSubs = subscriptions.filter(s => {
+          const sName = (s.clientName || '').toLowerCase().trim();
+          if (!sName) return false;
+          return (vNameLower && sName === vNameLower) || (vCompanyLower && sName === vCompanyLower);
+        });
+
+        const vQuotes = quotes.filter(q => {
+          const qName = (q.clientName || '').toLowerCase().trim();
+          const qEmail = (q.email || '').toLowerCase().trim();
+          return (vNameLower && qName && qName === vNameLower) || 
+                 (vEmailLower && qEmail && qEmail === vEmailLower);
+        });
+
+        const activePrjs = vPrjs.filter(p => p.status !== 'concluido');
+        const completedPrjs = vPrjs.filter(p => p.status === 'concluido');
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+              
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-extrabold text-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 uppercase">
+                    {viewingClient.avatar ? (
+                      <img src={viewingClient.avatar} alt={viewingClient.name} className="w-full h-full rounded-2xl object-cover" />
+                    ) : (
+                      (viewingClient.name || 'C').charAt(0)
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                      {viewingClient.name}
+                    </h3>
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                      {viewingClient.company || 'Pessoa Física'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {viewingClient.email} • {viewingClient.phone || 'Sem telefone'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                    {viewingClient.name}
-                  </h3>
-                  <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                    {viewingClient.company || 'Pessoa Física'}
+
+                <button
+                  onClick={() => setViewingClient(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* General Info Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Localização</span>
+                  <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                    {viewingClient.city ? `${viewingClient.city} - ${viewingClient.state || ''}` : 'Não informada'}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {viewingClient.email} • {viewingClient.phone || 'Sem telefone'}
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Data de Cadastro</span>
+                  <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                    {viewingClient.createdAt ? new Date(viewingClient.createdAt).toLocaleDateString('pt-BR') : 'Recente'}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase block">Projetos</span>
+                  <p className="font-black text-blue-600 dark:text-blue-400 text-sm mt-0.5">
+                    {vPrjs.length}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Mensalidades</span>
+                  <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">
+                    {vSubs.length}
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => setViewingClient(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 font-bold text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+              {/* Linked Projects Section */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FolderGit2 className="w-4 h-4 text-blue-500" />
+                    <span>Projetos & Módulos do Cliente</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    {vPrjs.length} cadastrado(s)
+                  </span>
+                </h4>
 
-            {/* General Info Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Localização</span>
-                <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                  {viewingClient.city ? `${viewingClient.city} - ${viewingClient.state || ''}` : 'Não informada'}
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Data de Cadastro</span>
-                <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                  {viewingClient.createdAt ? new Date(viewingClient.createdAt).toLocaleDateString('pt-BR') : 'Recente'}
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase block">Projetos</span>
-                <p className="font-black text-blue-600 dark:text-blue-400 text-sm mt-0.5">
-                  {projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length}
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Mensalidades</span>
-                <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">
-                  {subscriptions.filter(s => s.clientName.toLowerCase() === viewingClient.name.toLowerCase() || s.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length}
-                </p>
-              </div>
-            </div>
-
-            {/* Linked Projects Section */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <FolderGit2 className="w-4 h-4 text-blue-500" />
-                  <span>Projetos & Módulos do Cliente</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  {projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length} cadastrado(s)
-                </span>
-              </h4>
-
-              {(() => {
-                const clientPrjs = projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase());
-                
-                if (clientPrjs.length === 0) {
-                  return (
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
-                      Nenhum projeto registrado para este cliente.
-                    </div>
-                  );
-                }
-
-                const activePrjs = clientPrjs.filter(p => p.status !== 'concluido');
-                const completedPrjs = clientPrjs.filter(p => p.status === 'concluido');
-
-                return (
+                {vPrjs.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
+                    Nenhum projeto registrado para este cliente.
+                  </div>
+                ) : (
                   <div className="space-y-3">
                     {/* Active Projects */}
                     {activePrjs.length > 0 && (
@@ -4895,25 +5536,22 @@ export const AdminPanel: React.FC = () => {
                       </div>
                     )}
                   </div>
-                );
-              })()}
-            </div>
+                )}
+              </div>
 
-            {/* Linked Subscriptions */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Repeat className="w-4 h-4 text-emerald-500" />
-                <span>Contratos de Mensalidade</span>
-              </h4>
-              {subscriptions.filter(s => s.clientName.toLowerCase() === viewingClient.name.toLowerCase() || s.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length === 0 ? (
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
-                  Nenhuma mensalidade encontrada para este cliente.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {subscriptions
-                    .filter(s => s.clientName.toLowerCase() === viewingClient.name.toLowerCase() || s.clientName.toLowerCase() === viewingClient.company?.toLowerCase())
-                    .map(sub => (
+              {/* Linked Subscriptions */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Repeat className="w-4 h-4 text-emerald-500" />
+                  <span>Contratos de Mensalidade</span>
+                </h4>
+                {vSubs.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
+                    Nenhuma mensalidade encontrada para este cliente.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {vSubs.map(sub => (
                       <div key={sub.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white">{sub.serviceName}</p>
@@ -4928,38 +5566,36 @@ export const AdminPanel: React.FC = () => {
                         </span>
                       </div>
                     ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
 
-            {/* Linked Quotes */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-purple-500" />
-                <span>Orçamentos Solicitados</span>
-              </h4>
-              {quotes.filter(q => q.clientName.toLowerCase() === viewingClient.name.toLowerCase() || q.email.toLowerCase() === viewingClient.email.toLowerCase()).length === 0 ? (
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
-                  Nenhum orçamento registrado para este e-mail/cliente.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {quotes
-                    .filter(q => q.clientName.toLowerCase() === viewingClient.name.toLowerCase() || q.email.toLowerCase() === viewingClient.email.toLowerCase())
-                    .map(quote => (
+              {/* Linked Quotes */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-purple-500" />
+                  <span>Orçamentos Solicitados</span>
+                </h4>
+                {vQuotes.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
+                    Nenhum orçamento registrado para este e-mail/cliente.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {vQuotes.map(quote => (
                       <div key={quote.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white">Orçamento #{quote.id}</p>
-                          <p className="text-[10px] text-slate-500">{quote.description.slice(0, 60)}...</p>
+                          <p className="text-[10px] text-slate-500">{(quote.description || '').slice(0, 60)}...</p>
                         </div>
                         <span className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px]">
                           {quote.status}
                         </span>
                       </div>
                     ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
               <button
@@ -4986,7 +5622,8 @@ export const AdminPanel: React.FC = () => {
 
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* New Financial Modal */}
       {showFinModal && (
