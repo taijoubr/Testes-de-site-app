@@ -930,7 +930,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         senderName: 'Engenharia NCodes',
         senderRole: 'admin',
         senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80',
-        text: `Confirmamos o recebimento da sua solicitação de orçamento #${newId} ("${data.projectTitle || data.projectType}"). Nossa equipe técnica e Inteligência Artificial iniciaram a análise de viabilidade técnica. Você receberá atualizações no seu e-mail e nesta conversa!`,
+        text: `Confirmamos o recebimento da sua solicitação de orçamento #${newId} ("${data.projectTitle || data.projectType}"). Nossa equipe técnica e Inteligência Artificial iniciaram a análise de viabilidade técnica. Você receberá atualizações e posicionamentos diretamente nesta conversa e no seu painel!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       await saveDoc('chatMessages', quoteChatMsg.id, quoteChatMsg);
@@ -1547,6 +1547,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await saveDoc('leads', newLead.id, newLead);
 
       await addNotification('Proposta Aprovada Digitalmente! 🎉', `${prop.clientName} assinou o contrato da proposta ${proposalId}. Projeto ${newProjectId} iniciado!`, 'project');
+
+      // Create automated chat message confirming proposal/contract approval in direct chat
+      try {
+        const approvalChatMsg: ChatMessage = {
+          id: `chat-approval-${Date.now()}`,
+          senderId: 'sys-ncodes',
+          senderName: 'NCodes Tech',
+          senderRole: 'admin',
+          senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80',
+          text: `🎉 Proposta #${prop.id} ("${prop.title}") Aprovada e Assinada Digitalmente por ${signatureName}!\n\nO projeto #${newProjectId} foi oficialmente iniciado no sistema e disponibilizado no seu Painel do Cliente com o contrato nº ${autoContract.contractNumber}.`,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        };
+        await saveDoc('chatMessages', approvalChatMsg.id, approvalChatMsg);
+      } catch (chatErr) {
+        console.warn('Approval chat message save error:', chatErr);
+      }
 
       confetti({
         particleCount: 120,

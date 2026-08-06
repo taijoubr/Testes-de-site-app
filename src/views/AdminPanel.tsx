@@ -344,6 +344,7 @@ export const AdminPanel: React.FC = () => {
   // Quote Admin Management State
   const [selectedQuoteForAdminManagement, setSelectedQuoteForAdminManagement] = useState<QuoteRequest | null>(null);
   const [selectedProjectForFinalize, setSelectedProjectForFinalize] = useState<Project | null>(null);
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'em_andamento' | 'concluido' | 'todos'>('em_andamento');
   const [deleteProjectConfirmId, setDeleteProjectConfirmId] = useState<string | null>(null);
   const [deleteProposalConfirmId, setDeleteProposalConfirmId] = useState<string | null>(null);
   const [settleModalData, setSettleModalData] = useState<{
@@ -1917,15 +1918,72 @@ export const AdminPanel: React.FC = () => {
 
       {activeTab === 'projects' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Gestão de Projetos & Checklist em Tempo Real</h2>
-              <p className="text-xs text-slate-500">Controle de horas, progresso percentual, equipe alocada e repositório de arquivos.</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Gestão de Projetos em Andamento</h2>
+              <p className="text-xs text-slate-500">Acompanhe apenas projetos ativos em desenvolvimento. Ao finalizar, o projeto migra para o Detalhamento do Cliente.</p>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl shrink-0">
+              <button
+                onClick={() => setProjectStatusFilter('em_andamento')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  projectStatusFilter === 'em_andamento'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                ⚡ Em Andamento ({projects.filter(p => p.status !== 'concluido').length})
+              </button>
+              <button
+                onClick={() => setProjectStatusFilter('concluido')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  projectStatusFilter === 'concluido'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                ✓ Finalizados ({projects.filter(p => p.status === 'concluido').length})
+              </button>
+              <button
+                onClick={() => setProjectStatusFilter('todos')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  projectStatusFilter === 'todos'
+                    ? 'bg-slate-700 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Todos ({projects.length})
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {projects.map(p => (
+          {(() => {
+            const filteredProjects = projects.filter(p => {
+              if (projectStatusFilter === 'em_andamento') return p.status !== 'concluido';
+              if (projectStatusFilter === 'concluido') return p.status === 'concluido';
+              return true;
+            });
+
+            if (filteredProjects.length === 0) {
+              return (
+                <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
+                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
+                    <FolderGit2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum projeto encontrado nesta categoria</h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    {projectStatusFilter === 'em_andamento'
+                      ? 'Todos os projetos foram finalizados ou ainda não há novos projetos em andamento.'
+                      : 'Projetos finalizados e entregues podem ser consultados diretamente no Detalhamento de cada Cliente.'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {filteredProjects.map(p => (
               <div key={p.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
                 
                 <div className="flex items-start justify-between">
@@ -2088,8 +2146,10 @@ export const AdminPanel: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        );
+      })()}
+    </div>
+  )}
 
       {/* TAB 4: FINANCIAL MANAGEMENT & CLIENT SUBSCRIPTIONS */}
       {activeTab === 'financials' && (
@@ -4750,33 +4810,93 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Linked Projects */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <FolderGit2 className="w-4 h-4 text-blue-500" />
-                <span>Projetos Vinculados ao Cliente</span>
+            {/* Linked Projects Section */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <FolderGit2 className="w-4 h-4 text-blue-500" />
+                  <span>Projetos & Módulos do Cliente</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  {projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length} cadastrado(s)
+                </span>
               </h4>
-              {projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase()).length === 0 ? (
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
-                  Nenhum projeto encontrado para este cliente.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {projects
-                    .filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase())
-                    .map(proj => (
-                      <div key={proj.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{proj.title}</p>
-                          <p className="text-[10px] text-slate-500">Valor: R$ {proj.totalValue.toLocaleString('pt-BR')} • Prazo: {proj.deadline}</p>
-                        </div>
-                        <span className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
-                          {proj.status === 'em_andamento' ? 'Em Andamento' : proj.status}
+
+              {(() => {
+                const clientPrjs = projects.filter(p => p.clientName.toLowerCase() === viewingClient.name.toLowerCase() || p.clientName.toLowerCase() === viewingClient.company?.toLowerCase());
+                
+                if (clientPrjs.length === 0) {
+                  return (
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
+                      Nenhum projeto registrado para este cliente.
+                    </div>
+                  );
+                }
+
+                const activePrjs = clientPrjs.filter(p => p.status !== 'concluido');
+                const completedPrjs = clientPrjs.filter(p => p.status === 'concluido');
+
+                return (
+                  <div className="space-y-3">
+                    {/* Active Projects */}
+                    {activePrjs.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-extrabold uppercase text-blue-600 dark:text-blue-400 tracking-wider block">
+                          ⚡ Em Andamento ({activePrjs.length})
                         </span>
+                        {activePrjs.map(proj => (
+                          <div key={proj.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-blue-500/20 space-y-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-extrabold text-slate-900 dark:text-white">{proj.title}</p>
+                                <p className="text-[10px] text-slate-500">
+                                  {proj.id} • Valor: R$ {proj.totalValue.toLocaleString('pt-BR')} • {proj.completedHours || 0}h / {proj.estimatedHours || 160}h
+                                </p>
+                              </div>
+                              <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase">
+                                {proj.status.replace('_', ' ')} ({proj.progressPercentage}%)
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                              <div className="h-full bg-blue-500" style={{ width: `${proj.progressPercentage}%` }} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                </div>
-              )}
+                    )}
+
+                    {/* Finalized Projects & Improvements */}
+                    {completedPrjs.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider block">
+                          ✓ Finalizados & Histórico de Entregas ({completedPrjs.length})
+                        </span>
+                        {completedPrjs.map(proj => (
+                          <div key={proj.id} className="p-3.5 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/30 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-extrabold text-slate-900 dark:text-white">{proj.title}</p>
+                                <p className="text-[10px] text-slate-500">
+                                  {proj.id} • Entregue • Valor Final: R$ {proj.totalValue.toLocaleString('pt-BR')}
+                                </p>
+                              </div>
+                              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold text-[10px] flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                <span>Concluído</span>
+                              </span>
+                            </div>
+                            {proj.recurringMonthlyValue && proj.recurringMonthlyValue > 0 && (
+                              <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                📌 Mensalidade Pós-Entrega: R$ {proj.recurringMonthlyValue.toLocaleString('pt-BR')}/mês
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Linked Subscriptions */}

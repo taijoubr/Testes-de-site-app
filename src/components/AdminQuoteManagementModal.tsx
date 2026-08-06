@@ -1032,7 +1032,7 @@ CONTRATANTE: ${quote.company || quote.clientName}, representado por ${quote.clie
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Observação do Status (Disparada por e-mail e salva na linha do tempo)
+                  Observação do Status (Enviada no chat direto e salva na linha do tempo)
                 </label>
                 <textarea
                   rows={4}
