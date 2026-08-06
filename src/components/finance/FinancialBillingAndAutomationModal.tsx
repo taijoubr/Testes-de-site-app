@@ -18,18 +18,25 @@ import {
 } from 'lucide-react';
 
 interface FinancialBillingAndAutomationModalProps {
-  type: 'billing' | 'automation';
+  isOpen?: boolean;
+  type?: 'billing' | 'automation';
   selectedSub?: ClientSubscription | null;
   selectedTx?: FinancialTransaction | null;
+  subscriptions?: ClientSubscription[];
+  onTriggerBillingAll?: () => void;
   onClose: () => void;
 }
 
 export const FinancialBillingAndAutomationModal: React.FC<FinancialBillingAndAutomationModalProps> = ({
-  type,
+  isOpen,
+  type = 'automation',
   selectedSub,
   selectedTx,
+  subscriptions = [],
+  onTriggerBillingAll,
   onClose
 }) => {
+  if (isOpen === false) return null;
   const [copiedPix, setCopiedPix] = useState(false);
   const [whatsappSent, setWhatsappSent] = useState(false);
 

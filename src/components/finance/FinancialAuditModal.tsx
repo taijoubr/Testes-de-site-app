@@ -3,25 +3,34 @@ import { FinancialTransaction, FinancialAuditLog } from '../../types';
 import { ShieldAlert, X, Clock, User, CheckCircle2, History } from 'lucide-react';
 
 interface FinancialAuditModalProps {
-  transaction: FinancialTransaction | null;
+  isOpen?: boolean;
+  transaction?: FinancialTransaction | null;
   allAuditLogs?: FinancialAuditLog[];
+  financials?: FinancialTransaction[];
+  subscriptions?: any[];
   onClose: () => void;
 }
 
 export const FinancialAuditModal: React.FC<FinancialAuditModalProps> = ({
-  transaction,
+  isOpen,
+  transaction = null,
   allAuditLogs = [],
+  financials = [],
   onClose
 }) => {
+  if (isOpen === false) return null;
+
   const logs = transaction?.auditLogs && transaction.auditLogs.length > 0 
     ? transaction.auditLogs 
+    : financials.length > 0 && financials[0].auditLogs && financials[0].auditLogs.length > 0
+    ? financials[0].auditLogs
     : [
         {
           id: 'log-1',
           timestamp: new Date().toISOString(),
           user: transaction?.createdUser || 'Nikolas P.',
           action: 'Lançamento Cadastrado',
-          details: `Inclusão do registro ${transaction?.title || 'Financeiro'} no valor de R$ ${transaction?.amount.toLocaleString('pt-BR') || 0}`,
+          details: `Inclusão do registro ${transaction?.title || 'Financeiro'} no valor de R$ ${transaction?.amount ? transaction.amount.toLocaleString('pt-BR') : '0'}`,
           targetType: 'transaction' as const,
           targetId: transaction?.id || 'FIN-001',
           ipAddress: '189.120.45.12'

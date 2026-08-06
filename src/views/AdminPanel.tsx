@@ -1,4 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import { FinancialDashboard } from '../components/finance/FinancialDashboard';
+import { FinancialSubscriptions } from '../components/finance/FinancialSubscriptions';
+import { FinancialTransactions } from '../components/finance/FinancialTransactions';
+import { FinancialCashFlow } from '../components/finance/FinancialCashFlow';
+import { FinancialCalendar } from '../components/finance/FinancialCalendar';
+import { FinancialInstallments } from '../components/finance/FinancialInstallments';
+import { FinancialReconciliation } from '../components/finance/FinancialReconciliation';
+import { FinancialReports } from '../components/finance/FinancialReports';
+import { FinancialBillingAndAutomationModal } from '../components/finance/FinancialBillingAndAutomationModal';
+import { FinancialAuditModal } from '../components/finance/FinancialAuditModal';
 import { sendEmailWithFallback } from '../utils/emailService';
 import { compressAndResizeImage } from '../utils/imageUtils';
 import { 
@@ -890,8 +900,10 @@ export const AdminPanel: React.FC = () => {
   const [finClientName, setFinClientName] = useState('');
   const [finIsRecurring, setFinIsRecurring] = useState(false);
 
-  // Subscriptions & Client Recurring Fees State
-  const [finSubTab, setFinSubTab] = useState<'subscriptions' | 'transactions'>('subscriptions');
+  // Subscriptions & Financial Suite Modules State
+  const [finSubTab, setFinSubTab] = useState<'dashboard' | 'subscriptions' | 'transactions' | 'cashflow' | 'calendar' | 'installments' | 'reconciliation' | 'reports'>('dashboard');
+  const [showBillingAutomationModal, setShowBillingAutomationModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
   const [subSearch, setSubSearch] = useState('');
   const [subStatusFilter, setSubStatusFilter] = useState<'todos' | 'ativo' | 'inadimplente' | 'suspenso'>('todos');
   const [showNewSubModal, setShowNewSubModal] = useState(false);
@@ -2819,422 +2831,186 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: FINANCIAL MANAGEMENT & CLIENT SUBSCRIPTIONS */}
+      {/* TAB 4: FINANCIAL MANAGEMENT SUITE */}
       {activeTab === 'financials' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           
-          {/* Top Section Header & Summary Metrics Bar */}
+          {/* Top Section Header & Quick Actions Bar */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">
                   <Repeat className="w-4 h-4 text-emerald-500 animate-spin-slow" />
-                  <span>Gestão Financeira & Recorrência de Clientes (MRR)</span>
+                  <span>Módulo Financeiro ERP & Automação de Cobranças</span>
                 </div>
                 <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                  Controle de Mensalidades & Fluxo de Caixa
+                  Gestão Financeira, MRR & Fluxo de Caixa
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Acompanhe contratos de sustentação, cobranças de mensalidades recorrentes de serviços, faturamento por Pix e controle de inadimplência.
+                  Painel analítico completo para controle de clientes, mensalidades de sustentação, lançamentos de caixa, parcelamentos, conciliação e relatórios.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setShowBillingAutomationModal(true)}
+                  className="px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-500/20 cursor-pointer transition-all"
+                  title="Disparar e configurar réguas de cobrança e automação"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Automação & Cobrança</span>
+                </button>
+
+                <button
+                  onClick={() => setShowAuditModal(true)}
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700 transition-all"
+                  title="Audit de saúde financeira e logs de transações"
+                >
+                  <ShieldCheck className="w-4 h-4 text-slate-500" />
+                  <span>Auditoria</span>
+                </button>
+
                 <button
                   onClick={() => setShowNewSubModal(true)}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
+                  className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 cursor-pointer transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>+ Nova Mensalidade de Cliente</span>
+                  <span>+ Nova Mensalidade</span>
                 </button>
 
                 <button
                   onClick={() => setShowFinModal(true)}
-                  className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700 transition-all"
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5 text-slate-500" />
+                  <Plus className="w-3.5 h-3.5" />
                   <span>Lançamento Avulso</span>
                 </button>
               </div>
             </div>
 
-            {/* Financial Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 space-y-1">
-                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase">
-                  <span>Receita Mensal Recorrente (MRR)</span>
-                  <Repeat className="w-4 h-4 text-emerald-500" />
-                </div>
-                <div className="text-2xl font-black text-slate-900 dark:text-white">
-                  R$ {totalMRR.toLocaleString('pt-BR')}
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400"> / mês</span>
-                </div>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  {activeSubsCount} contrato(s) ativo(s) com cobrança
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
-                <div className="flex items-center justify-between text-blue-600 dark:text-blue-400 text-xs font-bold uppercase">
-                  <span>Contratos de Serviços</span>
-                  <Briefcase className="w-4 h-4 text-blue-500" />
-                </div>
-                <div className="text-2xl font-black text-slate-900 dark:text-white">
-                  {subscriptions.length} <span className="text-xs font-medium text-slate-500">clientes</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                  {activeSubsCount} ativos • {subscriptions.length - activeSubsCount} pendente/pausado
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 space-y-1">
-                <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 text-xs font-bold uppercase">
-                  <span>Inadimplência / Pendentes</span>
-                  <AlertTriangle className="w-4 h-4 text-rose-500" />
-                </div>
-                <div className="text-2xl font-black text-rose-600 dark:text-rose-400">
-                  R$ {totalInadimplenciaMRR.toLocaleString('pt-BR')}
-                </div>
-                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
-                  {subscriptions.filter(s => s.status === 'inadimplente').length} mensalidade(s) com atraso
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
-                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 text-xs font-bold uppercase">
-                  <span>Caixa Confirmado (Receitas)</span>
-                  <DollarSign className="w-4 h-4 text-emerald-500" />
-                </div>
-                <div className="text-2xl font-black text-slate-900 dark:text-white">
-                  R$ {totalRevenue.toLocaleString('pt-BR')}
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                  Lucro líquido estimado: R$ {netProfit.toLocaleString('pt-BR')}
-                </p>
-              </div>
-
-            </div>
-
-            {/* Sub-tab Navigation Buttons */}
-            <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
-              <button
-                onClick={() => setFinSubTab('subscriptions')}
-                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
-                  finSubTab === 'subscriptions'
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                <Repeat className="w-3.5 h-3.5" />
-                <span>Mensalidades de Clientes (MRR)</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-bold">
-                  {subscriptions.length}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setFinSubTab('transactions')}
-                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
-                  finSubTab === 'transactions'
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Extrato Avulso & Fluxo de Caixa</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold">
-                  {financials.length}
-                </span>
-              </button>
+            {/* Financial Suite Sub-Tabs Navigation */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {[
+                { id: 'dashboard', label: 'Visão Geral (Dashboard)', icon: LayoutDashboard },
+                { id: 'subscriptions', label: 'Mensalidades MRR', icon: Repeat, badge: subscriptions.length },
+                { id: 'transactions', label: 'Extrato & Lançamentos', icon: FileText, badge: financials.length },
+                { id: 'cashflow', label: 'Fluxo de Caixa ERP', icon: TrendingUp },
+                { id: 'calendar', label: 'Calendário de Vencimentos', icon: Calendar },
+                { id: 'installments', label: 'Parcelamento & Renegociação', icon: CreditCard },
+                { id: 'reconciliation', label: 'Conciliação Bancária', icon: CheckCircle2 },
+                { id: 'reports', label: 'Relatórios & DRE', icon: Download }
+              ].map(tab => {
+                const Icon = tab.icon;
+                const isActive = finSubTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFinSubTab(tab.id as any)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                        : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                    {tab.badge !== undefined && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}>
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* SUB-TAB 1: MENSALIDADES DE CLIENTES (MRR) */}
-          {finSubTab === 'subscriptions' && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
-              
-              {/* Search & Filter Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="relative w-full sm:w-80">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={subSearch}
-                    onChange={e => setSubSearch(e.target.value)}
-                    placeholder="Buscar cliente ou serviço..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 font-medium"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Filter className="w-3.5 h-3.5 text-slate-400" />
-                  <select
-                    value={subStatusFilter}
-                    onChange={e => setSubStatusFilter(e.target.value as any)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="todos">Todos os Status</option>
-                    <option value="ativo">Somente Ativos</option>
-                    <option value="inadimplente">Somente Inadimplentes</option>
-                    <option value="suspenso">Somente Suspensos</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Subscriptions Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
-                      <th className="pb-3 px-3">Cliente / E-mail</th>
-                      <th className="pb-3 px-3">Serviço de Mensalidade</th>
-                      <th className="pb-3 px-3">Valor Mensal</th>
-                      <th className="pb-3 px-3">Dia Venc.</th>
-                      <th className="pb-3 px-3">Próx. Vencimento</th>
-                      <th className="pb-3 px-3">Status</th>
-                      <th className="pb-3 px-3 text-right">Ações & Faturamento</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {activeSubscriptionsList
-                      .filter(s => {
-                        const matchSearch = s.clientName.toLowerCase().includes(subSearch.toLowerCase()) ||
-                                            s.serviceName.toLowerCase().includes(subSearch.toLowerCase());
-                        const matchStatus = subStatusFilter === 'todos' || s.status === subStatusFilter;
-                        return matchSearch && matchStatus;
-                      })
-                      .map(sub => (
-                        <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs">
-                                {sub.clientName.charAt(0)}
-                              </div>
-                              <div>
-                                <span>{sub.clientName}</span>
-                                {sub.clientEmail && (
-                                  <span className="block text-[10px] text-slate-400 font-normal">{sub.clientEmail}</span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-3 font-medium text-slate-800 dark:text-slate-200 max-w-xs">
-                            <span className="font-semibold block">{sub.serviceName}</span>
-                            {sub.notes && (
-                              <span className="text-[10px] text-slate-400 truncate block max-w-[200px]">{sub.notes}</span>
-                            )}
-                          </td>
-
-                          <td className="py-3 px-3 font-extrabold text-slate-900 dark:text-white">
-                            <div>
-                              <span>R$ {sub.monthlyValue.toLocaleString('pt-BR')}<span className="text-[10px] text-slate-400 font-normal">/mês</span></span>
-                              <span className="text-[10px] text-slate-400 font-normal block uppercase">{sub.paymentMethod}</span>
-                              {sub.notes && sub.notes.includes('50% pro-rata') && (
-                                <div className="mt-1 p-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                  <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
-                                  <span>1ª Cobrança: R$ {(sub.monthlyValue * 0.5).toLocaleString('pt-BR')} (Pro-rata Mês Atual)</span>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-3 font-bold text-slate-700 dark:text-slate-300">
-                            Dia {sub.billingCycleDay}
-                          </td>
-
-                          <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-400">
-                            {sub.nextDueDate}
-                          </td>
-
-                          <td className="py-3 px-3">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase inline-flex items-center gap-1 ${
-                              sub.status === 'ativo' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                              sub.status === 'inadimplente' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
-                              sub.status === 'suspenso' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
-                              'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                            }`}>
-                              {sub.status === 'ativo' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
-                              {sub.status === 'inadimplente' && <AlertTriangle className="w-3 h-3 text-rose-500" />}
-                              {sub.status === 'suspenso' && <PauseCircle className="w-3 h-3 text-amber-500" />}
-                              {sub.status}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              
-                              {/* Gerar Fatura no Financeiro */}
-                              <button
-                                onClick={() => generateSubscriptionBilling(sub.id)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all"
-                                title="Emitir fatura do mês atual no financeiro"
-                              >
-                                <CreditCard className="w-3 h-3" />
-                                <span>Emitir Fatura</span>
-                              </button>
-
-                              {/* Dar Baixa (Pago) */}
-                              {sub.status !== 'ativo' && (
-                                <button
-                                  onClick={() => {
-                                    const nextMonth = new Date();
-                                    nextMonth.setMonth(nextMonth.getMonth() + 1);
-                                    nextMonth.setDate(sub.billingCycleDay);
-                                    updateSubscriptionStatus(sub.id, 'ativo', nextMonth.toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
-                                  }}
-                                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] cursor-pointer"
-                                  title="Marcar mensalidade como paga e renovar vencimento"
-                                >
-                                  Dar Baixa (Pago)
-                                </button>
-                              )}
-
-                              {/* Marcar Inadimplente */}
-                              {sub.status === 'ativo' && (
-                                <button
-                                  onClick={() => updateSubscriptionStatus(sub.id, 'inadimplente')}
-                                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 cursor-pointer"
-                                  title="Marcar como inadimplente"
-                                >
-                                  <AlertTriangle className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-
-                              {/* Copiar Pix */}
-                              {sub.pixCopyPaste && (
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(sub.pixCopyPaste || '');
-                                    setCopiedSubPixId(sub.id);
-                                    setTimeout(() => setCopiedSubPixId(null), 2500);
-                                  }}
-                                  className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
-                                  title="Copiar Pix Copia e Cola"
-                                >
-                                  {copiedSubPixId === sub.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                                </button>
-                              )}
-
-                              {/* Delete Subscription */}
-                              <button
-                                onClick={() => {
-                                  if (confirm(`Deseja cancelar e remover a mensalidade do cliente ${sub.clientName}?`)) {
-                                    deleteSubscription(sub.id);
-                                  }
-                                }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer"
-                                title="Remover contrato"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-            </div>
+          {/* MODULE RENDERERS */}
+          {finSubTab === 'dashboard' && (
+            <FinancialDashboard
+              subscriptions={subscriptions}
+              financials={financials}
+              projects={projects}
+              onNavigateTab={(tab) => setFinSubTab(tab)}
+              onOpenBillingModal={() => setShowBillingAutomationModal(true)}
+              onOpenAuditModal={() => setShowAuditModal(true)}
+              onNewTransaction={() => setShowFinModal(true)}
+              onNewSubscription={() => setShowNewSubModal(true)}
+            />
           )}
 
-          {/* SUB-TAB 2: TRANSAÇÕES AVULSAS & FLUXO DE CAIXA */}
+          {finSubTab === 'subscriptions' && (
+            <FinancialSubscriptions
+              subscriptions={subscriptions}
+              onNewSubscription={() => setShowNewSubModal(true)}
+              onGenerateBilling={(id) => generateSubscriptionBilling(id)}
+              onUpdateStatus={(id, status, nextDueDate, lastPaymentDate) => updateSubscriptionStatus(id, status, nextDueDate, lastPaymentDate)}
+              onDelete={(id) => deleteSubscription(id)}
+              onEdit={(sub) => handleOpenEditSub(sub)}
+            />
+          )}
+
           {finSubTab === 'transactions' && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Lançamentos de Caixa & Parcelas Avulsas</h3>
-                  <p className="text-xs text-slate-500">Histórico completo de entradas de projetos, mensalidades geradas e despesas operacionais.</p>
-                </div>
-                <button
-                  onClick={() => setShowFinModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Novo Lançamento Manual</span>
-                </button>
-              </div>
+            <FinancialTransactions
+              financials={financials}
+              onNewTransaction={() => setShowFinModal(true)}
+              onSettleTransaction={(f) => setSettleModalData({
+                type: 'financial',
+                id: f.id,
+                title: f.title,
+                clientName: f.clientName,
+                amount: f.amount,
+                paymentDate: new Date().toISOString().split('T')[0]
+              })}
+              onDeleteTransaction={(id) => deleteFinancialTransaction(id)}
+            />
+          )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase">
-                      <th className="pb-3">Descrição / Cliente</th>
-                      <th className="pb-3">Tipo</th>
-                      <th className="pb-3">Categoria</th>
-                      <th className="pb-3">Vencimento</th>
-                      <th className="pb-3">Valor</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3 text-right">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {financials.map(f => (
-                      <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="py-3 font-semibold text-slate-900 dark:text-white">
-                          {f.title}
-                          <span className="block text-[10px] text-slate-400 font-normal">{f.clientName || 'NCodes Interno'}</span>
-                        </td>
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${f.type === 'receita' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}`}>
-                            {f.type}
-                          </span>
-                        </td>
-                        <td className="py-3 text-slate-600 dark:text-slate-300">{f.category}</td>
-                        <td className="py-3 text-slate-500">{f.dueDate}</td>
-                        <td className="py-3 font-bold text-slate-900 dark:text-white">
-                          R$ {f.amount.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="py-3">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                            f.status === 'pago' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          }`}>
-                            {f.status}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {f.status !== 'pago' ? (
-                              <button
-                                onClick={() => setSettleModalData({
-                                  type: 'financial',
-                                  id: f.id,
-                                  title: f.title,
-                                  clientName: f.clientName,
-                                  amount: f.amount,
-                                  paymentDate: new Date().toISOString().split('T')[0]
-                                })}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] cursor-pointer shadow-sm transition-all flex items-center gap-1"
-                                title="Dar baixa manual no financeiro: Marcar como PAGO (com data de pagamento)"
-                              >
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Dar Baixa (Pago)</span>
-                              </button>
-                            ) : (
-                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/10 inline-flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                                <span>Confirmado</span>
-                              </span>
-                            )}
+          {finSubTab === 'cashflow' && (
+            <FinancialCashFlow
+              financials={financials}
+              subscriptions={subscriptions}
+              onNewTransaction={() => setShowFinModal(true)}
+            />
+          )}
 
-                            <button
-                              onClick={() => deleteFinancialTransaction(f.id)}
-                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all cursor-pointer"
-                              title="Excluir parcela ou lançamento financeiro"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          {finSubTab === 'calendar' && (
+            <FinancialCalendar
+              subscriptions={subscriptions}
+              financials={financials}
+              onSettleTransaction={(f) => setSettleModalData({
+                type: 'financial',
+                id: f.id,
+                title: f.title || f.serviceName,
+                clientName: f.clientName,
+                amount: f.amount || f.monthlyValue,
+                paymentDate: new Date().toISOString().split('T')[0]
+              })}
+            />
+          )}
+
+          {finSubTab === 'installments' && (
+            <FinancialInstallments
+              financials={financials}
+              subscriptions={subscriptions}
+              onNewTransaction={() => setShowFinModal(true)}
+            />
+          )}
+
+          {finSubTab === 'reconciliation' && (
+            <FinancialReconciliation
+              financials={financials}
+              subscriptions={subscriptions}
+            />
+          )}
+
+          {finSubTab === 'reports' && (
+            <FinancialReports
+              financials={financials}
+              subscriptions={subscriptions}
+            />
           )}
 
         </div>
@@ -7207,6 +6983,27 @@ export const AdminPanel: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* FINANCIAL SUITE MODALS */}
+      {showBillingAutomationModal && (
+        <FinancialBillingAndAutomationModal
+          isOpen={showBillingAutomationModal}
+          onClose={() => setShowBillingAutomationModal(false)}
+          subscriptions={subscriptions}
+          onTriggerBillingAll={() => {
+            alert('Automação iniciada: Faturas Pix e lembretes de cobrança enviados para todos os clientes ativos.');
+          }}
+        />
+      )}
+
+      {showAuditModal && (
+        <FinancialAuditModal
+          isOpen={showAuditModal}
+          onClose={() => setShowAuditModal(false)}
+          financials={financials}
+          subscriptions={subscriptions}
+        />
       )}
 
       </div>
